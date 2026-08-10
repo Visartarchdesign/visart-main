@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Visart Admin — Boshqaruv paneli</title>
+<link rel="icon" href="../assets/favicon-32.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#A9895A;--gold-l:#C4A876;--ink:#151412;--paper:#FCFBF9;
+  --line:#E7E3D9;--t1:#151412;--t2:#5C594F;--t3:#8C897D;
+  --serif:'Playfair Display',serif;--sans:'Inter',sans-serif;
+  --danger:#B14B4B;--ok:#4B7A57;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--paper);color:var(--t1);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--serif);font-weight:600}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px}
+
+/* ═══ LOGIN ═══ */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--ink)}
+.login-box{width:340px;background:var(--paper);padding:44px 38px;border-radius:6px}
+.login-box h1{font-size:22px;margin-bottom:6px}
+.login-box p{font-size:13px;color:var(--t3);margin-bottom:28px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:11px;color:var(--t3);margin-bottom:7px;letter-spacing:.3px;text-transform:uppercase}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:3px;outline:none;transition:border-color .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold)}
+.field textarea{resize:vertical;min-height:70px}
+.btn{padding:12px 22px;border:none;border-radius:3px;font-size:13px;font-weight:600;letter-spacing:.2px;transition:all .2s}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{background:var(--gold)}
+.btn-primary:disabled{opacity:.6;cursor:wait}
+.btn-full{width:100%}
+.err-msg{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:16px}
+
+/* ═══ DASHBOARD ═══ */
+#dashboard{display:none;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:var(--ink);color:#fff;position:sticky;top:0;z-index:10}
+.topbar h1{font-size:16px;letter-spacing:.5px}
+.topbar .brand{display:flex;align-items:center;gap:10px}
+.topbar .brand img{width:24px}
+.logout-btn{background:none;border:0.5px solid rgba(255,255,255,.4);color:#fff;padding:8px 16px;border-radius:3px;font-size:12px}
+.logout-btn:hover{border-color:var(--gold-l);color:var(--gold-l)}
+.tabs{display:flex;gap:4px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab-btn{padding:16px 18px;background:none;border:none;font-size:13px;color:var(--t3);font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+.tab-btn.active{color:var(--t1);border-bottom-color:var(--gold)}
+.tab-panel{display:none;padding:28px;max-width:1100px;margin:0 auto}
+.tab-panel.active{display:block}
+.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+.panel-head h2{font-size:19px}
+
+/* jadval */
+.data-table{width:100%;border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.data-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--t3);padding:12px 14px;border-bottom:1px solid var(--line)}
+.data-table td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table img.thumb{width:52px;height:40px;object-fit:cover;border-radius:3px}
+.row-actions{display:flex;gap:8px}
+.icon-btn{padding:6px 12px;border:1px solid var(--line);border-radius:3px;background:#fff;font-size:12px;color:var(--t2)}
+.icon-btn:hover{border-color:var(--gold);color:var(--t1)}
+.icon-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.empty-state{padding:40px;text-align:center;color:var(--t3);font-size:13.5px;background:#fff;border-radius:4px}
+
+/* forma / modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(21,20,18,.5);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-overlay.active{display:flex}
+.modal-box{width:100%;max-width:640px;max-height:88vh;overflow-y:auto;background:#fff;border-radius:6px;padding:30px}
+.modal-box h3{font-size:18px;margin-bottom:20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-grid .full{grid-column:1/-1}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+.btn-secondary{background:#fff;border:1px solid var(--line);color:var(--t2);padding:12px 20px;border-radius:3px;font-size:13px}
+.upload-row{display:flex;align-items:center;gap:12px}
+.upload-row img{width:60px;height:46px;object-fit:cover;border-radius:3px;background:var(--line)}
+.upload-row .icon-btn{white-space:nowrap}
+.gallery-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.gallery-list img{width:60px;height:46px;object-fit:cover;border-radius:3px;position:relative}
+.gallery-item{position:relative}
+.gallery-item button{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:11px;line-height:1}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:14px 22px;border-radius:4px;font-size:13px;opacity:0;transform:translateY(10px);transition:all .3s;z-index:200}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{background:var(--danger)}
+.stars-input{display:flex;gap:4px}
+.hint{font-size:11.5px;color:var(--t3);margin-top:6px}
+@media(max-width:700px){.form-grid{grid-template-columns:1fr}.tab-panel{padding:18px}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>Visart Admin</h1>
+    <p>Boshqaruv paneliga kirish</p>
+    <div class="field"><label>Login</label><input type="text" id="loginUser" autocomplete="username"></div>
+    <div class="field"><label>Parol</label><input type="password" id="loginPass" autocomplete="current-password"></div>
+    <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">Kirish</button>
+    <div class="err-msg" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="topbar">
+    <div class="brand"><h1>VISART · Admin</h1></div>
+    <button class="logout-btn" onclick="doLogout()">Chiqish</button>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="portfolio" onclick="switchTab('portfolio')">Portfolio</button>
+    <button class="tab-btn" data-tab="pricing" onclick="switchTab('pricing')">Narxlar</button>
+    <button class="tab-btn" data-tab="testimonials" onclick="switchTab('testimonials')">Sharhlar</button>
+    <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">Sozlamalar</button>
+  </div>
+
+  <!-- PORTFOLIO -->
+  <section class="tab-panel active" id="tab-portfolio">
+    <div class="panel-head">
+      <h2>Portfolio loyihalari</h2>
+      <button class="btn btn-primary" onclick="openProjectForm(null)">+ Yangi loyiha</button>
+    </div>
+    <div id="projectsTableWrap"></div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="tab-panel" id="tab-pricing">
+    <div class="panel-head"><h2>Narx kalkulyatori</h2></div>
+    <div id="pricingForm"></div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="tab-panel" id="tab-testimonials">
+    <div class="panel-head">
+      <h2>Mijozlar sharhlari</h2>
+      <button class="btn btn-primary" onclick="openTestimonialForm(null)">+ Yangi sharh</button>
+    </div>
+    <div id="testimonialsTableWrap"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="tab-panel" id="tab-settings">
+    <div class="panel-head"><h2>Kontakt va sozlamalar</h2></div>
+    <div id="settingsForm"></div>
+  </section>
+</div>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal-box">
+    <h3 id="projectModalTitle">Yangi loyiha</h3>
+    <input type="hidden" id="pId">
+    <div class="form-grid">
+      <div class="field"><label>Kategoriya</label>
+        <select id="pCategory"><option value="interior">Interyer</option><option value="architecture">Arxitektura</option><option value="drawings">Chizmalar</option></select>
+      </div>
+      <div class="field"><label>Holati</label>
+        <select id="pStatus"><option value="done">Bajarilgan</option><option value="render">3D vizualizatsiya</option></select>
+      </div>
+      <div class="field"><label>Nomi (UZ)</label><input type="text" id="pTitleUz"></div>
+      <div class="field"><label>Nomi (RU)</label><input type="text" id="pTitleRu"></div>
+      <div class="field"><label>Turi (UZ)</label><input type="text" id="pTypeUz" placeholder="Interyer dizayn"></div>
+      <div class="field"><label>Turi (RU)</label><input type="text" id="pTypeRu" placeholder="Дизайн интерьера"></div>
+      <div class="field full"><label>Tavsif (UZ)</label><textarea id="pDescUz"></textarea></div>
+      <div class="field full"><label>Tavsif (RU)</label><textarea id="pDescRu"></textarea></div>
+      <div class="field full"><label>Asosiy rasm (thumb / hero)</label>
+        <div class="upload-row">
+          <img id="pThumbPreview" src="" alt="">
+          <input type="file" id="pThumbFile" accept="image/*" onchange="uploadToField(this,'pThumbUrl','pThumbPreview')">
+          <button type="button" class="icon-btn" onclick="document.getElementById('pThumbFile').click()">Rasm tanlash</button>
+        </div>
+        <input type="hidden" id="pThumbUrl">
+        <div class="hint">Bu rasm portfolio kartochkasida va loyiha oynasining katta rasmi sifatida ishlatiladi.</div>
+      </div>
+      <div class="field full"><label>Qo'shimcha galereya rasmlari</label>
+        <input type="file" id="pGalleryFile" accept="image/*" multiple onchange="uploadGalleryFiles(this)">
+        <button type="button" class="icon-btn" onclick="document.getElementById('pGalleryFile').click()" style="margin-top:8px">+ Galereya rasm qo'shish</button>
+        <div class="gallery-list" id="pGalleryList"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('projectModal')">Bekor qilish</button>
+      <button class="btn btn-primary" id="saveProjectBtn" onclick="saveProject()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIAL MODAL -->
+<div class="modal-overlay" id="testimonialModal">
+  <div class="modal-box">
+    <h3 id="testimonialModalTitle">Yangi sharh</h3>
+    <input type="hidden" id="tId">
+    <div class="form-grid">
+      <div class="field"><label>Ism</label><input type="text" id="tName"></div>
+      <div class="field"><label>Yulduzlar (1-5)</label><input type="number" id="tStars" min="1" max="5" value="5"></div>
+      <div class="field"><label>Manzil/rol (UZ)</label><input type="text" id="tRoleUz" placeholder="Yunusobod, mijoz"></div>
+      <div class="field"><label>Manzil/rol (RU)</label><input type="text" id="tRoleRu" placeholder="Юнусабад, клиент"></div>
+      <div class="field full"><label>Sharh matni (UZ)</label><textarea id="tQuoteUz"></textarea></div>
+      <div class="field full"><label>Sharh matni (RU)</label><textarea id="tQuoteRu"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('testimonialModal')">Bekor qilish</button>
+      <button class="btn btn-primary" onclick="saveTestimonial()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api';
+let CACHE = { projects: [], testimonials: [], pricing: null, settings: null };
+let currentGalleryUrls = [];
+
+function toast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+async function apiFetch(path, opts={}){
+  const res = await fetch(API + path, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers||{}) }, credentials:'same-origin' });
+  let data = null;
+  try { data = await res.json(); } catch(e){}
+  if (!res.ok) throw { status: res.status, data };
+  return data;
+}
+
+// ═══ AUTH ═══
+async function doLogin(){
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  btn.disabled = true;
+  try {
+    await apiFetch('/admin-login', { method:'POST', body: JSON.stringify({
+      username: document.getElementById('loginUser').value,
+      password: document.getElementById('loginPass').value
+    })});
+    showDashboard();
+  } catch(e){
+    err.textContent = (e.data && e.data.error === 'invalid_credentials') ? "Login yoki parol noto'g'ri" : 'Xatolik yuz berdi';
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function doLogout(){
+  try { await apiFetch('/admin-logout', { method:'POST' }); } catch(e){}
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+async function checkAuth(){
+  try {
+    await apiFetch('/admin/projects');
+    showDashboard();
+  } catch(e){
+    document.getElementById('loginScreen').style.display='flex';
+  }
+}
+function showDashboard(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  loadProjects(); loadPricing(); loadTestimonials(); loadSettings();
+}
+
+// ═══ TABS ═══
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
+}
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+// ═══ UPLOAD ═══
+async function uploadFile(file){
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(API + '/admin/upload', { method:'POST', body: fd, credentials:'same-origin' });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'upload_failed');
+  return data.url;
+}
+async function uploadToField(input, urlFieldId, previewId){
+  const file = input.files[0];
+  if (!file) return;
+  try {
+    toast('Rasm yuklanmoqda...');
+    const url = await uploadFile(file);
+    document.getElementById(urlFieldId).value = url;
+    document.getElementById(previewId).src = url;
+    toast('Rasm yuklandi');
+  } catch(e){ toast('Rasm yuklashda xatolik', true); }
+}
+async function uploadGalleryFiles(input){
+  const files = Array.from(input.files || []);
+  for (const file of files){
+    try {
+      toast('Galereya rasm yuklanmoqda...');
+      const url = await uploadFile(file);
+      currentGalleryUrls.push(url);
+    } catch(e){ toast('Galereya rasm yuklashda xatolik', true); }
+  }
+  renderGalleryList();
+  input.value = '';
+}
+function renderGalleryList(){
+  const wrap = document.getElementById('pGalleryList');
+  wrap.innerHTML = currentGalleryUrls.map((u,i)=>`
+    <div class="gallery-item"><img src="${u}"><button type="button" onclick="removeGalleryImg(${i})">×</button></div>
+  `).join('');
+}
+function removeGalleryImg(i){ currentGalleryUrls.splice(i,1); renderGalleryList(); }
+
+// ═══ PORTFOLIO ═══
+async function loadProjects(){
+  try {
+    const data = await apiFetch('/admin/projects');
+    CACHE.projects = data.projects;
+    renderProjectsTable();
+  } catch(e){ toast('Loyihalarni yuklashda xatolik', true); }
+}
+function renderProjectsTable(){
+  const wrap = document.getElementById('projectsTableWrap');
+  if (!CACHE.projects.length){
+    wrap.innerHTML = '<div class="empty-state">Hali loyiha qo\'shilmagan. "+ Yangi loyiha" tugmasini bosing.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="data-table"><thead><tr>
+    <th>Rasm</th><th>Nomi</th><th>Kategoriya</th><th>Holati</th><th></th>
+  </tr></thead><tbody>
+    ${CACHE.projects.map(p=>`
+      <tr>
+        <td><img class="thumb" src="${p.thumb_url}" onerror="this.style.opacity=0.2"></td>
+        <td>${p.title_uz}</td>
+        <td>${p.category}</td>
+        <td>${p.status==='done'?'Bajarilgan':'3D vizualizatsiya'}</td>
+        <td class="row-actions">
+          <button class="icon-btn" onclick="openProjectForm(${p.id})">Tahrirlash</button>
+          <button class="icon-btn danger" onclick="deleteProject(${p.id})">O'chirish</button>
+        </td>
+      </tr>
+    `).join('')}
+  </tbody></table>`;
+}
+function openProjectForm(id){
+  const p = id ? CACHE.projects.find(x=>x.id===id) : null;
+  document.getElementById('projectModalTitle').textContent = p ? 'Loyihani tahrirlash' : 'Yangi loyiha';
+  document.getElementById('pId').value = p ? p.id : '';
+  document.getElementById('pCategory').value = p ? p.category : 'interior';
+  document.getElementById('pStatus').value = p ? p.status : 'render';
+  document.getElementById('pTitleUz').value = p ? p.title_uz : '';
+  document.getElementById('pTitleRu').value = p ? p.title_ru : '';
+  document.getElementById('pTypeUz').value = p ? p.type_uz : '';
+  document.getElementById('pTypeRu').value = p ? p.type_ru : '';
+  document.getElementById('pDescUz').value = p ? p.desc_uz : '';
+  document.getElementById('pDescRu').value = p ? p.desc_ru : '';
+  document.getElementById('pThumbUrl').value = p ? p.thumb_url : '';
+  document.getElementById('pThumbPreview').src = p ? p.thumb_url : '';
+  currentGalleryUrls = p ? JSON.parse(p.gallery_urls || '[]') : [];
+  renderGalleryList();
+  document.getElementById('projectModal').classList.add('active');
+}
+async function saveProject(){
+  const id = document.getElementById('pId').value;
+  const body = {
+    category: document.getElementById('pCategory').value,
+    status: document.getElementById('pStatus').value,
+    title_uz: document.getElementById('pTitleUz').value,
+    title_ru: document.getElementById('pTitleRu').value,
+    type_uz: document.getElementById('pTypeUz').value,
+    type_ru: document.getElementById('pTypeRu').value,
+    desc_uz: document.getElementById('pDescUz').value,
+    desc_ru: document.getElementById('pDescRu').value,
+    thumb_url: document.getElementById('pThumbUrl').value,
+    hero_url: document.getElementById('pThumbUrl').value,
+    gallery_urls: currentGalleryUrls,
+  };
+  if (!body.title_uz || !body.title_ru || !body.thumb_url){
+    toast("Nomi va rasm majburiy", true); return;
+  }
+  try {
+    if (id) await apiFetch('/admin/projects/'+id, { method:'PUT', body: JSON.stringify(body) });
+    else await apiFetch('/admin/projects', { method:'POST', body: JSON.stringify(body) });
+    closeModal('projectModal');
+    toast('Saqlandi');
+    loadProjects();
+  } catch(e){ toast('Saqlashda xatolik', true); }
+}
+async function deleteProject(id){
+  if (!confirm("Loyihani o'chirishni tasdiqlaysizmi?")) return;
+  try { await apiFetch('/admin/projects/'+id, { method:'DELETE' }); toast("O'chirildi"); loadProjects(); }
+  catch(e){ toast("O'chirishda xatolik", true); }
+}
+
+// ═══ PRICING ═══
+async function loadPricing(){
+  try {
+    const data = await apiFetch('/admin/pricing');
+    CACHE.pricing = data.pricing || { services:[], styles:[], addons:[] };
+    renderPricingForm();
+  } catch(e){ toast('Narxlarni yuklashda xatolik', true); }
+}
+function renderPricingForm(){
+  const p = CACHE.pricing;
+  const wrap = document.getElementById('pricingForm');
+  wrap.innerHTML = `
+    <h3 style="font-size:14px;margin-bottom:14px">Xizmat turlari (m² narxi, so'm)</h3>
+    <table class="data-table" style="margin-bottom:26px"><thead><tr><th>Xizmat</th><th>m² narxi</th><th>Flat narx (agar m² asosida bo'lmasa)</th></tr></thead><tbody>
+      ${p.services.map((s,i)=>`<tr>
+        <td>${s.uz}</td>
+        <td><input type="number" data-svc-rate="${i}" value="${s.rate||0}" style="width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px"></td>
+        <td><input type="number" data-svc-flat="${i}" value="${s.flat||0}" style="width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px"></td>
+      </tr>`).join('')}
+    </tbody></table>
+    <h3 style="font-size:14px;margin-bottom:14px">Uslub koeffitsientlari</h3>
+    <table class="data-table" style="margin-bottom:26px"><thead><tr><th>Daraja</th><th>Koeffitsient (masalan 1.35)</th></tr></thead><tbody>
+      ${p.styles.map((s,i)=>`<tr><td>${s.uz}</td><td><input type="number" step="0.01" data-style-mult="${i}" value="${s.mult}" style="width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px"></td></tr>`).join('')}
+    </tbody></table>
+    <h3 style="font-size:14px;margin-bottom:14px">Qo'shimcha xizmatlar</h3>
+    <table class="data-table"><thead><tr><th>Xizmat</th><th>Qo'shimcha narx (so'm)</th><th>Foiz (%) — agar mavjud bo'lsa</th></tr></thead><tbody>
+      ${p.addons.map((a,i)=>`<tr>
+        <td>${a.uz}</td>
+        <td><input type="number" data-addon-flat="${i}" value="${a.flat||0}" style="width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px"></td>
+        <td><input type="number" step="0.01" data-addon-pct="${i}" value="${a.pct||0}" style="width:100px;padding:6px 8px;border:1px solid var(--line);border-radius:3px"></td>
+      </tr>`).join('')}
+    </tbody></table>
+    <button class="btn btn-primary" style="margin-top:22px" onclick="savePricing()">Narxlarni saqlash</button>
+  `;
+}
+async function savePricing(){
+  const p = CACHE.pricing;
+  document.querySelectorAll('[data-svc-rate]').forEach(el=>{ p.services[+el.dataset.svcRate].rate = Number(el.value)||0; });
+  document.querySelectorAll('[data-svc-flat]').forEach(el=>{ p.services[+el.dataset.svcFlat].flat = Number(el.value)||0; });
+  document.querySelectorAll('[data-style-mult]').forEach(el=>{ p.styles[+el.dataset.styleMult].mult = Number(el.value)||1; });
+  document.querySelectorAll('[data-addon-flat]').forEach(el=>{ p.addons[+el.dataset.addonFlat].flat = Number(el.value)||0; });
+  document.querySelectorAll('[data-addon-pct]').forEach(el=>{ p.addons[+el.dataset.addonPct].pct = Number(el.value)||0; });
+  try { await apiFetch('/admin/pricing', { method:'PUT', body: JSON.stringify(p) }); toast('Narxlar saqlandi'); }
+  catch(e){ toast('Saqlashda xatolik', true); }
+}
+
+// ═══ TESTIMONIALS ═══
+async function loadTestimonials(){
+  try {
+    const data = await apiFetch('/admin/testimonials');
+    CACHE.testimonials = data.testimonials;
+    renderTestimonialsTable();
+  } catch(e){ toast('Sharhlarni yuklashda xatolik', true); }
+}
+function renderTestimonialsTable(){
+  const wrap = document.getElementById('testimonialsTableWrap');
+  if (!CACHE.testimonials.length){
+    wrap.innerHTML = '<div class="empty-state">Hali sharh qo\'shilmagan.</div>';
+    return;
+  }
+  wrap.innerHTML = `<table class="data-table"><thead><tr><th>Ism</th><th>Yulduz</th><th>Sharh</th><th></th></tr></thead><tbody>
+    ${CACHE.testimonials.map(t=>`<tr>
+      <td>${t.name}</td><td>${'★'.repeat(t.stars)}</td><td style="max-width:320px">${t.quote_uz.slice(0,60)}...</td>
+      <td class="row-actions">
+        <button class="icon-btn" onclick="openTestimonialForm(${t.id})">Tahrirlash</button>
+        <button class="icon-btn danger" onclick="deleteTestimonial(${t.id})">O'chirish</button>
+      </td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+function openTestimonialForm(id){
+  const t = id ? CACHE.testimonials.find(x=>x.id===id) : null;
+  document.getElementById('testimonialModalTitle').textContent = t ? "Sharhni tahrirlash" : "Yangi sharh";
+  document.getElementById('tId').value = t ? t.id : '';
+  document.getElementById('tName').value = t ? t.name : '';
+  document.getElementById('tStars').value = t ? t.stars : 5;
+  document.getElementById('tRoleUz').value = t ? t.role_uz : '';
+  document.getElementById('tRoleRu').value = t ? t.role_ru : '';
+  document.getElementById('tQuoteUz').value = t ? t.quote_uz : '';
+  document.getElementById('tQuoteRu').value = t ? t.quote_ru : '';
+  document.getElementById('testimonialModal').classList.add('active');
+}
+async function saveTestimonial(){
+  const id = document.getElementById('tId').value;
+  const body = {
+    name: document.getElementById('tName').value,
+    stars: Number(document.getElementById('tStars').value)||5,
+    role_uz: document.getElementById('tRoleUz').value,
+    role_ru: document.getElementById('tRoleRu').value,
+    quote_uz: document.getElementById('tQuoteUz').value,
+    quote_ru: document.getElementById('tQuoteRu').value,
+  };
+  if (!body.name || !body.quote_uz || !body.quote_ru){ toast('Ism va sharh matni majburiy', true); return; }
+  try {
+    if (id) await apiFetch('/admin/testimonials/'+id, { method:'PUT', body: JSON.stringify(body) });
+    else await apiFetch('/admin/testimonials', { method:'POST', body: JSON.stringify(body) });
+    closeModal('testimonialModal');
+    toast('Saqlandi');
+    loadTestimonials();
+  } catch(e){ toast('Saqlashda xatolik', true); }
+}
+async function deleteTestimonial(id){
+  if (!confirm("Sharhni o'chirishni tasdiqlaysizmi?")) return;
+  try { await apiFetch('/admin/testimonials/'+id, { method:'DELETE' }); toast("O'chirildi"); loadTestimonials(); }
+  catch(e){ toast("O'chirishda xatolik", true); }
+}
+
+// ═══ SETTINGS ═══
+async function loadSettings(){
+  try {
+    const data = await apiFetch('/admin/settings');
+    CACHE.settings = data.settings;
+    renderSettingsForm();
+  } catch(e){ toast('Sozlamalarni yuklashda xatolik', true); }
+}
+function renderSettingsForm(){
+  const s = CACHE.settings;
+  const wrap = document.getElementById('settingsForm');
+  wrap.innerHTML = `
+    <div class="form-grid" style="max-width:640px">
+      <div class="field"><label>Telefon</label><input type="text" id="sPhone" value="${s.phone||''}"></div>
+      <div class="field"><label>Email</label><input type="text" id="sEmail" value="${s.email||''}"></div>
+      <div class="field"><label>Telegram</label><input type="text" id="sTelegram" value="${s.telegram||''}"></div>
+      <div class="field"><label>Instagram (to'liq havola)</label><input type="text" id="sInstagram" value="${s.instagram||''}" placeholder="https://instagram.com/..."></div>
+      <div class="field"><label>Manzil (UZ)</label><input type="text" id="sAddrUz" value="${s.address_uz||''}"></div>
+      <div class="field"><label>Manzil (RU)</label><input type="text" id="sAddrRu" value="${s.address_ru||''}"></div>
+      <div class="field"><label>Tajriba (masalan 10+)</label><input type="text" id="sYears" value="${s.stats_years||''}"></div>
+      <div class="field"><label>Loyihalar soni (masalan 200+)</label><input type="text" id="sProjects" value="${s.stats_projects||''}"></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:22px" onclick="saveSettings()">Sozlamalarni saqlash</button>
+  `;
+}
+async function saveSettings(){
+  const body = {
+    phone: document.getElementById('sPhone').value,
+    email: document.getElementById('sEmail').value,
+    telegram: document.getElementById('sTelegram').value,
+    instagram: document.getElementById('sInstagram').value,
+    address_uz: document.getElementById('sAddrUz').value,
+    address_ru: document.getElementById('sAddrRu').value,
+    stats_years: document.getElementById('sYears').value,
+    stats_projects: document.getElementById('sProjects').value,
+  };
+  try { await apiFetch('/admin/settings', { method:'PUT', body: JSON.stringify(body) }); toast('Sozlamalar saqlandi'); }
+  catch(e){ toast('Saqlashda xatolik', true); }
+}
+
+checkAuth();
+</script>
+</body>
+</html>
