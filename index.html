@@ -1,94 +1,1756 @@
--- ═══════════════════════════════════════════════════════════════
--- VISART — 8-patch: Login himoyasi + Telegram xato-xabarnomasi
--- Ishlatish: Supabase → SQL Editor → to'liq ishga tushiring
--- ═══════════════════════════════════════════════════════════════
-begin;
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VISART ARCHDESIGN — Arxitektura va interyer dizayn</title>
+<link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<meta name="description" content="VISART ARCHDESIGN. Arxitektura loyihalash, interyer dizayn va qurilish nazorati. Toshkent.">
+<meta property="og:title" content="VISART ARCHDESIGN — Arxitektura va interyer dizayn">
+<meta property="og:description" content="Chizmadan to Qurilishgacha.">
+<meta property="og:image" content="assets/hero.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://visartdesign.uz/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HomeAndConstructionBusiness",
+  "name": "VISART ARCHDESIGN",
+  "image": "https://visartdesign.uz/assets/hero.jpg",
+  "url": "https://visartdesign.uz/",
+  "telephone": "+998974021515",
+  "email": "visartarchdesign@gmail.com",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Toshkent",
+    "addressRegion": "Uchtepa tumani",
+    "addressCountry": "UZ"
+  },
+  "priceRange": "$$",
+  "sameAs": ["https://t.me/visartadmin"]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#A9895A;--gold-l:#C4A876;
+  --ink:#151412;
+  --paper:#FCFBF9;
+  --line:rgba(255,255,255,.16);--line-dark:#E7E3D9;
+  --t1:#151412;--t2:#5C594F;--t3:#8C897D;
+  --serif:'Playfair Display',serif;--sans:'Inter',sans-serif;
+  --ease:cubic-bezier(.16,.8,.24,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--ink);color:#fff;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1240px;margin:0 auto;padding:0 44px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 
--- ── 1) LOGIN URINISHLARINI CHEKLASH ──
-create table if not exists login_attempts (
-  id bigint generated always as identity primary key,
-  login text not null,
-  ip text,
-  success boolean not null,
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_login_attempts_login_time on login_attempts(login, created_at desc);
-alter table login_attempts enable row level security;
-drop policy if exists no_direct_access on login_attempts;
-create policy no_direct_access on login_attempts for all using (false) with check (false);
+/* ═══ PRELOADER ═══ */
+.preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;align-items:center;justify-content:center;transition:opacity .7s var(--ease),visibility .7s}
+.preloader img{width:56px;height:auto;opacity:0;animation:preFade 1.1s ease forwards}
+.preloader.done{opacity:0;visibility:hidden}
+@keyframes preFade{0%{opacity:0;transform:scale(.9)}60%{opacity:1;transform:scale(1)}100%{opacity:1}}
 
--- ── 2) TELEGRAM XABARNOMASI: kritik xatolar sizga avtomatik yuboriladi ──
-create extension if not exists pg_net;
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.001s!important;transition-duration:.001s!important}
+  html{scroll-behavior:auto}
+}
 
--- Bot token va chat_id shu yerda saqlanadi (SOZLAMALAR jadvali orqali,
--- kodni qayta yozmasdan o'zgartira olasiz)
-insert into sozlamalar(key,value) values ('tg_bot_token','SIZNING_BOT_TOKENINGIZ')
-  on conflict (key) do nothing;
-insert into sozlamalar(key,value) values ('tg_chat_id','SIZNING_CHAT_IDINGIZ')
-  on conflict (key) do nothing;
+/* ═══ REVEAL ANIMATION ═══ */
+.reveal{opacity:0;transform:translateY(36px);transition:opacity 1s var(--ease),transform 1s var(--ease)}
+.reveal.in{opacity:1;transform:translateY(0)}
+.reveal-scale{opacity:0;transform:scale(1.06);transition:opacity 1.3s var(--ease),transform 1.6s var(--ease)}
+.reveal-scale.in{opacity:1;transform:scale(1)}
 
-create or replace function fn_notify_error()
-returns trigger language plpgsql security definer as $$
-declare
-  bot_token text; chat_id text; msg text;
-begin
-  select value into bot_token from sozlamalar where key='tg_bot_token';
-  select value into chat_id from sozlamalar where key='tg_chat_id';
-  if bot_token is null or chat_id is null or bot_token='SIZNING_BOT_TOKENINGIZ' then
-    return new; -- hali sozlanmagan — jim o'tkazib yuboramiz
-  end if;
-  msg := '⚠️ VISART xato'||E'\n'
-      || 'Login: '||coalesce(new.login,'-')||E'\n'
-      || 'Sahifa: '||coalesce(new.sahifa,'-')||E'\n'
-      || 'Xabar: '||coalesce(new.xabar,'-');
-  perform net.http_post(
-    url:='https://api.telegram.org/bot'||bot_token||'/sendMessage',
-    body:=jsonb_build_object('chat_id',chat_id,'text',msg),
-    headers:=jsonb_build_object('Content-Type','application/json')
-  );
-  return new;
-end $$;
+/* ═══ LETTER-BY-LETTER REVEAL ═══ */
+.split-word{display:inline-block;overflow:hidden;vertical-align:top}
+.split-word span{display:inline-block;transform:translateY(110%);transition:transform .85s var(--ease)}
+.split-word.in span{transform:translateY(0)}
 
-drop trigger if exists trg_notify_error on xato_log;
-create trigger trg_notify_error after insert on xato_log
-  for each row execute function fn_notify_error();
+/* ═══ LANG ═══ */
+.lang-toggle{position:fixed;top:30px;right:44px;z-index:200;display:flex;gap:2px;background:rgba(21,20,18,.4);backdrop-filter:blur(6px);border-radius:3px;padding:2px}
+.lang-btn{padding:5px 10px;font-size:11px;font-weight:500;color:#A39D8C;cursor:pointer;letter-spacing:.3px}
+.lang-btn.active{color:#fff}
 
--- ── 3) Kompaniya bloklanganda ham sizga xabar (biznes uchun foydali) ──
-create or replace function fn_notify_company_blocked()
-returns trigger language plpgsql security definer as $$
-declare
-  bot_token text; chat_id text;
-begin
-  if new.faol=false and (old.faol is distinct from new.faol) then
-    select value into bot_token from sozlamalar where key='tg_bot_token';
-    select value into chat_id from sozlamalar where key='tg_chat_id';
-    if bot_token is not null and chat_id is not null and bot_token<>'SIZNING_BOT_TOKENINGIZ' then
-      perform net.http_post(
-        url:='https://api.telegram.org/bot'||bot_token||'/sendMessage',
-        body:=jsonb_build_object('chat_id',chat_id,'text','🔒 Kompaniya bloklandi: '||new.nomi),
-        headers:=jsonb_build_object('Content-Type','application/json')
-      );
-    end if;
-  end if;
-  return new;
-end $$;
-drop trigger if exists trg_notify_blocked on kompaniyalar;
-create trigger trg_notify_blocked after update on kompaniyalar
-  for each row execute function fn_notify_company_blocked();
+/* ═══ NAV ═══ */
+.nav{position:fixed;top:0;left:0;right:0;z-index:150;padding:30px 0;transition:padding .4s var(--ease),background .4s var(--ease);background:linear-gradient(180deg,rgba(21,20,18,.5) 0%,rgba(21,20,18,0) 100%)}
+.nav.scrolled{background:rgba(21,20,18,.85);backdrop-filter:blur(10px);padding:18px 0;border-bottom:0.5px solid var(--line)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:11px}
+.nav-logo-mark{width:32px;height:auto;display:block}
+.nav-logo-text{font-family:var(--serif);font-size:14px;font-weight:600;color:#fff;letter-spacing:2px}
+.nav-links{display:flex;gap:38px;list-style:none}
+.nav-links a{position:relative;font-size:12.5px;color:#fff;font-weight:400;letter-spacing:.2px;opacity:.82;transition:opacity .2s}
+.nav-links a::after{content:'';position:absolute;left:0;right:0;bottom:-6px;height:1px;background:var(--gold-l);transform:scaleX(0);transform-origin:right;transition:transform .3s var(--ease)}
+.nav-links a:hover{opacity:1}
+.nav-links a:hover::after{transform:scaleX(1);transform-origin:left}
+.nav-dropdown{position:relative}
+.nav-dropdown-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%);padding-top:16px;display:none;min-width:240px;z-index:160}
+.nav-dropdown:hover .nav-dropdown-menu{display:block}
+.nav-dropdown-menu-inner{background:var(--paper,#fff);border-radius:4px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:8px;display:flex;flex-direction:column}
+.nav-dropdown-menu a{color:var(--t1,#1a1a1a);opacity:1;padding:11px 14px;font-size:12.5px;border-radius:3px;transition:background .15s}
+.nav-dropdown-menu a:hover{background:var(--gold-bg,#f4efe6)}
+.nav-actions{display:flex;align-items:center;gap:26px}
+.nav-portal{display:flex;align-items:center;gap:6px;font-size:12px;color:#fff;opacity:.6;font-weight:400;transition:opacity .2s}
+.nav-portal svg{width:13px;height:13px;flex-shrink:0}
+.nav-portal:hover{opacity:1}
+.nav-cta{padding:10px 20px;border:0.5px solid rgba(255,255,255,.45);color:#fff;font-size:12px;font-weight:500;letter-spacing:.2px;transition:all .2s}
+.nav-cta:hover{background:#fff;color:var(--ink)}
+.tg-btn{display:flex;align-items:center;gap:7px;padding:10px 18px;background:var(--gold);color:var(--ink);font-size:12.5px;font-weight:600;letter-spacing:.2px;transition:all .2s;border-radius:2px}
+.tg-btn:hover{background:var(--gold-l);transform:translateY(-1px)}
+.tg-btn svg{width:15px;height:15px;flex-shrink:0}
+.nav-social{display:flex;align-items:center;gap:16px}
+.nav-social a{color:#fff;opacity:.65;transition:opacity .2s;display:flex}
+.nav-social a:hover{opacity:1}
+.nav-social svg{width:17px;height:17px;flex-shrink:0}
+.mobile-menu-cta .nav-social{margin-right:2px}
+.mobile-menu-cta .nav-social a{color:#fff;opacity:.65}
+.tg-fab{position:fixed;bottom:24px;right:24px;z-index:190;width:54px;height:54px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(169,137,90,.4);transition:transform .25s var(--ease)}
+.tg-fab:hover{transform:scale(1.08)}
+.tg-fab svg{width:24px;height:24px;color:var(--ink)}
+.nav-burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:8px;z-index:210;position:relative}
+.nav-burger span{width:20px;height:1.5px;background:#fff;transition:transform .3s var(--ease),opacity .3s var(--ease)}
+.nav-burger.active span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.nav-burger.active span:nth-child(2){opacity:0}
+.nav-burger.active span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
 
-commit;
+/* ═══ MOBILE MENU OVERLAY ═══ */
+.mobile-menu{position:fixed;inset:0;background:var(--ink);z-index:180;display:flex;flex-direction:column;justify-content:center;padding:0 44px;opacity:0;visibility:hidden;transition:opacity .4s var(--ease),visibility .4s}
+.mobile-menu.active{opacity:1;visibility:visible}
+.mobile-menu ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.mobile-menu a{font-family:var(--serif);font-size:clamp(28px,8vw,40px);color:#fff;font-weight:500;padding:14px 0;border-bottom:0.5px solid var(--line);opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+.mobile-menu.active a{opacity:1;transform:translateY(0)}
+.mobile-menu.active a:nth-child(1){transition-delay:.08s}
+.mobile-menu.active a:nth-child(2){transition-delay:.14s}
+.mobile-menu.active a:nth-child(3){transition-delay:.2s}
+.mobile-menu.active a:nth-child(4){transition-delay:.26s}
+.mobile-menu-cta{display:flex;gap:14px;margin-top:34px;opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease) .32s,transform .5s var(--ease) .32s}
+.mobile-menu.active .mobile-menu-cta{opacity:1;transform:translateY(0)}
 
--- ═══════════════════════════════════════════════════════════════
--- SOZLASH (2 daqiqa, majburiy — aks holda xabar kelmaydi):
---
--- 1. Telegram'da @BotFather ga yozing → /newbot → nom bering →
---    sizga TOKEN beradi (masalan: 123456:ABC-DEF...)
--- 2. @userinfobot ga /start yozing → u sizga CHAT ID beradi (raqam)
--- 3. Pastdagi so'rovni ishga tushiring (o'z qiymatlaringiz bilan):
---
--- update sozlamalar set value='BU_YERGA_TOKEN' where key='tg_bot_token';
--- update sozlamalar set value='BU_YERGA_CHAT_ID' where key='tg_chat_id';
---
--- 4. Botingizga Telegram'da BIR MARTA /start bosing (aks holda bot
---    sizga xabar yubora olmaydi — Telegram qoidasi shunday)
--- ═══════════════════════════════════════════════════════════════
+/* ═══ HERO — full bleed ═══ */
+.hero{position:relative;height:100vh;display:flex;align-items:flex-end;overflow:hidden}
+.hero-media{position:absolute;inset:0}
+.hero-media img{width:100%;height:100%;object-fit:cover;transform:scale(1.08);animation:heroZoom 14s ease-out forwards}
+@media(min-width:901px){
+  .hero-media img,.about-media img{will-change:transform}
+}
+@keyframes heroZoom{to{transform:scale(1)}}
+.hero-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(21,20,18,.15) 0%,rgba(21,20,18,.1) 40%,rgba(21,20,18,.88) 100%)}
+.hero-inner{position:relative;z-index:2;width:100%;padding-bottom:76px}
+.hero-line{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#D9CBAE;font-weight:500;margin-bottom:22px;opacity:.9}
+.hero h1{font-size:clamp(30px,4.4vw,52px);line-height:1.18;max-width:660px;color:#fff;font-weight:500}
+.scroll-hint{position:absolute;bottom:36px;right:44px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:10px;color:#fff;opacity:.55;font-size:10.5px;letter-spacing:2px}
+.scroll-hint-line{width:1px;height:38px;background:linear-gradient(#fff,transparent);animation:scrollDown 2s infinite}
+@keyframes scrollDown{0%{opacity:.2;transform:translateY(0)}50%{opacity:1}100%{opacity:.2;transform:translateY(8px)}}
+
+/* ═══ FULL-BLEED IMAGE SECTIONS ═══ */
+.fb-section{position:relative;height:92vh;min-height:560px;overflow:hidden;display:flex;align-items:flex-end}
+.fb-media{position:absolute;inset:0}
+.fb-media img{width:100%;height:100%;object-fit:cover}
+.fb-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(21,20,18,.86) 100%)}
+.fb-caption{position:relative;z-index:2;padding-bottom:64px;max-width:520px}
+.fb-tag{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold-l);font-weight:500;margin-bottom:16px}
+.fb-caption h2{font-size:clamp(22px,2.8vw,32px);color:#fff;line-height:1.3;font-weight:500}
+
+/* ═══ TWO-UP GALLERY BAND ═══ */
+.gallery-band{display:grid;grid-template-columns:1fr 1fr;height:78vh;min-height:460px}
+.gband-cell{position:relative;overflow:hidden}
+.gband-cell img{width:100%;height:100%;object-fit:cover;transition:transform 1.1s var(--ease)}
+.gband-cell:hover img{transform:scale(1.05)}
+.gband-label{position:absolute;bottom:0;left:0;right:0;padding:26px 30px;background:linear-gradient(0deg,rgba(21,20,18,.75),transparent);display:flex;justify-content:space-between;align-items:flex-end}
+.gband-label h4{font-family:var(--serif);font-size:17px;color:#fff;font-weight:600}
+.gband-label span{font-size:11px;color:#C9C2B4;letter-spacing:.3px}
+
+/* ═══ INTRO STATEMENT ═══ */
+.statement{padding:150px 0;background:var(--paper);color:var(--t1);position:relative;overflow:hidden}
+.blueprint-bg{position:absolute;pointer-events:none;opacity:.55;z-index:0}
+.statement>.wrap{position:relative;z-index:1}
+.statement-inner{max-width:820px;margin:0 auto;text-align:center}
+.statement .eyebrow{font-size:11.5px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);font-weight:500;margin-bottom:28px}
+.statement h2{font-size:clamp(26px,3.6vw,42px);line-height:1.4;color:var(--t1);font-weight:500}
+.statement h2 em{font-style:normal;color:var(--gold);font-family:var(--serif)}
+
+/* ═══ SERVICES — minimal row ═══ */
+.services{padding:0 0 150px;background:var(--paper);position:relative;overflow:hidden}
+.services>.services-list{position:relative;z-index:1}
+.services-list{border-top:0.5px solid var(--line-dark);max-width:1240px;margin:0 auto}
+.svc-row{position:relative;display:grid;grid-template-columns:50px 1fr 1fr 24px;gap:36px;padding:38px 0;border-bottom:0.5px solid var(--line-dark);align-items:center;transition:background-color .4s ease,padding-left .4s var(--ease)}
+.svc-row.svc-highlight{background-color:var(--gold-bg,#f4efe6)}
+.svc-arrow{order:3;width:20px;height:20px;color:var(--gold);opacity:0;transform:translateX(-8px);transition:opacity .3s var(--ease),transform .3s var(--ease)}
+.svc-desc{order:2}
+.svc-title{order:1}
+.svc-row:hover{padding-left:14px}
+.svc-row:hover .svc-arrow{opacity:1;transform:translateX(0)}
+.svc-num{font-family:var(--serif);font-size:12px;color:var(--t3);letter-spacing:1px}
+.svc-title{font-size:20px;color:var(--t1);font-weight:500}
+.svc-desc{font-size:14px;color:var(--t2);line-height:1.75}
+
+/* ═══ PROJECTS — big scroll gallery ═══ */
+.projects-head{padding:130px 0 60px;background:var(--paper);text-align:center;position:relative;overflow:hidden}
+.projects-head>*{position:relative;z-index:1}
+.projects-head .eyebrow{font-size:11.5px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);font-weight:500;margin-bottom:20px}
+.projects-head h2{font-size:clamp(28px,3.8vw,40px);color:var(--t1);font-weight:500}
+.filter-bar{display:flex;justify-content:center;gap:8px;margin-top:36px;flex-wrap:wrap}
+.filter-btn{padding:9px 20px;border:0.5px solid var(--line-dark);font-size:12px;color:var(--t2);cursor:pointer;background:none;font-family:inherit;transition:all .2s}
+.filter-btn.active,.filter-btn:hover{border-color:var(--t1);color:var(--t1)}
+
+.proj-full{position:relative;height:100vh;overflow:hidden;cursor:pointer;background:var(--paper)}
+.proj-full img{width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease)}
+.proj-full:hover img{transform:scale(1.04)}
+.proj-full::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(21,20,18,.7) 0%,transparent 45%)}
+.proj-full-info{position:absolute;bottom:56px;left:0;right:0;padding:0 44px;display:flex;justify-content:space-between;align-items:flex-end;z-index:2}
+.proj-full-badge{font-size:10.5px;font-weight:600;letter-spacing:.6px;padding:6px 13px;text-transform:uppercase;background:rgba(252,251,249,.94);color:var(--t2);margin-bottom:16px;display:inline-block}
+.proj-full-info h3{font-family:var(--serif);font-size:clamp(24px,3vw,34px);color:#fff;font-weight:600}
+.proj-full-info p{font-size:13px;color:#C9C2B4;margin-top:6px;letter-spacing:.2px}
+.proj-full-arrow{width:52px;height:52px;border:0.5px solid rgba(255,255,255,.4);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.proj-full-arrow svg{width:18px;height:18px}
+
+/* ═══ PORTFOLIO GRID — aniq, tushunarli kartochkalar (eski to'liq-ekran formati o'rniga) ═══ */
+.projects-hint{margin-top:18px;font-size:13px;color:var(--t3)}
+.proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;max-width:1240px;margin:70px auto 0;padding:0 44px}
+.proj-card{position:relative;border-radius:4px;overflow:hidden;cursor:pointer;background:#111}
+.proj-card-img{position:relative;height:340px;overflow:hidden}
+.proj-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease)}
+.proj-card:hover .proj-card-img img{transform:scale(1.06)}
+.proj-card-img::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(21,20,18,.88) 100%)}
+.proj-card-badge{position:absolute;top:16px;left:16px;z-index:2;font-size:10px;font-weight:600;letter-spacing:.5px;padding:6px 12px;text-transform:uppercase;background:rgba(252,251,249,.95);color:var(--t2);border-radius:2px}
+.proj-card-info{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:20px 22px}
+.proj-card-info h3{font-family:var(--serif);font-size:19px;color:#fff;font-weight:600;margin-bottom:4px}
+.proj-card-info p{font-size:12px;color:#C9C2B4}
+.proj-card-cta{margin-top:14px;display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:0.5px solid rgba(255,255,255,.55);border-radius:22px;color:#fff;font-size:11.5px;font-weight:600;background:rgba(21,20,18,.35);backdrop-filter:blur(4px);transition:all .25s ease}
+.proj-card:hover .proj-card-cta{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.proj-card-cta svg{width:13px;height:13px;flex-shrink:0}
+@media(max-width:1100px){.proj-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.proj-grid{grid-template-columns:1fr;padding:0 20px;gap:20px;margin-top:44px}.proj-card-img{height:280px}}
+
+.projects-more{padding:80px 0;background:var(--paper);text-align:center}
+
+/* ═══ PROCESS — dark, full width numbered ═══ */
+.process{padding:150px 0;background:var(--ink)}
+.process-head{max-width:600px;margin:0 auto 90px;text-align:center}
+.process-head .eyebrow{font-size:11.5px;letter-spacing:3px;text-transform:uppercase;color:#8C8676;font-weight:500;margin-bottom:20px}
+.process-head h2{color:#fff;font-size:clamp(26px,3.4vw,38px);font-weight:500;line-height:1.3}
+.process-grid{display:grid;grid-template-columns:repeat(5,1fr);max-width:1240px;margin:0 auto;padding:0 44px}
+.pstep{padding:0 20px 0 0;border-left:0.5px solid rgba(255,255,255,.14);padding-left:24px}
+.pstep-n{font-family:var(--serif);font-size:32px;color:var(--gold-l);font-weight:600;margin-bottom:18px;line-height:1}
+.pstep-t{font-size:15px;font-weight:500;color:#fff;margin-bottom:10px}
+.pstep-d{font-size:12.5px;color:#8C8676;line-height:1.7}
+
+/* ═══ ABOUT — split image/text ═══ */
+.about{position:relative;min-height:100vh;display:flex;align-items:center;overflow:hidden}
+.about-media{position:absolute;inset:0}
+.about-media img{width:100%;height:100%;object-fit:cover}
+.about-media::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(21,20,18,.92) 0%,rgba(21,20,18,.55) 55%,rgba(21,20,18,.2) 100%)}
+.about-inner{position:relative;z-index:2;max-width:520px}
+.about .eyebrow{font-size:11.5px;letter-spacing:3px;text-transform:uppercase;color:#8C8676;font-weight:500;margin-bottom:24px}
+.about h2{color:#fff;font-size:clamp(26px,3.4vw,38px);font-weight:500;line-height:1.3;margin-bottom:24px}
+.about p{color:#B8B2A0;font-size:15px;line-height:1.85;margin-bottom:20px}
+.about-stats{display:flex;gap:44px;margin-top:44px;padding-top:32px;border-top:0.5px solid rgba(255,255,255,.16)}
+.astat-n{font-family:var(--serif);font-size:26px;font-weight:600;color:#fff}
+.astat-l{font-size:11px;color:#8C8676;margin-top:6px}
+
+/* ═══ CONTACT ═══ */
+.contact{padding:140px 0 90px;background:var(--paper);color:var(--t1);position:relative;overflow:hidden}
+.contact>.contact-inner{position:relative;z-index:1}
+.contact-inner{display:grid;grid-template-columns:1fr 1fr;gap:90px;max-width:1240px;margin:0 auto;padding:0 44px}
+.contact h2{font-size:clamp(28px,3.6vw,42px);line-height:1.15;margin-bottom:24px;font-weight:500;color:var(--t1)}
+.contact-left p{color:var(--t2);font-size:15px;line-height:1.8;max-width:420px;margin-bottom:44px}
+.contact-details{display:flex;flex-direction:column}
+.cdetail{padding:17px 0;border-top:0.5px solid var(--line-dark);display:flex;justify-content:space-between;align-items:baseline}
+.cdetail:last-child{border-bottom:0.5px solid var(--line-dark)}
+.cdetail-l{font-size:11px;color:var(--t3);letter-spacing:.3px}
+.cdetail a,.cdetail span.v{font-size:14px;color:var(--t1)}
+.cdetail a:hover{color:var(--gold)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.field{margin-bottom:22px}
+.field label{display:block;font-size:11px;color:var(--t3);margin-bottom:9px;letter-spacing:.3px}
+.field input,.field select,.field textarea{width:100%;padding:11px 0;background:none;border:none;border-bottom:0.5px solid var(--line-dark);color:var(--t1);font-family:inherit;font-size:14px;outline:none;transition:border-color .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--gold)}
+.field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238C897D' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right center}
+.field textarea{resize:vertical;min-height:64px}
+.submit-btn{width:100%;padding:15px;background:var(--ink);color:#fff;font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.3px;border:none;cursor:pointer;transition:all .3s var(--ease);margin-top:6px}
+.submit-btn:hover{background:var(--gold)}
+.submit-btn.sent{background:#4B7A57;cursor:default}
+.submit-btn:disabled{opacity:.7;cursor:wait}
+
+/* ═══ TESTIMONIALS ═══ */
+.testimonials{padding:140px 0;background:var(--ink);position:relative;overflow:hidden}
+.testi-head{text-align:center;max-width:600px;margin:0 auto 70px}
+.testi-head .eyebrow{font-size:11.5px;letter-spacing:3px;text-transform:uppercase;color:#8C8676;font-weight:500;margin-bottom:20px}
+.testi-head h2{color:#fff;font-size:clamp(26px,3.4vw,38px);font-weight:500}
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);max-width:1240px;margin:0 auto}
+.testi-card{background:var(--ink);padding:40px 34px;display:flex;flex-direction:column;gap:22px;transition:background .3s ease}
+.testi-card:hover{background:#1B1A17}
+.testi-stars{display:flex;gap:3px;color:var(--gold-l)}
+.testi-stars svg{width:14px;height:14px}
+.testi-quote{font-size:14.5px;line-height:1.8;color:#C9C2B4}
+.testi-person{display:flex;flex-direction:column;gap:2px;margin-top:auto;padding-top:18px;border-top:0.5px solid var(--line)}
+.testi-name{font-size:13.5px;color:#fff;font-weight:500}
+.testi-role{font-size:11.5px;color:#8C8676}
+@media(max-width:900px){.testi-grid{grid-template-columns:1fr}}
+
+/* ═══ FOOTER ═══ */
+.footer-cta{background:var(--paper);padding:110px 0 130px;text-align:center;position:relative;overflow:hidden}
+.footer-cta h2{font-size:clamp(28px,5vw,54px);color:var(--t1);font-weight:500;max-width:760px;margin:0 auto 40px;line-height:1.2}
+.footer-cta-btn{display:inline-flex;align-items:center;gap:12px;padding:18px 34px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;letter-spacing:.3px;border-radius:2px;transition:all .3s var(--ease)}
+.footer-cta-btn:hover{background:var(--gold);transform:translateY(-2px)}
+.footer-cta-btn svg{width:16px;height:16px;transition:transform .3s var(--ease)}
+.footer-cta-btn:hover svg{transform:translate(3px,-3px)}
+.footer{background:var(--ink);border-top:0.5px solid var(--line);padding:60px 0 30px}
+.footer-top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:40px;max-width:1240px;margin:0 auto;padding:0 44px 40px;border-bottom:0.5px solid var(--line)}
+.footer-brand{display:flex;flex-direction:column;gap:14px;max-width:280px}
+.footer-logo{display:flex;align-items:center;gap:10px;color:#fff;font-size:13px;font-family:var(--serif);letter-spacing:1px}
+.footer-logo svg{width:19px;height:17px;color:var(--gold)}
+.footer-brand p{font-size:12.5px;color:#6E6A5D;line-height:1.7}
+.footer-cols{display:flex;gap:70px;flex-wrap:wrap}
+.footer-col h5{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#8C8676;margin-bottom:16px}
+.footer-col a{display:block;font-size:13px;color:#B8B2A0;margin-bottom:11px;transition:color .2s}
+.footer-col a:hover{color:var(--gold-l)}
+.footer-social{display:flex;gap:12px}
+.footer-social a{width:34px;height:34px;border:0.5px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#B8B2A0;transition:all .2s}
+.footer-social a:hover{border-color:var(--gold);color:var(--gold-l)}
+.footer-social svg{width:15px;height:15px}
+.footer-inner{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;max-width:1240px;margin:20px auto 0;padding:0 44px}
+.footer-copy{font-size:11.5px;color:#6E6A5D}
+.footer-links{display:flex;gap:24px}
+.footer-links a{font-size:12px;color:#6E6A5D;transition:color .2s}
+.footer-links a:hover{color:var(--gold)}
+
+/* ═══ PROJECT MODAL ═══ */
+.pmodal-overlay{position:fixed;inset:0;background:var(--ink);z-index:300;overflow-y:auto;opacity:0;visibility:hidden;transform:scale(1.02);transition:opacity .5s var(--ease),transform .5s var(--ease),visibility .5s}
+.pmodal-overlay.active{opacity:1;visibility:visible;transform:scale(1)}
+.pmodal-close{position:fixed;top:28px;right:44px;width:44px;height:44px;background:rgba(21,20,18,.5);backdrop-filter:blur(6px);border:0.5px solid rgba(255,255,255,.3);color:#fff;font-size:18px;cursor:pointer;z-index:5}
+.pmodal-hero{position:relative;height:100vh}
+.pmodal-hero img{width:100%;height:100%;object-fit:cover}
+.pmodal-hero::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,var(--ink) 0%,transparent 40%)}
+.pmodal-hero-cap{position:absolute;bottom:60px;left:44px;right:44px;z-index:2}
+.pmodal-tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.6px;padding:6px 14px;text-transform:uppercase;margin-bottom:20px}
+.pmodal-hero-cap h2{color:#fff;font-size:clamp(28px,4.4vw,52px);font-weight:600}
+.pmodal-body{max-width:1240px;margin:0 auto;padding:70px 44px 120px}
+.pmodal-meta{display:flex;gap:44px;margin-bottom:44px;flex-wrap:wrap;padding-bottom:44px;border-bottom:0.5px solid var(--line)}
+.pmeta-item{display:flex;flex-direction:column;gap:6px}
+.pmeta-l{font-size:11px;color:#8C8676;letter-spacing:.4px;text-transform:uppercase}
+.pmeta-v{font-size:14.5px;color:#fff;font-weight:500}
+.pmodal-body p.desc{color:#B8B2A0;font-size:16px;line-height:1.9;margin-bottom:56px;max-width:680px}
+.pmodal-gallery{display:flex;flex-direction:column;gap:20px}
+.pmodal-gallery img{width:100%;object-fit:cover}
+
+#services,#projects,#pricing,#process,#about,#contact{scroll-margin-top:90px}
+
+/* ═══ BLUEPRINT DRAW-ON-SCROLL — chizma chiziqlari o'zi chizilib chiqadi ═══ */
+.blueprint-bg [data-bp]{transition:stroke-dashoffset 1.4s var(--ease)}
+
+/* ═══ CHIZMA "RAIL" — sahifa bo'ylab yuruvchi o'lchov chizig'i ═══ */
+.bp-rail{position:fixed;top:0;bottom:0;left:16px;width:1px;z-index:120;pointer-events:none}
+.bp-rail-track{position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(140,134,118,.4) 0,rgba(140,134,118,.4) 1px,transparent 1px,transparent 40px)}
+.bp-rail-fill{position:absolute;top:0;left:0;width:100%;height:0;background:linear-gradient(180deg,var(--gold-l),var(--gold))}
+
+/* ═══ 3D "YURIB KIRISH" — bo'limga chuqurlikdan yurib kirgandek his ═══ */
+.reveal.walk3d{transform:perspective(1000px) translateZ(-140px) translateY(46px) rotateX(7deg)}
+.reveal.walk3d.in{transform:perspective(1000px) translateZ(0) translateY(0) rotateX(0)}
+@media(max-width:900px){.reveal.walk3d{transform:translateY(36px)}.reveal.walk3d.in{transform:translateY(0)}}
+
+/* ═══ CHIZMADA "YURUVCHI" NUQTA — xona rejasi bo'ylab harakat ═══ */
+.bp-walker{opacity:0;transition:opacity .6s ease}
+.blueprint-bg.bp-walk-active .bp-walker{opacity:1;animation:bpWalk 5s linear infinite}
+@keyframes bpWalk{0%{offset-distance:0%}50%{offset-distance:100%}100%{offset-distance:0%}}
+@media(max-width:900px){.bp-walker{display:none}}
+
+/* ═══ KINEMATIK O'TISH — "flythrough" filtr/loyiha bosilganda ═══ */
+.fly-overlay{position:fixed;inset:0;z-index:250;background:var(--ink);opacity:0;visibility:hidden;pointer-events:none;overflow:hidden}
+.fly-overlay.active{opacity:1;visibility:visible}
+.fly-overlay img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1);filter:brightness(1) blur(0px);transition:transform 1.05s cubic-bezier(.4,0,.2,1),filter 1.05s ease}
+.fly-overlay.flying img{transform:scale(1.55);filter:brightness(1.3) blur(2px)}
+.fly-overlay::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(21,20,18,.25),rgba(21,20,18,.55))}
+.fly-overlay-label{position:absolute;bottom:64px;left:0;right:0;z-index:2;color:#fff;font-family:var(--serif);font-size:clamp(20px,3vw,30px);letter-spacing:.5px;opacity:0;transition:opacity .5s ease .3s;text-align:center}
+.fly-overlay.flying .fly-overlay-label{opacity:1}
+@media(max-width:600px){
+  .fly-overlay img{transition-duration:.7s}
+  .fly-overlay.flying img{transform:scale(1.3);filter:brightness(1.2) blur(1px)}
+  .fly-overlay-label{bottom:44px;font-size:19px;padding:0 24px}
+}
+
+/* ═══ PRICING / CALCULATOR ═══ */
+.pricing{padding:130px 0 150px;background:var(--paper);position:relative;overflow:hidden}
+.pricing-head{text-align:center;max-width:640px;margin:0 auto 64px}
+.pricing-head .eyebrow{font-size:11.5px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);font-weight:500;margin-bottom:20px}
+.pricing-head h2{font-size:clamp(28px,3.8vw,40px);color:var(--t1);font-weight:500}
+.pricing-head p{margin-top:18px;color:var(--t2);font-size:14.5px;line-height:1.7}
+.calc{max-width:920px;margin:0 auto;background:#fff;border:0.5px solid var(--line-dark);border-radius:6px;padding:50px 56px;box-shadow:0 30px 70px rgba(21,20,18,.08)}
+.calc-group{margin-bottom:34px}
+.calc-group:last-of-type{margin-bottom:0}
+.calc-label{display:block;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin-bottom:14px;font-weight:600}
+.calc-options{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.calc-options.calc-3{grid-template-columns:repeat(3,1fr)}
+.calc-chip{border:0.5px solid var(--line-dark);padding:14px 10px;text-align:center;font-size:12.5px;color:var(--t2);cursor:pointer;transition:all .2s;border-radius:3px;background:none;font-family:inherit}
+.calc-chip:hover{border-color:var(--t1)}
+.calc-chip.active{border-color:var(--gold);background:var(--gold-bg,#f4efe6);color:var(--t1);font-weight:600}
+.calc-area{display:flex;align-items:center;gap:22px}
+.calc-area input[type=range]{flex:1;accent-color:var(--gold)}
+.calc-area-val{font-family:var(--serif);font-size:22px;color:var(--t1);font-weight:600;min-width:96px;text-align:right}
+.calc-addons{display:flex;flex-direction:column;gap:12px}
+.calc-addon{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--t2);cursor:pointer}
+.calc-addon input{accent-color:var(--gold);width:16px;height:16px}
+.calc-result{margin-top:40px;padding-top:36px;border-top:0.5px solid var(--line-dark);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:24px}
+.calc-result-label{font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+.calc-result-val{font-family:var(--serif);font-size:clamp(26px,3.4vw,36px);color:var(--t1);font-weight:600}
+.calc-result-note{font-size:11.5px;color:var(--t3);margin-top:8px;max-width:340px}
+.calc-cta{padding:16px 30px;background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;letter-spacing:.3px;border:none;cursor:pointer;transition:all .3s var(--ease);border-radius:2px;white-space:nowrap}
+.calc-cta:hover{background:var(--gold)}
+.calc-options.calc-2{grid-template-columns:repeat(2,1fr);max-width:280px}
+.calc-tk-note{font-size:11.5px;color:var(--t3);margin-top:14px;line-height:1.6}
+.calc-tier-note{font-size:12.5px;color:var(--t2);line-height:1.7;background:var(--gold-bg,#f4efe6);border-radius:3px;padding:14px 16px;margin-top:6px}
+.calc-pkg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.calc-pkg-card{border:0.5px solid var(--line-dark);border-radius:4px;padding:20px 18px;cursor:pointer;transition:all .2s;position:relative;background:none;text-align:left}
+.calc-pkg-card:hover{border-color:var(--t1)}
+.calc-pkg-card.active{border-color:var(--gold);background:var(--gold-bg,#f4efe6)}
+.calc-pkg-name{font-family:var(--serif);font-size:17px;color:var(--t1);font-weight:600;margin-bottom:6px}
+.calc-pkg-price{font-size:12.5px;color:var(--t2);margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--line-dark)}
+.calc-pkg-features{list-style:none;padding:0;margin:0;font-size:12px;color:var(--t2);line-height:1.9}
+.calc-pkg-features li{padding-left:20px;position:relative}
+.calc-pkg-features li:before{content:'✓';position:absolute;left:0;color:var(--gold);font-weight:700}
+.calc-pkg-badge{position:absolute;top:-11px;right:16px;background:var(--gold);color:#fff;font-size:10px;padding:4px 12px;border-radius:20px;letter-spacing:.3px;text-transform:uppercase;font-weight:600}
+@media (max-width:820px){.calc-pkg-grid{grid-template-columns:1fr}}
+.calc-scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:22px}
+.calc-scope-title{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:var(--t3);margin-bottom:10px;font-weight:600}
+.calc-scope-title-yes{color:#5C7A5C}
+.calc-scope-title-no{color:#B14B4B}
+.calc-scope-list{list-style:none;padding:0;margin:0;font-size:12px;color:var(--t2);line-height:1.9}
+.calc-scope-list li{padding-left:18px;position:relative}
+.calc-scope-yes li:before{content:'✓';position:absolute;left:0;color:#5C7A5C;font-weight:700}
+.calc-scope-no li:before{content:'−';position:absolute;left:0;color:#B14B4B;font-weight:700}
+.calc-payment-stages{margin-top:22px}
+.calc-pay-row{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--t2);padding:8px 0;border-bottom:0.5px solid var(--line-dark)}
+.calc-pay-row:last-child{border-bottom:none}
+.calc-pay-pct{font-family:var(--serif);font-size:16px;color:var(--gold);font-weight:600;min-width:44px}
+.calc-tk-components{display:flex;flex-direction:column;gap:2px}
+.calc-tk-comp{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border:0.5px solid var(--line-dark);border-radius:3px;cursor:pointer;transition:all .2s;margin-bottom:8px}
+.calc-tk-comp:hover{border-color:var(--t1)}
+.calc-tk-comp-left{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t1)}
+.calc-tk-comp-left input{accent-color:var(--gold);width:16px;height:16px}
+.calc-tk-comp-rate{font-size:12px;color:var(--t3);white-space:nowrap}
+@media (max-width:820px){.calc-scope-grid{grid-template-columns:1fr}}
+#calcArchGroup,#calcInteriorGroup,#calcTurnkeyGroup{}
+
+@media(max-width:900px){
+  .nav-links{display:none}
+  .nav-burger{display:flex}
+  .nav-portal span{display:none}
+  .blueprint-bg{display:none}
+  .bp-rail{display:none}
+  .gallery-band{grid-template-columns:1fr;height:auto}
+  .gband-cell{height:60vh}
+  .process-grid{grid-template-columns:1fr 1fr;gap:36px 24px}
+  .svc-row{grid-template-columns:1fr;gap:10px}
+  .contact-inner{grid-template-columns:1fr;gap:40px}
+  .form-row{grid-template-columns:1fr}
+  .about-inner{max-width:90%;padding:0 24px}
+  .proj-full-info{flex-direction:column;align-items:flex-start;gap:16px}
+  .proj-full{height:72vh}
+  .fb-section{height:66vh}
+  .hero{height:88vh}
+  .pmodal-close{top:20px;right:20px;width:40px;height:40px}
+  .pmodal-hero{height:78vh}
+}
+@media(max-width:600px){
+  .wrap{padding:0 20px}
+  .fb-caption,.hero-inner{padding-left:20px;padding-right:20px}
+  .pmodal-body{padding:50px 20px 70px}
+  .pmodal-hero-cap{left:20px;right:20px;bottom:40px}
+  .pmodal-hero{height:62vh}
+  .process-grid{grid-template-columns:1fr;padding:0 20px}
+  .pstep{border-left:none;border-top:0.5px solid rgba(255,255,255,.14);padding-left:0;padding-top:24px}
+  .proj-full{height:64vh}
+  .proj-full-info{bottom:28px !important;padding:0 20px}
+  .fb-section{height:58vh}
+  .fb-caption{padding-bottom:36px}
+  .hero{height:82vh}
+  .hero-inner{padding-bottom:44px}
+  .hero-line{margin-bottom:14px}
+  .scroll-hint{display:none}
+  .about{min-height:70vh}
+  .astat-n{font-size:22px}
+  .about-stats{gap:24px}
+  .nav{padding:20px 0}
+  .lang-toggle{top:22px;right:20px}
+  .nav-cta{padding:9px 16px;font-size:11.5px}
+  .nav-actions .tg-btn span{display:none}
+  .nav-actions .tg-btn{padding:9px 12px}
+  .tg-fab{width:50px;height:50px;bottom:18px;right:18px}
+  .tg-fab svg{width:23px;height:23px}
+  .hero h1{font-size:28px;line-height:1.3;max-width:100%}
+  .hero-line{font-size:11px;letter-spacing:2px}
+  .split-word span{transition-duration:.6s}
+  .calc{padding:34px 20px}
+  .calc-options{grid-template-columns:repeat(2,1fr)}
+  .calc-result{flex-direction:column;align-items:flex-start}
+  .calc-cta{width:100%}
+}
+[data-lang]{display:none}
+[data-lang].lang-active{display:block}
+span[data-lang].lang-active{display:inline}
+</style>
+</head>
+<body>
+<div class="preloader" id="preloader"><img src="assets/logo-mark.png" alt="VISART" style="width:56px;height:auto;opacity:0;animation:preFade 1.1s ease forwards"></div>
+
+<div class="bp-rail" aria-hidden="true">
+  <div class="bp-rail-track"></div>
+  <div class="bp-rail-fill" id="bpRailFill"></div>
+</div>
+
+<div class="fly-overlay" id="flyOverlay" aria-hidden="true">
+  <img id="flyOverlayImg" src="" alt="">
+  <div class="fly-overlay-label"></div>
+</div>
+
+<div class="lang-toggle">
+  <div class="lang-btn active" data-setlang="uz">UZ</div>
+  <div class="lang-btn" data-setlang="ru">RU</div>
+</div>
+
+<nav class="nav" id="mainNav">
+  <div class="wrap nav-inner">
+    <a href="#" class="nav-logo">
+      <img src="assets/logo-mark.png" alt="" class="nav-logo-mark">
+      <span class="nav-logo-text">VISART</span>
+    </a>
+    <ul class="nav-links">
+      <li class="nav-dropdown">
+        <a href="#services"><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></a>
+        <div class="nav-dropdown-menu">
+          <div class="nav-dropdown-menu-inner">
+            <a href="#svc-arxitektura" onclick="scrollToSvc(event,'svc-arxitektura')"><span data-lang="uz" class="lang-active">Arxitektura loyihalash</span><span data-lang="ru">Архитектурное проектирование</span></a>
+            <a href="#svc-interyer" onclick="scrollToSvc(event,'svc-interyer')"><span data-lang="uz" class="lang-active">Interyer dizayn</span><span data-lang="ru">Дизайн интерьера</span></a>
+            <a href="#svc-hujjat" onclick="scrollToSvc(event,'svc-hujjat')"><span data-lang="uz" class="lang-active">Hujjat va nazorat</span><span data-lang="ru">Документация и надзор</span></a>
+            <a href="#svc-qurilish" onclick="scrollToSvc(event,'svc-qurilish')"><span data-lang="uz" class="lang-active">Qurilish va mualliflik nazorati</span><span data-lang="ru">Строительство и авторский надзор</span></a>
+          </div>
+        </div>
+      </li>
+      <li><a href="#process"><span data-lang="uz" class="lang-active">Jarayon</span><span data-lang="ru">Процесс</span></a></li>
+      <li><a href="#projects"><span data-lang="uz" class="lang-active">Loyihalar</span><span data-lang="ru">Проекты</span></a></li>
+      <li><a href="#pricing"><span data-lang="uz" class="lang-active">Narxlar</span><span data-lang="ru">Цены</span></a></li>
+      <li><a href="#about"><span data-lang="uz" class="lang-active">Biz haqimizda</span><span data-lang="ru">О нас</span></a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="https://app.visartdesign.uz" class="nav-portal" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span><span data-lang="uz" class="lang-active">Mijoz kabineti</span><span data-lang="ru">Кабинет клиента</span></span>
+      </a>
+      <div class="nav-social">
+        <a id="navInstagram" href="#" target="_blank" rel="noopener" aria-label="Instagram" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3.06.01 4.12.06 1.06.05 1.79.22 2.43.47.66.26 1.22.6 1.77 1.15.55.55.89 1.11 1.15 1.77.25.64.42 1.37.47 2.43.05 1.06.06 1.42.06 4.12s-.01 3.06-.06 4.12c-.05 1.06-.22 1.79-.47 2.43-.26.66-.6 1.22-1.15 1.77-.55.55-1.11.89-1.77 1.15-.64.25-1.37.42-2.43.47-1.06.05-1.42.06-4.12.06s-3.06-.01-4.12-.06c-1.06-.05-1.79-.22-2.43-.47-.66-.26-1.22-.6-1.77-1.15-.55-.55-.89-1.11-1.15-1.77-.25-.64-.42-1.37-.47-2.43C2.01 15.06 2 14.7 2 12s.01-3.06.06-4.12c.05-1.06.22-1.79.47-2.43.26-.66.6-1.22 1.15-1.77.55-.55 1.11-.89 1.77-1.15.64-.25 1.37-.42 2.43-.47C8.94 2.01 9.3 2 12 2zm0 1.8c-2.67 0-2.99.01-4.04.06-.87.04-1.34.18-1.65.3-.42.16-.71.36-1.02.67-.31.31-.51.6-.67 1.02-.12.31-.26.78-.3 1.65C4.27 8.75 4.26 9.07 4.26 12s.01 3.25.06 4.3c.04.87.18 1.34.3 1.65.16.42.36.71.67 1.02.31.31.6.51 1.02.67.31.12.78.26 1.65.3 1.05.05 1.37.06 4.04.06s2.99-.01 4.04-.06c.87-.04 1.34-.18 1.65-.3.42-.16.71-.36 1.02-.67.31-.31.51-.6.67-1.02.12-.31.26-.78.3-1.65.05-1.05.06-1.37.06-4.3s-.01-3.25-.06-4.3c-.04-.87-.18-1.34-.3-1.65-.16-.42-.36-.71-.67-1.02-.31-.31-.6-.51-1.02-.67-.31-.12-.78-.26-1.65-.3C14.99 3.81 14.67 3.8 12 3.8zm0 3.05a5.15 5.15 0 110 10.3 5.15 5.15 0 010-10.3zm0 1.8a3.35 3.35 0 100 6.7 3.35 3.35 0 000-6.7zm5.36-1.98a1.2 1.2 0 11-2.4 0 1.2 1.2 0 012.4 0z"/></svg></a>
+        <a id="navYoutube" href="#" target="_blank" rel="noopener" aria-label="YouTube" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.5 6.5s-.22-1.56-.9-2.25c-.86-.9-1.82-.9-2.26-.96C16.2 3 12 3 12 3h-.01s-4.2 0-7.34.29c-.44.06-1.4.06-2.26.96-.68.69-.9 2.25-.9 2.25S1.2 8.31 1.2 10.13v1.72c0 1.82.29 3.63.29 3.63s.22 1.56.9 2.25c.86.9 1.98.87 2.48.97 1.8.17 7.13.29 7.13.29s4.2-.01 7.34-.3c.44-.05 1.4-.05 2.26-.96.68-.69.9-2.25.9-2.25s.29-1.81.29-3.63v-1.72c0-1.82-.29-3.63-.29-3.63zM9.75 14.4V7.86l6.25 3.28-6.25 3.27z"/></svg></a>
+      </div>
+      <a href="https://t.me/visartadmin" class="tg-btn" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16L2.28 10.5c-1.2.47-1.2 1.13-.22 1.42l4.8 1.5 1.85 5.68c.22.6.11.85.75.85.5 0 .72-.23 1-.5l2.4-2.32 4.98 3.68c.92.5 1.58.24 1.8-.85l3.27-15.4c.32-1.35-.5-1.96-1.86-1.4zM8.02 13.5l10.4-6.55c.5-.3.94-.14.58.2L9.9 15.1l-.35 3.8-1.53-5.4z"/></svg>
+        <span>Telegram</span>
+      </a>
+    </div>
+    <div class="nav-burger" id="navBurger" onclick="toggleMobileMenu()"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <ul>
+    <li><a href="#services" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></a></li>
+    <li><a href="#process" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Jarayon</span><span data-lang="ru">Процесс</span></a></li>
+    <li><a href="#projects" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Loyihalar</span><span data-lang="ru">Проекты</span></a></li>
+    <li><a href="#pricing" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Narxlar</span><span data-lang="ru">Цены</span></a></li>
+    <li><a href="#about" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Biz haqimizda</span><span data-lang="ru">О нас</span></a></li>
+  </ul>
+  <div class="mobile-menu-cta">
+    <div class="nav-social">
+      <a id="navInstagramMobile" href="#" target="_blank" rel="noopener" aria-label="Instagram" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3.06.01 4.12.06 1.06.05 1.79.22 2.43.47.66.26 1.22.6 1.77 1.15.55.55.89 1.11 1.15 1.77.25.64.42 1.37.47 2.43.05 1.06.06 1.42.06 4.12s-.01 3.06-.06 4.12c-.05 1.06-.22 1.79-.47 2.43-.26.66-.6 1.22-1.15 1.77-.55.55-1.11.89-1.77 1.15-.64.25-1.37.42-2.43.47-1.06.05-1.42.06-4.12.06s-3.06-.01-4.12-.06c-1.06-.05-1.79-.22-2.43-.47-.66-.26-1.22-.6-1.77-1.15-.55-.55-.89-1.11-1.15-1.77-.25-.64-.42-1.37-.47-2.43C2.01 15.06 2 14.7 2 12s.01-3.06.06-4.12c.05-1.06.22-1.79.47-2.43.26-.66.6-1.22 1.15-1.77.55-.55 1.11-.89 1.77-1.15.64-.25 1.37-.42 2.43-.47C8.94 2.01 9.3 2 12 2zm0 1.8c-2.67 0-2.99.01-4.04.06-.87.04-1.34.18-1.65.3-.42.16-.71.36-1.02.67-.31.31-.51.6-.67 1.02-.12.31-.26.78-.3 1.65C4.27 8.75 4.26 9.07 4.26 12s.01 3.25.06 4.3c.04.87.18 1.34.3 1.65.16.42.36.71.67 1.02.31.31.6.51 1.02.67.31.12.78.26 1.65.3 1.05.05 1.37.06 4.04.06s2.99-.01 4.04-.06c.87-.04 1.34-.18 1.65-.3.42-.16.71-.36 1.02-.67.31-.31.51-.6.67-1.02.12-.31.26-.78.3-1.65.05-1.05.06-1.37.06-4.3s-.01-3.25-.06-4.3c-.04-.87-.18-1.34-.3-1.65-.16-.42-.36-.71-.67-1.02-.31-.31-.6-.51-1.02-.67-.31-.12-.78-.26-1.65-.3C14.99 3.81 14.67 3.8 12 3.8zm0 3.05a5.15 5.15 0 110 10.3 5.15 5.15 0 010-10.3zm0 1.8a3.35 3.35 0 100 6.7 3.35 3.35 0 000-6.7zm5.36-1.98a1.2 1.2 0 11-2.4 0 1.2 1.2 0 012.4 0z"/></svg></a>
+      <a id="navYoutubeMobile" href="#" target="_blank" rel="noopener" aria-label="YouTube" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.5 6.5s-.22-1.56-.9-2.25c-.86-.9-1.82-.9-2.26-.96C16.2 3 12 3 12 3h-.01s-4.2 0-7.34.29c-.44.06-1.4.06-2.26.96-.68.69-.9 2.25-.9 2.25S1.2 8.31 1.2 10.13v1.72c0 1.82.29 3.63.29 3.63s.22 1.56.9 2.25c.86.9 1.98.87 2.48.97 1.8.17 7.13.29 7.13.29s4.2-.01 7.34-.3c.44-.05 1.4-.05 2.26-.96.68-.69.9-2.25.9-2.25s.29-1.81.29-3.63v-1.72c0-1.82-.29-3.63-.29-3.63zM9.75 14.4V7.86l6.25 3.28-6.25 3.27z"/></svg></a>
+    </div>
+    <a href="https://t.me/visartadmin" class="tg-btn" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16L2.28 10.5c-1.2.47-1.2 1.13-.22 1.42l4.8 1.5 1.85 5.68c.22.6.11.85.75.85.5 0 .72-.23 1-.5l2.4-2.32 4.98 3.68c.92.5 1.58.24 1.8-.85l3.27-15.4c.32-1.35-.5-1.96-1.86-1.4zM8.02 13.5l10.4-6.55c.5-.3.94-.14.58.2L9.9 15.1l-.35 3.8-1.53-5.4z"/></svg>
+      <span>Telegram</span>
+    </a>
+  </div>
+</div>
+
+<!-- HERO — full bleed, one photo, one line -->
+<section class="hero">
+  <div class="hero-media">
+    <img src="assets/hero.jpg" alt="VISART ARCHDESIGN" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
+  </div>
+  <div class="wrap hero-inner">
+    <div class="hero-line"><span data-lang="uz" class="lang-active">Arxitektura va interyer dizayn</span><span data-lang="ru">Архитектура и дизайн интерьера</span></div>
+    <h1 class="split-target"><span data-lang="uz" class="lang-active">Chizmadan to Qurilishgacha</span><span data-lang="ru">От чертежа до строительства</span></h1>
+  </div>
+  <div class="scroll-hint"><span>SCROLL</span><div class="scroll-hint-line"></div></div>
+</section>
+
+<!-- STATEMENT -->
+<section class="statement">
+  <svg class="blueprint-bg" viewBox="0 0 400 300" style="right:-40px;bottom:-30px;width:420px;height:auto" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#B8A47C" stroke-width="0.6">
+      <rect x="60" y="40" width="260" height="180"/>
+      <line x1="60" y1="120" x2="320" y2="120"/>
+      <rect x="80" y="55" width="35" height="50"/>
+      <rect x="135" y="55" width="35" height="50"/>
+      <rect x="190" y="55" width="35" height="50"/>
+      <rect x="245" y="55" width="35" height="50"/>
+      <rect x="80" y="135" width="35" height="50"/>
+      <rect x="135" y="135" width="35" height="50"/>
+      <rect x="190" y="135" width="35" height="50"/>
+      <rect x="245" y="135" width="35" height="50"/>
+      <rect x="170" y="170" width="40" height="50"/>
+      <line x1="190" y1="170" x2="190" y2="220"/>
+    </g>
+    <g stroke="#B8A47C" stroke-width="0.35">
+      <line x1="60" y1="25" x2="60" y2="38"/>
+      <line x1="320" y1="25" x2="320" y2="38"/>
+      <line x1="60" y1="30" x2="320" y2="30"/>
+    </g>
+    <circle cx="345" cy="55" r="10" fill="none" stroke="#B8A47C" stroke-width="0.4"/>
+  </svg>
+  <div class="wrap statement-inner reveal">
+    <div class="eyebrow"><span data-lang="uz" class="lang-active">Yondashuv</span><span data-lang="ru">Подход</span></div>
+    <h2><span data-lang="uz" class="lang-active">Hech qanday qasr va keng uylar insonga ko'ngil xotirjamligini bera olmaydi. <em>Ko'ngilga mos loyiha</em> yaratamiz.</span><span data-lang="ru">Ни один дворец и просторный дом не подарит человеку душевное спокойствие. Мы создаём проект, <em>созвучный душе</em>.</span></h2>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <svg class="blueprint-bg" viewBox="0 0 380 280" style="left:-60px;top:-20px;width:380px;height:auto;opacity:.4" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#B8A47C" stroke-width="0.6">
+      <rect x="30" y="30" width="300" height="220"/>
+      <line x1="30" y1="140" x2="190" y2="140"/>
+      <line x1="190" y1="30" x2="190" y2="250"/>
+      <line x1="190" y1="140" x2="330" y2="140"/>
+      <line x1="260" y1="140" x2="260" y2="250"/>
+      <path d="M100 140 A 30 30 0 0 1 100 200" stroke-width="0.4"/>
+      <line x1="100" y1="140" x2="100" y2="200"/>
+      <path d="M225 140 A 25 25 0 0 0 225 190" stroke-width="0.4"/>
+      <rect x="45" y="45" width="18" height="4"/>
+      <rect x="45" y="160" width="18" height="4"/>
+      <rect x="300" y="45" width="18" height="4"/>
+    </g>
+    <text x="70" y="90" font-size="9" fill="#B8A47C" font-family="monospace">01</text>
+    <text x="220" y="90" font-size="9" fill="#B8A47C" font-family="monospace">02</text>
+    <text x="70" y="200" font-size="9" fill="#B8A47C" font-family="monospace">03</text>
+    <text x="290" y="200" font-size="9" fill="#B8A47C" font-family="monospace">04</text>
+    <circle class="bp-walker" r="4" fill="#B8A47C" style="offset-path:path('M30,30 L330,30 L330,250 L30,250 Z')"></circle>
+  </svg>
+  <div class="services-list">
+    <div class="svc-row reveal" id="svc-arxitektura">
+      <div class="svc-num">01</div>
+      <div class="svc-title"><span data-lang="uz" class="lang-active">Arxitektura loyihalash</span><span data-lang="ru">Архитектурное проектирование</span></div>
+      <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Har qanday binoni — uy, noturar bino — loyihasidan boshlab 3D dizayn va ishchi chizmalargacha qilib beramiz.</span><span data-lang="ru">Любое здание — жилое, нежилое — от проекта до 3D-дизайна и рабочих чертежей.</span></div>
+    </div>
+    <div class="svc-row reveal" id="svc-interyer">
+      <div class="svc-num">02</div>
+      <div class="svc-title"><span data-lang="uz" class="lang-active">Interyer dizayn</span><span data-lang="ru">Дизайн интерьера</span></div>
+      <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Uyingizning ichki dizaynini siz xohlagan uslubda — 3D ko'rinishidan tortib ustalar uchun ishchi chizmalargacha (elektrika, devor, shift, mebel joylashuvi) to'liq tayyorlab beramiz.</span><span data-lang="ru">Дизайн интерьера в выбранном стиле — от 3D-визуализации до полного комплекта рабочих чертежей для мастеров (электрика, перегородки, потолки, расстановка мебели).</span></div>
+    </div>
+    <div class="svc-row reveal" id="svc-hujjat">
+      <div class="svc-num">03</div>
+      <div class="svc-title"><span data-lang="uz" class="lang-active">Hujjat va nazorat</span><span data-lang="ru">Документация и надзор</span></div>
+      <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Kadastr, mygov.uz orqali olinadigan ruxsatnomalar va boshqa hujjatlarni — qurilishdan oldin kerak bo'ladigan barcha rasmiy hujjatlarni tayyorlab beramiz.</span><span data-lang="ru">Кадастр, разрешения через mygov.uz и другие документы — оформляем всю официальную документацию, необходимую перед началом строительства.</span></div>
+    </div>
+    <div class="svc-row reveal" id="svc-qurilish">
+      <div class="svc-num">04</div>
+      <div class="svc-title"><span data-lang="uz" class="lang-active">Qurilish va mualliflik nazorati</span><span data-lang="ru">Строительство и авторский надзор</span></div>
+      <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Eksteryer va interyer dizaynini kalit ostida — ta'mirlash va qurilish ishlarini professional tarzda amalga oshirib beramiz.</span><span data-lang="ru">Экстерьер и интерьер под ключ — ремонт и строительство на профессиональном уровне.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="process" id="process">
+  <div class="process-head reveal">
+    <div class="eyebrow"><span data-lang="uz" class="lang-active">Jarayon</span><span data-lang="ru">Процесс</span></div>
+    <h2 class="split-target"><span data-lang="uz" class="lang-active">Beshta bosqichda, boshidan oxirigacha</span><span data-lang="ru">Пять этапов — от начала до конца</span></h2>
+  </div>
+  <div class="process-grid">
+    <div class="pstep reveal"><div class="pstep-n">01</div><div class="pstep-t"><span data-lang="uz" class="lang-active">Konsultatsiya</span><span data-lang="ru">Консультация</span></div><div class="pstep-d"><span data-lang="uz" class="lang-active">Uchrashib, uyingiz haqidagi orzu-istaklaringizni, byudjet va muddatni birga aniqlaymiz.</span><span data-lang="ru">Встречаемся и вместе определяем ваши пожелания, бюджет и сроки.</span></div></div>
+    <div class="pstep reveal"><div class="pstep-n">02</div><div class="pstep-t"><span data-lang="uz" class="lang-active">Konsept va 3D dizayn</span><span data-lang="ru">Концепция и 3D-дизайн</span></div><div class="pstep-d"><span data-lang="uz" class="lang-active">Loyihaning 3D ko'rinishini tayyorlab, siz bilan birga ko'rib chiqamiz va tasdiqlaymiz.</span><span data-lang="ru">Готовим 3D-визуализацию проекта и утверждаем её вместе с вами.</span></div></div>
+    <div class="pstep reveal"><div class="pstep-n">03</div><div class="pstep-t"><span data-lang="uz" class="lang-active">Ishchi hujjatlar</span><span data-lang="ru">Рабочая документация</span></div><div class="pstep-d"><span data-lang="uz" class="lang-active">Qurilish uchun zarur bo'lgan barcha chizma, smeta va hisob-kitoblarni tayyorlaymiz.</span><span data-lang="ru">Готовим все чертежи, сметы и расчёты, необходимые для строительства.</span></div></div>
+    <div class="pstep reveal"><div class="pstep-n">04</div><div class="pstep-t"><span data-lang="uz" class="lang-active">Qurilish nazorati</span><span data-lang="ru">Надзор за строительством</span></div><div class="pstep-d"><span data-lang="uz" class="lang-active">Qurilish jarayonida obyektga muntazam borib, ishlarning loyihaga mos bajarilishini nazorat qilamiz.</span><span data-lang="ru">Регулярно посещаем объект и следим за соответствием работ проекту.</span></div></div>
+    <div class="pstep reveal"><div class="pstep-n">05</div><div class="pstep-t"><span data-lang="uz" class="lang-active">Topshirish</span><span data-lang="ru">Сдача объекта</span></div><div class="pstep-d"><span data-lang="uz" class="lang-active">Tayyor obyektni birga ko'rib chiqib, loyihaga to'liq mos ekanini tasdiqlaymiz va kalitni topshiramiz.</span><span data-lang="ru">Вместе осматриваем готовый объект, подтверждаем соответствие проекту и передаём ключи.</span></div></div>
+  </div>
+</section>
+
+<!-- PROJECTS HEAD -->
+<div class="projects-head" id="projects">
+  <svg class="blueprint-bg" viewBox="0 0 500 260" style="left:50%;top:10px;width:600px;height:auto;transform:translateX(-50%);opacity:.32" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#B8A47C" stroke-width="0.5">
+      <line x1="40" y1="220" x2="460" y2="220"/>
+      <rect x="60" y="60" width="120" height="160"/>
+      <line x1="60" y1="140" x2="180" y2="140"/>
+      <line x1="60" y1="100" x2="180" y2="100"/>
+      <line x1="60" y1="180" x2="180" y2="180"/>
+      <path d="M300 60 L420 60 L420 220 L300 220 Z"/>
+      <path d="M300 60 L360 30 L420 60"/>
+      <line x1="300" y1="140" x2="420" y2="140"/>
+      <line x1="300" y1="180" x2="420" y2="180"/>
+    </g>
+    <g stroke="#B8A47C" stroke-width="0.3">
+      <line x1="200" y1="60" x2="200" y2="220"/>
+      <line x1="196" y1="60" x2="204" y2="60"/>
+      <line x1="196" y1="220" x2="204" y2="220"/>
+    </g>
+    <text x="212" y="145" font-size="9" fill="#B8A47C" font-family="monospace">3200</text>
+    <circle class="bp-walker" r="4" fill="#B8A47C" style="offset-path:path('M200,60 L200,220')"></circle>
+  </svg>
+  <div style="position:relative;z-index:1">
+  <div class="eyebrow"><span data-lang="uz" class="lang-active">Loyihalar</span><span data-lang="ru">Проекты</span></div>
+  <h2 class="split-target"><span data-lang="uz" class="lang-active">Portfolio</span><span data-lang="ru">Портфолио</span></h2>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all"><span data-lang="uz" class="lang-active">Barchasi</span><span data-lang="ru">Все</span></button>
+    <button class="filter-btn" data-filter="interior"><span data-lang="uz" class="lang-active">Interyer</span><span data-lang="ru">Интерьер</span></button>
+    <button class="filter-btn" data-filter="architecture"><span data-lang="uz" class="lang-active">Arxitektura</span><span data-lang="ru">Архитектура</span></button>
+    <button class="filter-btn" data-filter="drawings"><span data-lang="uz" class="lang-active">Chizmalar</span><span data-lang="ru">Чертежи</span></button>
+  </div>
+  <p class="projects-hint"><span data-lang="uz" class="lang-active">Batafsil ko'rish uchun loyihaga bosing</span><span data-lang="ru">Нажмите на проект, чтобы увидеть детали</span></p>
+  </div>
+</div>
+
+<!-- PROJECTS GRID -->
+<div class="proj-grid" id="projScroll"></div>
+
+<div class="projects-more">
+  <a href="https://t.me/visartadmin" class="tg-btn" style="display:inline-flex" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16L2.28 10.5c-1.2.47-1.2 1.13-.22 1.42l4.8 1.5 1.85 5.68c.22.6.11.85.75.85.5 0 .72-.23 1-.5l2.4-2.32 4.98 3.68c.92.5 1.58.24 1.8-.85l3.27-15.4c.32-1.35-.5-1.96-1.86-1.4zM8.02 13.5l10.4-6.55c.5-.3.94-.14.58.2L9.9 15.1l-.35 3.8-1.53-5.4z"/></svg>
+    <span><span data-lang="uz" class="lang-active">Loyihangizni yozing</span><span data-lang="ru">Напишите о проекте</span></span>
+  </a>
+</div>
+
+<!-- PRICING / CALCULATOR -->
+<section class="pricing" id="pricing">
+  <div class="wrap">
+    <div class="pricing-head reveal walk3d">
+      <div class="eyebrow"><span data-lang="uz" class="lang-active">Narxlar</span><span data-lang="ru">Цены</span></div>
+      <h2 class="split-target"><span data-lang="uz" class="lang-active">Loyihangiz narxini hisoblang</span><span data-lang="ru">Рассчитайте стоимость проекта</span></h2>
+      <p><span data-lang="uz" class="lang-active">Quyidagi parametrlarni tanlang — taxminiy narx avtomatik hisoblanadi. Aniq narx bepul konsultatsiyada belgilanadi.</span><span data-lang="ru">Выберите параметры ниже — примерная стоимость рассчитается автоматически. Точная цена определяется на бесплатной консультации.</span></p>
+    </div>
+
+    <div class="calc reveal">
+      <div class="calc-group">
+        <span class="calc-label"><span data-lang="uz" class="lang-active">Xizmat turi</span><span data-lang="ru">Тип услуги</span></span>
+        <div class="calc-options calc-3" id="calcService"></div>
+      </div>
+
+      <div class="calc-group" id="calcStyleGroup">
+        <span class="calc-label"><span data-lang="uz" class="lang-active">Uslub / daraja</span><span data-lang="ru">Стиль / уровень</span></span>
+        <div class="calc-options calc-3" id="calcStyle"></div>
+        <ul class="calc-pkg-features" id="calcArchStyleFeatures" style="margin-top:14px;display:none"></ul>
+      </div>
+
+      <div id="calcArchGroup">
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Yer maydoni (sotix)</span><span data-lang="ru">Площадь участка (сотка)</span></span>
+          <div class="calc-area">
+            <input type="range" id="calcSotixRange" min="1" max="50" step="1" value="6">
+            <div class="calc-area-val"><span id="calcSotixVal">6</span> <span data-lang="uz" class="lang-active">sotix</span><span data-lang="ru">сот.</span></div>
+          </div>
+        </div>
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Qavatlar soni</span><span data-lang="ru">Количество этажей</span></span>
+          <div class="calc-options calc-3" id="calcArchFloors"></div>
+        </div>
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Qo'shimcha xizmatlar</span><span data-lang="ru">Дополнительные услуги</span></span>
+          <div class="calc-addons" id="calcArchAddons"></div>
+        </div>
+      </div>
+
+      <div id="calcInteriorGroup" style="display:none">
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Paket tanlang</span><span data-lang="ru">Выберите пакет</span></span>
+          <div class="calc-pkg-grid" id="calcInteriorPackages"></div>
+        </div>
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Maydon (m²)</span><span data-lang="ru">Площадь (м²)</span></span>
+          <div class="calc-area">
+            <input type="range" id="calcInteriorAreaRange" min="20" max="1000" step="10" value="120">
+            <div class="calc-area-val"><span id="calcInteriorAreaVal">120</span> m²</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="calcTurnkeyGroup" style="display:none">
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Maydon (m²)</span><span data-lang="ru">Площадь (м²)</span></span>
+          <div class="calc-area">
+            <input type="range" id="calcTkAreaRange" min="30" max="1000" step="10" value="120">
+            <div class="calc-area-val"><span id="calcTkAreaVal">120</span> m²</div>
+          </div>
+        </div>
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Natija valyutasi</span><span data-lang="ru">Валюта результата</span></span>
+          <div class="calc-options calc-2" id="calcCurrency">
+            <button type="button" class="calc-chip active" data-curr="uzs">So'm</button>
+            <button type="button" class="calc-chip" data-curr="usd">USD ($)</button>
+          </div>
+        </div>
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Qurilish tarkibini tanlang</span><span data-lang="ru">Выберите состав строительства</span></span>
+          <div class="calc-tk-components" id="calcTkComponents"></div>
+          <p class="calc-tk-note"><span data-lang="uz" class="lang-active">Har bir band mustaqil tanlanadi — masalan materialni o'zingiz olib kelsangiz, faqat "Usta xaqi"ni belgilang. Prorab (bosh quruvchi) xizmat haqi tanlangan qism ustiga maydonga qarab avtomatik qo'shiladi.</span><span data-lang="ru">Каждый пункт выбирается независимо — например, если материалы свои, отметьте только «Оплата мастеров». Услуга прораба добавляется автоматически к выбранной части в зависимости от площади.</span></p>
+        </div>
+        <div class="calc-scope-grid">
+          <div class="calc-scope-col">
+            <div class="calc-scope-title calc-scope-title-yes"><span data-lang="uz" class="lang-active">Kiritilgan</span><span data-lang="ru">Включено</span></div>
+            <ul class="calc-scope-list calc-scope-yes" id="calcScopeIncluded"></ul>
+          </div>
+          <div class="calc-scope-col">
+            <div class="calc-scope-title calc-scope-title-no"><span data-lang="uz" class="lang-active">Kiritilmagan</span><span data-lang="ru">Не включено</span></div>
+            <ul class="calc-scope-list calc-scope-no" id="calcScopeExcluded"></ul>
+          </div>
+        </div>
+        <div class="calc-payment-stages">
+          <div class="calc-scope-title"><span data-lang="uz" class="lang-active">To'lov bosqichlari</span><span data-lang="ru">Этапы оплаты</span></div>
+          <div id="calcPaymentStages"></div>
+        </div>
+      </div>
+
+      <div class="calc-tier-note" id="calcTimelineNote"></div>
+
+      <div class="calc-result">
+        <div>
+          <div class="calc-result-label"><span data-lang="uz" class="lang-active">Taxminiy narx</span><span data-lang="ru">Примерная стоимость</span></div>
+          <div class="calc-result-val" id="calcResultVal">—</div>
+          <div class="calc-result-note"><span data-lang="uz" class="lang-active">Yakuniy narx obyekt va vazifaga qarab farq qilishi mumkin.</span><span data-lang="ru">Итоговая цена может отличаться в зависимости от объекта и задач.</span></div>
+        </div>
+        <button type="button" class="calc-cta" onclick="sendCalcToContact()"><span data-lang="uz" class="lang-active">Shu hisob bilan bog'lanish</span><span data-lang="ru">Связаться с этим расчётом</span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT — full bleed split -->
+<section class="about" id="about">
+  <div class="about-media">
+    <img loading="lazy" decoding="async" src="assets/about-office.jpg" alt="Visart Design jamoasi ofisi" onerror="this.src='https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1800&q=85'">
+  </div>
+  <div class="wrap">
+    <div class="about-inner reveal walk3d">
+      <div class="eyebrow"><span data-lang="uz" class="lang-active">Biz haqimizda</span><span data-lang="ru">О нас</span></div>
+      <h2 class="split-target"><span data-lang="uz" class="lang-active">Loyihani qilgan insonlar bilan quruvchilar bir tilda gaplasha oladi</span><span data-lang="ru">Те, кто создал проект, говорят со строителями на одном языке</span></h2>
+      <p><span data-lang="uz" class="lang-active">Visart Design — arxitektura va interyer firmasi. O'zbekiston va MDH bo'ylab birinchi suhbatdan to uyni topshirishgacha siz bilan bitta jamoa ishlaydi.</span><span data-lang="ru">Visart Design — архитектурно-дизайнерская фирма. По Узбекистану и странам СНГ с вами работает одна команда — от первой встречи до сдачи дома.</span></p>
+      <div class="about-stats">
+        <div><div class="astat-n" id="statYears">10+</div><div class="astat-l"><span data-lang="uz" class="lang-active">yillik tajriba</span><span data-lang="ru">лет опыта</span></div></div>
+        <div><div class="astat-n" id="statProjects">200+</div><div class="astat-l"><span data-lang="uz" class="lang-active">loyiha</span><span data-lang="ru">проектов</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <svg class="blueprint-bg" viewBox="0 0 320 320" style="right:-30px;top:20px;width:340px;height:auto;opacity:.3" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#8C6D3F" stroke-width="0.5">
+      <rect x="60" y="40" width="200" height="200"/>
+      <line x1="60" y1="100" x2="260" y2="100"/>
+      <line x1="140" y1="40" x2="140" y2="240"/>
+      <circle cx="100" cy="70" r="20"/>
+      <line x1="100" y1="50" x2="100" y2="90"/>
+      <line x1="80" y1="70" x2="120" y2="70"/>
+      <path d="M160 100 L160 170 L200 170" stroke-width="0.4"/>
+      <path d="M160 170 A 10 10 0 0 0 170 180"/>
+      <rect x="60" y="200" width="200" height="40" stroke-dasharray="3,3" stroke-width="0.35"/>
+    </g>
+    <text x="150" y="230" font-size="9" fill="#8C6D3F" font-family="monospace">SEC A-A</text>
+    <circle class="bp-walker" r="4" fill="#8C6D3F" style="offset-path:path('M60,40 L260,40 L260,240 L60,240 Z')"></circle>
+  </svg>
+  <div class="contact-inner">
+    <div class="contact-left reveal walk3d">
+      <div class="eyebrow" style="color:var(--t3);font-size:11.5px;letter-spacing:3px;text-transform:uppercase;font-weight:500;margin-bottom:20px"><span data-lang="uz" class="lang-active">Bog'lanish</span><span data-lang="ru">Контакты</span></div>
+      <h2 class="split-target"><span data-lang="uz" class="lang-active">Loyihangiz haqida bizga ayting</span><span data-lang="ru">Расскажите нам о своём проекте</span></h2>
+      <p><span data-lang="uz" class="lang-active">Konsultatsiya bepul. 1 soat ichida javob beramiz.</span><span data-lang="ru">Консультация бесплатна. Отвечаем в течение 1 часа.</span></p>
+      <div class="contact-details">
+        <div class="cdetail"><span class="cdetail-l">TELEGRAM</span><a id="cdTelegram" href="https://t.me/visartadmin" target="_blank" rel="noopener" style="color:#27A7E7;font-weight:600">@visartadmin</a></div>
+        <div class="cdetail"><span class="cdetail-l">TEL</span><a id="cdPhone" href="tel:+998974021515">+998 97 402 15 15</a></div>
+        <div class="cdetail"><span class="cdetail-l">EMAIL</span><a id="cdEmail" href="mailto:visartarchdesign@gmail.com">visartarchdesign@gmail.com</a></div>
+        <div class="cdetail"><span class="cdetail-l"><span data-lang="uz" class="lang-active">MANZIL</span><span data-lang="ru">АДРЕС</span></span><span class="v"><span data-lang="uz" class="lang-active" id="cdAddrUz">Toshkent, Uchtepa tumani</span><span data-lang="ru" id="cdAddrRu">Ташкент, Учтепинский район</span></span></div>
+      </div>
+    </div>
+    <form class="contact-form reveal" onsubmit="handleSubmit(event)">
+      <div class="form-row">
+        <div class="field"><label data-lang="uz" class="lang-active">Ism</label><label data-lang="ru">Имя</label><input type="text" id="cName" name="name" required placeholder="Alisher Karimov"></div>
+        <div class="field"><label>Telefon</label><input type="text" id="cPhone" name="phone" required placeholder="+998 90 ..."></div>
+      </div>
+      <div class="field">
+        <label data-lang="uz" class="lang-active">Xizmat turi</label><label data-lang="ru">Тип услуги</label>
+        <select id="svcSelect"></select>
+      </div>
+      <div class="field">
+        <label data-lang="uz" class="lang-active">Loyiha haqida</label><label data-lang="ru">О проекте</label>
+        <textarea id="cMessage" name="message" placeholder="Maydon, manzil, muddat..."></textarea>
+      </div>
+      <button type="submit" class="submit-btn"><span data-lang="uz" class="lang-active">Yuborish</span><span data-lang="ru">Отправить</span></button>
+    </form>
+  </div>
+</section>
+
+<section class="testimonials">
+  <div class="wrap testi-head reveal">
+    <div class="eyebrow"><span data-lang="uz" class="lang-active">Mijozlar fikri</span><span data-lang="ru">Отзывы клиентов</span></div>
+    <h2 class="split-target"><span data-lang="uz" class="lang-active">Ishimiz mijozlar tilida</span><span data-lang="ru">Наша работа глазами клиентов</span></h2>
+  </div>
+  <div class="testi-grid" id="testiGrid"></div>
+</section>
+
+<div class="footer-cta">
+  <div class="wrap reveal">
+    <h2 class="split-target"><span data-lang="uz" class="lang-active">Loyihangiz haqida gaplashamizmi?</span><span data-lang="ru">Обсудим ваш проект?</span></h2>
+    <a href="#contact" class="footer-cta-btn"><span data-lang="uz" class="lang-active">Bog'lanish</span><span data-lang="ru">Связаться</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-logo"><img src="assets/logo-mark.png" alt="" style="width:32px;height:auto;display:block"><span>VISART</span></div>
+      <p><span data-lang="uz" class="lang-active">Arxitektura va interyer firmasi. Loyihadan topshirishgacha bitta jamoa.</span><span data-lang="ru">Архитектурно-дизайнерская фирма. Одна команда от проекта до сдачи.</span></p>
+      <div class="footer-social">
+        <a id="footerInstagram" href="#" target="_blank" rel="noopener" aria-label="Instagram" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c2.7 0 3.06.01 4.12.06 1.06.05 1.79.22 2.43.47.66.26 1.22.6 1.77 1.15.55.55.89 1.11 1.15 1.77.25.64.42 1.37.47 2.43.05 1.06.06 1.42.06 4.12s-.01 3.06-.06 4.12c-.05 1.06-.22 1.79-.47 2.43-.26.66-.6 1.22-1.15 1.77-.55.55-1.11.89-1.77 1.15-.64.25-1.37.42-2.43.47-1.06.05-1.42.06-4.12.06s-3.06-.01-4.12-.06c-1.06-.05-1.79-.22-2.43-.47-.66-.26-1.22-.6-1.77-1.15-.55-.55-.89-1.11-1.15-1.77-.25-.64-.42-1.37-.47-2.43C2.01 15.06 2 14.7 2 12s.01-3.06.06-4.12c.05-1.06.22-1.79.47-2.43.26-.66.6-1.22 1.15-1.77.55-.55 1.11-.89 1.77-1.15.64-.25 1.37-.42 2.43-.47C8.94 2.01 9.3 2 12 2zm0 1.8c-2.67 0-2.99.01-4.04.06-.87.04-1.34.18-1.65.3-.42.16-.71.36-1.02.67-.31.31-.51.6-.67 1.02-.12.31-.26.78-.3 1.65C4.27 8.75 4.26 9.07 4.26 12s.01 3.25.06 4.3c.04.87.18 1.34.3 1.65.16.42.36.71.67 1.02.31.31.6.51 1.02.67.31.12.78.26 1.65.3 1.05.05 1.37.06 4.04.06s2.99-.01 4.04-.06c.87-.04 1.34-.18 1.65-.3.42-.16.71-.36 1.02-.67.31-.31.51-.6.67-1.02.12-.31.26-.78.3-1.65.05-1.05.06-1.37.06-4.3s-.01-3.25-.06-4.3c-.04-.87-.18-1.34-.3-1.65-.16-.42-.36-.71-.67-1.02-.31-.31-.6-.51-1.02-.67-.31-.12-.78-.26-1.65-.3C14.99 3.81 14.67 3.8 12 3.8zm0 3.05a5.15 5.15 0 110 10.3 5.15 5.15 0 010-10.3zm0 1.8a3.35 3.35 0 100 6.7 3.35 3.35 0 000-6.7zm5.36-1.98a1.2 1.2 0 11-2.4 0 1.2 1.2 0 012.4 0z"/></svg></a>
+        <a id="footerYoutube" href="#" target="_blank" rel="noopener" aria-label="YouTube" style="display:none"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22.5 6.5s-.22-1.56-.9-2.25c-.86-.9-1.82-.9-2.26-.96C16.2 3 12 3 12 3h-.01s-4.2 0-7.34.29c-.44.06-1.4.06-2.26.96-.68.69-.9 2.25-.9 2.25S1.2 8.31 1.2 10.13v1.72c0 1.82.29 3.63.29 3.63s.22 1.56.9 2.25c.86.9 1.98.87 2.48.97 1.8.17 7.13.29 7.13.29s4.2-.01 7.34-.3c.44-.05 1.4-.05 2.26-.96.68-.69.9-2.25.9-2.25s.29-1.81.29-3.63v-1.72c0-1.82-.29-3.63-.29-3.63zM9.75 14.4V7.86l6.25 3.28-6.25 3.27z"/></svg></a>
+        <a href="https://t.me/visartadmin" target="_blank" rel="noopener" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16L2.28 10.5c-1.2.47-1.2 1.13-.22 1.42l4.8 1.5 1.85 5.68c.22.6.11.85.75.85.5 0 .72-.23 1-.5l2.4-2.32 4.98 3.68c.92.5 1.58.24 1.8-.85l3.27-15.4c.32-1.35-.5-1.96-1.86-1.4zM8.02 13.5l10.4-6.55c.5-.3.94-.14.58.2L9.9 15.1l-.35 3.8-1.53-5.4z"/></svg></a>
+      </div>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col">
+        <h5><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></h5>
+        <a href="#svc-arxitektura" onclick="scrollToSvc(event,'svc-arxitektura')"><span data-lang="uz" class="lang-active">Arxitektura</span><span data-lang="ru">Архитектура</span></a>
+        <a href="#svc-interyer" onclick="scrollToSvc(event,'svc-interyer')"><span data-lang="uz" class="lang-active">Interyer</span><span data-lang="ru">Интерьер</span></a>
+        <a href="#svc-qurilish" onclick="scrollToSvc(event,'svc-qurilish')"><span data-lang="uz" class="lang-active">Pod klyuch</span><span data-lang="ru">Под ключ</span></a>
+      </div>
+      <div class="footer-col">
+        <h5><span data-lang="uz" class="lang-active">Kompaniya</span><span data-lang="ru">Компания</span></h5>
+        <a href="#projects"><span data-lang="uz" class="lang-active">Loyihalar</span><span data-lang="ru">Проекты</span></a>
+        <a href="#about"><span data-lang="uz" class="lang-active">Biz haqimizda</span><span data-lang="ru">О нас</span></a>
+        <a href="#contact"><span data-lang="uz" class="lang-active">Bog'lanish</span><span data-lang="ru">Контакты</span></a>
+        <a href="https://app.visartdesign.uz" target="_blank" rel="noopener"><span data-lang="uz" class="lang-active">Mijoz kabineti</span><span data-lang="ru">Кабинет клиента</span></a>
+      </div>
+    </div>
+  </div>
+  <div class="footer-inner">
+    <span class="footer-copy">© 2026 VISART ARCHDESIGN</span>
+    <div class="footer-links">
+      <a href="#projects"><span data-lang="uz" class="lang-active">Loyihalar</span><span data-lang="ru">Проекты</span></a>
+      <a href="#contact"><span data-lang="uz" class="lang-active">Bog'lanish</span><span data-lang="ru">Контакты</span></a>
+    </div>
+  </div>
+</footer>
+
+<a href="https://t.me/visartadmin" class="tg-fab" target="_blank" rel="noopener" aria-label="Telegram orqali yozing">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16L2.28 10.5c-1.2.47-1.2 1.13-.22 1.42l4.8 1.5 1.85 5.68c.22.6.11.85.75.85.5 0 .72-.23 1-.5l2.4-2.32 4.98 3.68c.92.5 1.58.24 1.8-.85l3.27-15.4c.32-1.35-.5-1.96-1.86-1.4zM8.02 13.5l10.4-6.55c.5-.3.94-.14.58.2L9.9 15.1l-.35 3.8-1.53-5.4z"/></svg>
+</a>
+
+<div class="pmodal-overlay" id="pModal">
+  <button class="pmodal-close" onclick="closeProjectModal()">&times;</button>
+  <div class="pmodal-hero">
+    <img id="pmHeroImg" src="" alt="">
+    <div class="pmodal-hero-cap">
+      <span class="pmodal-tag" id="pmTag"></span>
+      <h2 id="pmTitle"></h2>
+    </div>
+  </div>
+  <div class="pmodal-body">
+    <div class="pmodal-meta" id="pmMeta"></div>
+    <p class="desc" id="pmDesc"></p>
+    <div class="pmodal-gallery" id="pmGallery"></div>
+  </div>
+</div>
+
+<script>
+function scrollToSvc(e,id){
+  e.preventDefault();
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.add('svc-highlight');
+  setTimeout(()=>el.classList.remove('svc-highlight'),1600);
+}
+
+function setLang(lang){
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.setlang===lang));
+  document.querySelectorAll('[data-lang]').forEach(el=>el.classList.toggle('lang-active',el.dataset.lang===lang));
+  localStorage.setItem('visart_lang',lang);
+  renderProjects();
+  renderSvcSelect();
+  renderCalc();
+  renderTestimonials();
+  if(document.readyState!=='loading'){
+    document.querySelectorAll('.split-target').forEach(el=>{el.classList.remove('in');});
+    initSplitHeadings();
+  }
+}
+document.querySelectorAll('.lang-btn').forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.setlang)));
+const savedLang=localStorage.getItem('visart_lang')||'uz';
+
+window.addEventListener('scroll',()=>{
+  document.getElementById('mainNav').classList.toggle('scrolled',window.scrollY>60);
+});
+
+// ═══ PARALLAX — faqat kompyuterda, mobil telefonda ishlamaydi va o'chirilgan ═══
+const isDesktop=window.matchMedia('(min-width:901px)').matches;
+if(isDesktop){
+  const heroImg=document.querySelector('.hero-media img');
+  const aboutImg=document.querySelector('.about-media img');
+  let ticking=false;
+  function updateParallax(){
+    const y=window.scrollY;
+    if(heroImg){
+      const heroRect=document.querySelector('.hero').getBoundingClientRect();
+      if(heroRect.bottom>0){heroImg.style.transform=`translateY(${y*0.28}px) scale(1.08)`;}
+    }
+    if(aboutImg){
+      const aboutSection=document.querySelector('.about');
+      const rect=aboutSection.getBoundingClientRect();
+      if(rect.top<window.innerHeight&&rect.bottom>0){
+        const progress=(window.innerHeight-rect.top)/(window.innerHeight+rect.height);
+        aboutImg.style.transform=`translateY(${(progress-.5)*60}px) scale(1.1)`;
+      }
+    }
+    ticking=false;
+  }
+  window.addEventListener('scroll',()=>{
+    if(!ticking){window.requestAnimationFrame(updateParallax);ticking=true;}
+  });
+}
+
+// ═══ SPLIT-WORD REVEAL — sarlavhalar so'z-so'z pastdan chiqadi ═══
+function splitWords(el){
+  const words=el.textContent.trim().split(/\s+/);
+  el.innerHTML=words.map(w=>`<span class="split-word"><span>${w}</span></span>`).join(' ');
+}
+function initSplitHeadings(){
+  document.querySelectorAll('.split-target [data-lang].lang-active').forEach(el=>{
+    splitWords(el);
+  });
+}
+const splitIo=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.split-word').forEach((w,i)=>{
+        setTimeout(()=>w.classList.add('in'),i*55);
+      });
+      splitIo.unobserve(e.target);
+    }
+  });
+},{threshold:.4});
+function observeSplitHeadings(){document.querySelectorAll('.split-target').forEach(el=>splitIo.observe(el));}
+
+const io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+},{threshold:.15});
+function observeReveals(){document.querySelectorAll('.reveal:not(.in)').forEach(el=>io.observe(el));}
+
+// ═══ BLUEPRINT DRAW-ON-SCROLL — arxitektura chizmalari scroll paytida o'zi chizilib chiqadi ═══
+function initBlueprintDraw(){
+  document.querySelectorAll('.blueprint-bg').forEach(svg=>{
+    const shapes=svg.querySelectorAll('rect,line,circle,path,polyline');
+    shapes.forEach((el,i)=>{
+      try{
+        const len=el.getTotalLength?el.getTotalLength():240;
+        el.style.strokeDasharray=len;
+        el.style.strokeDashoffset=len;
+        el.style.transitionDelay=(i*70)+'ms';
+        el.setAttribute('data-bp','1');
+      }catch(e){}
+    });
+  });
+}
+const bpIo=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('[data-bp]').forEach(el=>{el.style.strokeDashoffset='0';});
+      e.target.classList.add('bp-walk-active');
+      bpIo.unobserve(e.target);
+    }
+  });
+},{threshold:.2});
+function observeBlueprints(){document.querySelectorAll('.blueprint-bg').forEach(el=>bpIo.observe(el));}
+
+// ═══ CHIZMA RAIL — scroll progressiga qarab o'lchov chizig'i to'ladi ═══
+const bpRailFill=document.getElementById('bpRailFill');
+function updateBpRail(){
+  if(!bpRailFill)return;
+  const doc=document.documentElement;
+  const scrollTop=window.scrollY||doc.scrollTop;
+  const height=doc.scrollHeight-doc.clientHeight;
+  const pct=height>0?Math.min(100,(scrollTop/height)*100):0;
+  bpRailFill.style.height=pct+'%';
+}
+window.addEventListener('scroll',updateBpRail,{passive:true});
+
+const PROJECTS=[
+  {id:1,cat:'interior',status:'done',title:{uz:"Klassik hovli-uy",ru:"Классический дом"},type:{uz:'Interyer dizayn',ru:'Дизайн интерьера'},
+   desc:{uz:"Ikki qavatli hovli-uy interyeri klassik uslubda — katta kirish, asosiy yotoqxona, hashamatli detallar va tabiiy materiallar.",ru:"Интерьер двухэтажного дома в классическом стиле — большой холл, главная спальня, изысканные детали и натуральные материалы."},
+   thumb:'assets/int-10.jpg',hero:'assets/int-10.jpg',gallery:['assets/int-11.jpg','assets/int-12.jpg','assets/int-13.jpg']},
+  {id:2,cat:'interior',status:'render',title:{uz:"Klassik oshxona va mehmonxona",ru:"Классическая кухня-гостиная"},type:{uz:'Interyer dizayn',ru:'Дизайн интерьера'},
+   desc:{uz:"Ochiq oshxona va mehmonxona zonalari — nozik gips detallari, marmar va nafis mebel.",ru:"Открытая кухня и гостиная — тонкая лепнина, мрамор и изысканная мебель."},
+   thumb:'assets/about-office.jpg',hero:'assets/about-office.jpg',gallery:['assets/int-03.jpg','assets/int-08.jpg','assets/int-09.jpg']},
+  {id:3,cat:'interior',status:'render',title:{uz:"Zamonaviy kvartira",ru:"Современная квартира"},type:{uz:'Interyer dizayn',ru:'Дизайн интерьера'},
+   desc:{uz:"Zamonaviy uslubdagi kvartira — ochiq planirovka, neytral ranglar, garderob xonasi va funksional oshxona.",ru:"Квартира в современном стиле — открытая планировка, нейтральные тона, гардеробная и функциональная кухня."},
+   thumb:'assets/int-02.jpg',hero:'assets/int-02.jpg',gallery:['assets/int-01.jpg','assets/hero.jpg','assets/int-06.jpg']},
+  {id:4,cat:'interior',status:'render',title:{uz:"Klassik dahliz va yotoqxona",ru:"Классический холл и спальня"},type:{uz:'Interyer dizayn',ru:'Дизайн интерьера'},
+   desc:{uz:"Klassik dahliz, marmar poli va ikki karavotli yotoqxona — oq va bej tonlarda hashamatli yechim.",ru:"Классический холл с мраморным полом и спальня с двумя кроватями — изысканное решение в белых и бежевых тонах."},
+   thumb:'assets/int-04.jpg',hero:'assets/int-04.jpg',gallery:['assets/int-05.jpg','assets/int-07.jpg']},
+  {id:5,cat:'architecture',status:'render',title:{uz:"Klassik villa fasadi",ru:"Фасад классической виллы"},type:{uz:'Arxitektura',ru:'Архитектура'},
+   desc:{uz:"Klassik uslubdagi shaxsiy villa fasadi — mansard tomi, dekorativ pilyastralar va nozik gips detallari.",ru:"Фасад частной виллы в классическом стиле — мансардная крыша, декоративные пилястры и тонкая лепнина."},
+   thumb:'assets/arch-01.jpg',hero:'assets/arch-01.jpg',gallery:['assets/arch-02.jpg','assets/arch-03.jpg','assets/arch-04.jpg','assets/arch-05.jpg']},
+  {id:6,cat:'drawings',status:'done',title:{uz:"Ishchi chizmalar to'plami",ru:"Комплект рабочих чертежей"},type:{uz:"Chizmalar",ru:'Чертежи'},
+   desc:{uz:"Elektrika, devor rejasi, shift konstruksiyasi, yoritish va mebel joylashuvi bo'yicha to'liq ishchi chizmalar.",ru:"Полный комплект рабочих чертежей: электрика, перегородки, потолки, освещение, расстановка мебели."},
+   thumb:'assets/draw-01.jpg',hero:'assets/draw-01.jpg',gallery:['assets/draw-02.jpg','assets/draw-03.jpg','assets/draw-04.jpg','assets/draw-05.jpg']}
+];
+
+const FALLBACKS=['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85','https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1800&q=85','https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1800&q=85','https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1800&q=85','https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1800&q=85','https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=1800&q=85'];
+const BADGE_TXT={render:{uz:"3D vizualizatsiya",ru:"3D визуализация"},done:{uz:"Bajarilgan",ru:"Реализовано"}};
+function currentLang(){return localStorage.getItem('visart_lang')||'uz';}
+
+// ═══ MIJOZLAR SHARHLARI — /api/content orqali admin panelda o'zgartirilishi mumkin ═══
+const TESTIMONIALS=[
+  {id:1,name:"Alisher Rahimov",stars:5,
+   role:{uz:"Yunusobod, mijoz",ru:"Юнусабад, клиент"},
+   quote:{uz:"Kvartiramizni bir jamoa loyihalab, bir jamoa qurdi. Muddat va byudjet aynan kelishilganidek chiqdi.",ru:"Квартиру проектировала и строила одна команда. Сроки и бюджет совпали с договорённостью."}},
+  {id:2,name:"Dilnoza Yusupova",stars:5,
+   role:{uz:"Chilonzor, mijoz",ru:"Чиланзар, клиент"},
+   quote:{uz:"Ofis fasadi bo'yicha 3D taklif juda aniq bo'ldi — qurilishda deyarli hech narsa o'zgarmadi.",ru:"3D-концепция фасада офиса была точной — при стройке почти ничего не изменилось."}},
+  {id:3,name:"Botir Nazarov",stars:5,
+   role:{uz:"Sergeli, mijoz",ru:"Сергели, клиент"},
+   quote:{uz:"Pod klyuch xizmat — chindan ham bosh og'rig'isiz. Har bosqichda xabardor qilib turishdi.",ru:"Услуга «под ключ» — действительно без забот. На каждом этапе держали в курсе."}}
+];
+function renderTestimonials(){
+  const lang=currentLang();
+  const container=document.getElementById('testiGrid');
+  if(!container)return;
+  container.innerHTML=TESTIMONIALS.map(t=>`
+    <div class="testi-card reveal in">
+      <div class="testi-stars">${'★'.repeat(t.stars)}</div>
+      <p class="testi-quote">${t.quote[lang]}</p>
+      <div class="testi-person"><span class="testi-name">${t.name}</span><span class="testi-role">${t.role[lang]}</span></div>
+    </div>
+  `).join('');
+}
+
+function renderProjects(filter){
+  filter=filter||document.querySelector('.filter-btn.active')?.dataset.filter||'all';
+  const lang=currentLang();
+  const container=document.getElementById('projScroll');
+  const list=filter==='all'?PROJECTS:PROJECTS.filter(p=>p.cat===filter);
+  const cta=lang==='uz'?"Ko'rish":"Смотреть";
+  container.innerHTML=list.map((p,i)=>`
+    <div class="proj-card reveal-scale" onclick="openProjectModal(${p.id})" role="button" tabindex="0" aria-label="${p.title[lang]} — ${cta}">
+      <div class="proj-card-img">
+        <img src="${p.thumb}" alt="${p.title[lang]}" loading="lazy" onerror="this.src='${FALLBACKS[i%FALLBACKS.length]}'">
+        <span class="proj-card-badge">${BADGE_TXT[p.status][lang]}</span>
+        <div class="proj-card-info">
+          <h3>${p.title[lang]}</h3>
+          <p>${p.type[lang]}</p>
+          <span class="proj-card-cta">${cta}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17L17 7M7 7h10v10"/></svg></span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.querySelectorAll('.proj-card').forEach(el=>{
+    io.observe(el);
+    el.addEventListener('keydown',(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();el.click();}});
+  });
+}
+
+// ═══ KINEMATIK FLYTHROUGH — filtr/loyiha bosilganda "yurib kirish" o'tishi ═══
+const FLY_IMAGES={all:'assets/hero.jpg',interior:'assets/int-10.jpg',architecture:'assets/arch-01.jpg',drawings:'assets/draw-01.jpg'};
+const FLY_LABELS={
+  uz:{all:"Barcha loyihalar",interior:"Interyerga kiramiz",architecture:"Fasadga chiqamiz",drawings:"Chizmalarni ochamiz"},
+  ru:{all:"Все проекты",interior:"Входим в интерьер",architecture:"Выходим на фасад",drawings:"Открываем чертежи"}
+};
+function playFlyTransition(imgSrc,label,cb){
+  const overlay=document.getElementById('flyOverlay');
+  if(!overlay){cb();return;}
+  const img=document.getElementById('flyOverlayImg');
+  const labelEl=overlay.querySelector('.fly-overlay-label');
+  img.src=imgSrc||'';
+  labelEl.textContent=label||'';
+  overlay.classList.add('active');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>overlay.classList.add('flying')));
+  setTimeout(()=>{
+    cb();
+    overlay.classList.remove('flying');
+    setTimeout(()=>overlay.classList.remove('active'),420);
+  },800);
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(btn.classList.contains('active'))return;
+    const filter=btn.dataset.filter;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const lang=currentLang();
+    const labels=FLY_LABELS[lang]||FLY_LABELS.uz;
+    playFlyTransition(FLY_IMAGES[filter],labels[filter],()=>renderProjects(filter));
+  });
+});
+
+function openProjectModal(id){
+  const p=PROJECTS.find(x=>x.id===id);if(!p)return;
+  const lang=currentLang();
+  const labels=FLY_LABELS[lang]||FLY_LABELS.uz;
+  const catLabel=labels[p.cat]||p.title[lang];
+  playFlyTransition(p.thumb,catLabel,()=>_openProjectModalReal(p,lang));
+}
+function _openProjectModalReal(p,lang){
+  document.getElementById('pmHeroImg').src=p.hero;
+  document.getElementById('pmHeroImg').onerror=function(){this.src=FALLBACKS[0];};
+  const tag=document.getElementById('pmTag');
+  tag.textContent=BADGE_TXT[p.status][lang];
+  tag.style.background='rgba(252,251,249,.94)';tag.style.color='#5C594F';
+  document.getElementById('pmTitle').textContent=p.title[lang];
+  document.getElementById('pmDesc').textContent=p.desc[lang];
+  document.getElementById('pmMeta').innerHTML=`
+    <div class="pmeta-item"><span class="pmeta-l">${lang==='uz'?'Turi':'Тип'}</span><span class="pmeta-v">${p.type[lang]}</span></div>
+  `;
+  document.getElementById('pmGallery').innerHTML=p.gallery.map((g,i)=>`<img src="${g}" alt="${p.title[lang]} — ${i+1}" loading="lazy" onerror="this.src='${FALLBACKS[(i+1)%FALLBACKS.length]}'">`).join('');
+  document.getElementById('pModal').classList.add('active');
+  document.body.style.overflow='hidden';
+  window.scrollTo(0,0);
+  const pmTitleEl=document.getElementById('pmTitle');
+  splitWords(pmTitleEl);
+  requestAnimationFrame(()=>{
+    pmTitleEl.querySelectorAll('.split-word').forEach((w,i)=>{setTimeout(()=>w.classList.add('in'),120+i*55);});
+  });
+}
+function closeProjectModal(){
+  document.getElementById('pModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+
+const SVC_OPTIONS=[
+  {uz:"Arxitektura loyihalash",ru:"Архитектурное проектирование"},
+  {uz:"Interyer dizayn",ru:"Дизайн интерьера"},
+  {uz:"Pod klyuch",ru:"Под ключ"}
+];
+function renderSvcSelect(){
+  const lang=currentLang();
+  const sel=document.getElementById('svcSelect');
+  if(!sel)return;
+  sel.innerHTML=SVC_OPTIONS.map(o=>`<option>${o[lang]}</option>`).join('');
+}
+
+// ═══ NARX KALKULYATORI — Arxitektura/Interyer/Pod klyuch uchun alohida hisoblash mantig'i.
+// Barcha raqamlar admin panel → Narxlar bo'limidan boshqariladi (pricing_json). ═══
+const PRICING={
+  usdRate:12700,
+  styles:[
+    {id:'standard',uz:'Standart',ru:'Стандарт',mult:1},
+    {id:'premium',uz:'Premium',ru:'Премиум',mult:1.35},
+    {id:'lux',uz:'Lyuks',ru:'Люкс',mult:1.8}
+  ],
+  architecture:{
+    ratePerSotix:1800000,
+    floors:[
+      {id:1,uz:'1 qavat',ru:'1 этаж',mult:1},
+      {id:2,uz:'2 qavat',ru:'2 этажа',mult:1.15},
+      {id:3,uz:'3+ qavat',ru:'3+ этажа',mult:1.3}
+    ],
+    addons:[
+      {id:'docs',uz:'Hujjat (ruxsatnoma) paketi',ru:'Пакет документации',flat:4000000},
+      {id:'workDrawings',uz:'Ustalarga ishchi chizmalar',ru:'Рабочие чертежи для мастеров',flat:3500000},
+      {id:'3d',uz:'3D dizayn',ru:'3D-дизайн',flat:3000000},
+      {id:'landscape',uz:'Landshaft dizayni',ru:'Ландшафтный дизайн',flat:5000000}
+    ],
+    styleFeatures:{
+      standard:[
+        {uz:'1 ta konsepsiya varianti',ru:'1 вариант концепции'},
+        {uz:'Asosiy chizmalar to\'plami (fasad, plan, kesim)',ru:'Базовый пакет чертежей (фасад, план, разрез)'},
+        {uz:'2 tagacha bepul o\'zgartirish',ru:'До 2 бесплатных правок'},
+        {uz:'1 marta maslahat uchrashuvi',ru:'1 консультационная встреча'}
+      ],
+      premium:[
+        {uz:'2 ta konsepsiya varianti',ru:'2 варианта концепции'},
+        {uz:'Tashqi ko\'rinish 3D vizualizatsiyasi',ru:'3D-визуализация внешнего вида'},
+        {uz:'Material va bezak tavsiyalari',ru:'Рекомендации по материалам и отделке'},
+        {uz:'3 tagacha bepul o\'zgartirish',ru:'До 3 бесплатных правок'},
+        {uz:'2 marta muvofiqlashtirish uchrashuvi',ru:'2 согласовательные встречи'}
+      ],
+      lux:[
+        {uz:'3 tagacha konsepsiya varianti',ru:'До 3 вариантов концепции'},
+        {uz:'To\'liq 3D vizualizatsiya (bir necha rakurs)',ru:'Полная 3D-визуализация (несколько ракурсов)'},
+        {uz:'Muallif nazorati (qurilish jarayonida saytga tashrif)',ru:'Авторский надзор (выезды на объект в ходе строительства)'},
+        {uz:'Individual landshaft konsepsiyasi taklifi',ru:'Индивидуальное предложение ландшафтной концепции'},
+        {uz:'5 tagacha bepul o\'zgartirish',ru:'До 5 бесплатных правок'},
+        {uz:'Cheksiz maslahat uchrashuvlari',ru:'Неограниченные консультационные встречи'}
+      ]
+    }
+  },
+  interior:{
+    features:{
+      plan2d:{uz:'2D chizma (asosiy reja)',ru:'2D-план (основная планировка)'},
+      workDrawings:{uz:'Ishchi chizmalar',ru:'Рабочие чертежи'},
+      render3d:{uz:'3D render / vizualizatsiya',ru:'3D-рендер/визуализация'},
+      furniture:{uz:'Mebelirovka',ru:'Расстановка мебели'},
+      estimate:{uz:"Smeta (material va ish narxlari ro'yxati)",ru:'Смета (список материалов и работ)'},
+      electrical:{uz:'Elektrika joylashuvi',ru:'Электрика'},
+      plumbing:{uz:'Santexnika/jihozlar joylashuvi',ru:'Сантехника/оборудование'},
+      replan:{uz:'Pereplanirovka',ru:'Перепланировка'},
+      materialHelp:{uz:'Material tanlash va xarid qilishda yordam',ru:'Помощь в подборе и закупке материалов'}
+    },
+    packages:[
+      {id:'drawings',uz:'Chizmalar',ru:'Чертежи',rate:55000,includes:['plan2d','workDrawings']},
+      {id:'full',uz:"To'liq",ru:'Полный',rate:135000,includes:['plan2d','workDrawings','render3d','furniture','estimate']},
+      {id:'vip',uz:'VIP',ru:'VIP',rate:185000,includes:['plan2d','workDrawings','render3d','furniture','estimate','electrical','plumbing','replan','materialHelp']}
+    ]
+  },
+  turnkey:{
+    components:[
+      {id:'labor',uz:'Usta xaqi',ru:'Оплата мастеров'},
+      {id:'material',uz:'Qurilish materiallari',ru:'Строительные материалы'},
+      {id:'furniture',uz:'Mebel va jihozlar',ru:'Мебель и оборудование'}
+    ],
+    areaTiers:[
+      {maxArea:100,labor:{min:480,max:555},material:{min:480,max:555},furniture:{min:340,max:390}},
+      {maxArea:300,labor:{min:445,max:520},material:{min:445,max:520},furniture:{min:310,max:360}},
+      {maxArea:999999,labor:{min:445,max:480},material:{min:445,max:480},furniture:{min:310,max:340}}
+    ],
+    managementTiers:[{maxArea:100,pct:0.20},{maxArea:300,pct:0.15},{maxArea:999999,pct:0.12}]
+  },
+  timelines:{
+    architecture:{uz:'15–25 kun (yer maydoni va murakkablikka qarab)',ru:'15–25 дней (в зависимости от участка и сложности)'},
+    interior:{
+      drawings:{uz:'10–15 kun',ru:'10–15 дней'},
+      full:{uz:'20–25 kun',ru:'20–25 дней'},
+      vip:{uz:'25–35 kun',ru:'25–35 дней'}
+    },
+    turnkey:[
+      {maxArea:100,uz:'3–4 oy',ru:'3–4 месяца'},
+      {maxArea:300,uz:'5–7 oy',ru:'5–7 месяцев'},
+      {maxArea:999999,uz:'8–12 oy',ru:'8–12 месяцев'}
+    ]
+  },
+  turnkeyScope:{
+    included:[
+      {uz:'Standart poydevor ishlari',ru:'Стандартные работы по фундаменту'},
+      {uz:'Devor va tom qurilishi',ru:'Возведение стен и кровли'},
+      {uz:'Ichki-tashqi pardozlash ishlari',ru:'Внутренняя и внешняя отделка'},
+      {uz:"Kommunikatsiyalarni ulash (suv, svet, gaz)",ru:'Подключение коммуникаций (вода, свет, газ)'}
+    ],
+    excluded:[
+      {uz:'Yer uchastkasini tozalash',ru:'Расчистка земельного участка'},
+      {uz:'Murakkab tuproq sharoiti talab qiladigan maxsus poydevor',ru:'Специальный фундамент для сложных грунтов'},
+      {uz:"Rasmiy hujjatlar bo'yicha davlat boj to'lovlari",ru:'Государственные пошлины по официальным документам'}
+    ]
+  },
+  paymentStages:[
+    {pct:30,uz:'Shartnoma imzolanganda',ru:'При подписании договора'},
+    {pct:30,uz:'Qurilish ishlari yakunlanganda',ru:'По завершении строительных работ'},
+    {pct:30,uz:'Pardozlash bosqichida',ru:'На этапе отделки'},
+    {pct:10,uz:'Obyekt topshirilganda',ru:'При сдаче объекта'}
+  ]
+};
+let calcState={
+  service:'arch',
+  style:'standard',
+  sotix:6,
+  archFloors:1,
+  area:120,
+  archAddons:[],
+  interiorPackage:'full',
+  currency:'uzs',
+  turnkeyComponents:['labor','material','furniture']
+};
+
+function fmtUZS(n){return new Intl.NumberFormat('uz-UZ').format(Math.round(n/10000)*10000)+" so'm";}
+function fmtRUB(n){return new Intl.NumberFormat('ru-RU').format(Math.round(n/10000)*10000)+" сум";}
+function fmtUSD(n){return "$"+new Intl.NumberFormat('en-US').format(Math.round(n));}
+
+function renderCalc(){
+  const lang=currentLang();
+  const svcWrap=document.getElementById('calcService');
+  if(!svcWrap)return;
+  const SERVICE_META=[
+    {id:'arch',uz:'Arxitektura loyihalash',ru:'Архитектурное проектирование'},
+    {id:'interior',uz:'Interyer dizayn',ru:'Дизайн интерьера'},
+    {id:'turnkey',uz:'Pod klyuch',ru:'Под ключ'}
+  ];
+  svcWrap.innerHTML=SERVICE_META.map(s=>`<button type="button" class="calc-chip ${s.id===calcState.service?'active':''}" data-svc="${s.id}">${s[lang]}</button>`).join('');
+  svcWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.service=b.dataset.svc;renderCalc();}));
+
+  document.getElementById('calcStyleGroup').style.display=(calcState.service==='interior')?'none':'block';
+  document.getElementById('calcArchGroup').style.display=(calcState.service==='arch')?'block':'none';
+  document.getElementById('calcInteriorGroup').style.display=(calcState.service==='interior')?'block':'none';
+  document.getElementById('calcTurnkeyGroup').style.display=(calcState.service==='turnkey')?'block':'none';
+
+  const styleWrap=document.getElementById('calcStyle');
+  styleWrap.innerHTML=PRICING.styles.map(s=>`<button type="button" class="calc-chip ${s.id===calcState.style?'active':''}" data-style="${s.id}">${s[lang]}</button>`).join('');
+  styleWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.style=b.dataset.style;renderCalc();}));
+
+  const styleFeaturesEl=document.getElementById('calcArchStyleFeatures');
+  if(styleFeaturesEl){
+    const feats=(PRICING.architecture.styleFeatures||{})[calcState.style];
+    if(calcState.service==='arch'&&feats){
+      styleFeaturesEl.style.display='block';
+      styleFeaturesEl.innerHTML=feats.map(f=>`<li>${f[lang]}</li>`).join('');
+    }else{
+      styleFeaturesEl.style.display='none';
+      styleFeaturesEl.innerHTML='';
+    }
+  }
+
+  const floorsWrap=document.getElementById('calcArchFloors');
+  if(floorsWrap){
+    floorsWrap.innerHTML=PRICING.architecture.floors.map(f=>`<button type="button" class="calc-chip ${f.id===calcState.archFloors?'active':''}" data-floor="${f.id}">${f[lang]}</button>`).join('');
+    floorsWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.archFloors=parseInt(b.dataset.floor,10);renderCalc();}));
+  }
+
+  const sotixRange=document.getElementById('calcSotixRange');
+  if(sotixRange)sotixRange.value=calcState.sotix;
+  const sotixVal=document.getElementById('calcSotixVal');
+  if(sotixVal)sotixVal.textContent=calcState.sotix;
+  const archAddonWrap=document.getElementById('calcArchAddons');
+  if(archAddonWrap){
+    archAddonWrap.innerHTML=PRICING.architecture.addons.map(a=>`<label class="calc-addon"><input type="checkbox" data-arch-addon="${a.id}" ${calcState.archAddons.includes(a.id)?'checked':''}> ${a[lang]}</label>`).join('');
+    archAddonWrap.querySelectorAll('input').forEach(cb=>cb.addEventListener('change',()=>{
+      const id=cb.dataset.archAddon;
+      if(cb.checked){if(!calcState.archAddons.includes(id))calcState.archAddons.push(id);}
+      else{calcState.archAddons=calcState.archAddons.filter(x=>x!==id);}
+      calcCompute();
+    }));
+  }
+
+  const interiorArea=document.getElementById('calcInteriorAreaRange');
+  if(interiorArea)interiorArea.value=calcState.area;
+  const interiorAreaVal=document.getElementById('calcInteriorAreaVal');
+  if(interiorAreaVal)interiorAreaVal.textContent=calcState.area;
+  const pkgWrap=document.getElementById('calcInteriorPackages');
+  if(pkgWrap){
+    const PKG_LABEL={uz:s=>`${new Intl.NumberFormat('uz-UZ').format(s.rate)} so'm/m²`,ru:s=>`${new Intl.NumberFormat('ru-RU').format(s.rate)} сум/м²`};
+    pkgWrap.innerHTML=PRICING.interior.packages.map(pk=>`
+      <button type="button" class="calc-pkg-card ${pk.id===calcState.interiorPackage?'active':''}" data-pkg="${pk.id}">
+        ${pk.id==='full'?`<span class="calc-pkg-badge">${lang==='uz'?'Tavsiya':'Рекомендуем'}</span>`:''}
+        <div class="calc-pkg-name">${pk[lang]}</div>
+        <div class="calc-pkg-price">${PKG_LABEL[lang](pk)}</div>
+        <ul class="calc-pkg-features">${pk.includes.map(fid=>`<li>${(PRICING.interior.features[fid]||{})[lang]||fid}</li>`).join('')}</ul>
+      </button>`).join('');
+    pkgWrap.querySelectorAll('.calc-pkg-card').forEach(b=>b.addEventListener('click',()=>{calcState.interiorPackage=b.dataset.pkg;renderCalc();}));
+  }
+
+  const tkArea=document.getElementById('calcTkAreaRange');
+  if(tkArea)tkArea.value=calcState.area;
+  const tkAreaVal=document.getElementById('calcTkAreaVal');
+  if(tkAreaVal)tkAreaVal.textContent=calcState.area;
+
+  const currWrap=document.getElementById('calcCurrency');
+  if(currWrap){
+    currWrap.querySelectorAll('.calc-chip').forEach(b=>{
+      b.classList.toggle('active',b.dataset.curr===calcState.currency);
+    });
+  }
+
+  const tkCompWrap=document.getElementById('calcTkComponents');
+  if(tkCompWrap){
+    tkCompWrap.innerHTML=PRICING.turnkey.components.map(c=>`
+      <label class="calc-tk-comp">
+        <span class="calc-tk-comp-left"><input type="checkbox" data-tk-comp="${c.id}" ${calcState.turnkeyComponents.includes(c.id)?'checked':''}> ${c[lang]}</span>
+        <span class="calc-tk-comp-rate" id="tkRate-${c.id}"></span>
+      </label>`).join('');
+    tkCompWrap.querySelectorAll('input').forEach(cb=>cb.addEventListener('change',()=>{
+      const id=cb.dataset.tkComp;
+      if(cb.checked){if(!calcState.turnkeyComponents.includes(id))calcState.turnkeyComponents.push(id);}
+      else{calcState.turnkeyComponents=calcState.turnkeyComponents.filter(x=>x!==id);}
+      calcCompute();
+    }));
+  }
+
+  const scopeIn=document.getElementById('calcScopeIncluded');
+  if(scopeIn)scopeIn.innerHTML=(PRICING.turnkeyScope.included||[]).map(x=>`<li>${x[lang]}</li>`).join('');
+  const scopeOut=document.getElementById('calcScopeExcluded');
+  if(scopeOut)scopeOut.innerHTML=(PRICING.turnkeyScope.excluded||[]).map(x=>`<li>${x[lang]}</li>`).join('');
+  const payWrap=document.getElementById('calcPaymentStages');
+  if(payWrap)payWrap.innerHTML=(PRICING.paymentStages||[]).map(s=>`<div class="calc-pay-row"><span class="calc-pay-pct">${s.pct}%</span><span>${s[lang]}</span></div>`).join('');
+
+  const timelineEl=document.getElementById('calcTimelineNote');
+  if(timelineEl){
+    const TL_PREFIX={uz:'Bajarish muddati: ',ru:'Срок выполнения: '};
+    let tl=null;
+    if(calcState.service==='arch')tl=PRICING.timelines.architecture;
+    else if(calcState.service==='interior')tl=PRICING.timelines.interior[calcState.interiorPackage];
+    else{
+      const tkTiers=PRICING.timelines.turnkey;
+      tl=(tkTiers.find(t=>calcState.area<=t.maxArea)||tkTiers[tkTiers.length-1]);
+    }
+    timelineEl.textContent=tl?(TL_PREFIX[lang]+tl[lang]):'';
+  }
+
+  calcCompute();
+}
+
+function calcCompute(){
+  const lang=currentLang();
+  const style=PRICING.styles.find(s=>s.id===calcState.style)||PRICING.styles[0];
+  const valEl=document.getElementById('calcResultVal');
+  if(!valEl)return;
+  let total=0;
+
+  if(calcState.service==='arch'){
+    const floor=PRICING.architecture.floors.find(f=>f.id===calcState.archFloors)||PRICING.architecture.floors[0];
+    total=PRICING.architecture.ratePerSotix*calcState.sotix*style.mult*floor.mult;
+    calcState.archAddons.forEach(id=>{
+      const a=PRICING.architecture.addons.find(x=>x.id===id);
+      if(a)total+=a.flat;
+    });
+    calcState.total=total;
+    valEl.textContent="~ "+(lang==='uz'?fmtUZS(total):fmtRUB(total));
+    return;
+  }
+
+  if(calcState.service==='interior'){
+    const pkg=PRICING.interior.packages.find(p=>p.id===calcState.interiorPackage)||PRICING.interior.packages[0];
+    total=pkg.rate*calcState.area;
+    calcState.total=total;
+    valEl.textContent="~ "+(lang==='uz'?fmtUZS(total):fmtRUB(total));
+    return;
+  }
+
+  // turnkey — usta/material/mebel alohida tanlanadi, har biri maydonga qarab tabaqalashtirilgan diapazon + prorab foizi
+  const areaTiers=PRICING.turnkey.areaTiers;
+  const areaTier=areaTiers.find(t=>calcState.area<=t.maxArea)||areaTiers[areaTiers.length-1];
+  const mgmtTiers=PRICING.turnkey.managementTiers;
+  const mgmtTier=mgmtTiers.find(t=>calcState.area<=t.maxArea)||mgmtTiers[mgmtTiers.length-1];
+
+  // har bir komponent uchun $/m² qatorini yangilash (checkbox yonidagi narx)
+  PRICING.turnkey.components.forEach(c=>{
+    const rateEl=document.getElementById('tkRate-'+c.id);
+    if(!rateEl)return;
+    const comp=areaTier[c.id];
+    const minAdj=comp.min*style.mult, maxAdj=comp.max*style.mult;
+    rateEl.textContent="$"+Math.round(minAdj)+" – $"+Math.round(maxAdj)+"/m²";
+  });
+
+  let subtotalMinUSD=0, subtotalMaxUSD=0;
+  calcState.turnkeyComponents.forEach(id=>{
+    const comp=areaTier[id];
+    if(!comp)return;
+    subtotalMinUSD+=comp.min*style.mult*calcState.area;
+    subtotalMaxUSD+=comp.max*style.mult*calcState.area;
+  });
+  const totalMinUSD=subtotalMinUSD*(1+mgmtTier.pct);
+  const totalMaxUSD=subtotalMaxUSD*(1+mgmtTier.pct);
+  calcState.total={min:totalMinUSD,max:totalMaxUSD};
+
+  if(calcState.currency==='usd'){
+    valEl.textContent="~ "+fmtUSD(totalMinUSD)+" – "+fmtUSD(totalMaxUSD);
+  }else{
+    const minUZS=totalMinUSD*PRICING.usdRate, maxUZS=totalMaxUSD*PRICING.usdRate;
+    valEl.textContent="~ "+(lang==='uz'?(fmtUZS(minUZS)+" – "+fmtUZS(maxUZS)):(fmtRUB(minUZS)+" – "+fmtRUB(maxUZS)));
+  }
+}
+
+document.getElementById('calcSotixRange')?.addEventListener('input',(e)=>{
+  calcState.sotix=parseInt(e.target.value,10);
+  const el=document.getElementById('calcSotixVal');
+  if(el)el.textContent=calcState.sotix;
+  calcCompute();
+});
+document.getElementById('calcInteriorAreaRange')?.addEventListener('input',(e)=>{
+  calcState.area=parseInt(e.target.value,10);
+  const el=document.getElementById('calcInteriorAreaVal');
+  if(el)el.textContent=calcState.area;
+  calcCompute();
+});
+document.getElementById('calcTkAreaRange')?.addEventListener('input',(e)=>{
+  calcState.area=parseInt(e.target.value,10);
+  const el=document.getElementById('calcTkAreaVal');
+  if(el)el.textContent=calcState.area;
+  calcCompute();
+});
+document.getElementById('calcCurrency')?.addEventListener('click',(e)=>{
+  const btn=e.target.closest('[data-curr]');
+  if(!btn)return;
+  calcState.currency=btn.dataset.curr;
+  document.querySelectorAll('#calcCurrency .calc-chip').forEach(b=>b.classList.toggle('active',b===btn));
+  calcCompute();
+});
+
+function sendCalcToContact(){
+  const lang=currentLang();
+  document.getElementById('contact')?.scrollIntoView({behavior:'smooth'});
+  const msgEl=document.getElementById('cMessage');
+  const resultTxt=document.getElementById('calcResultVal')?.textContent||'';
+  const SERVICE_LABEL={
+    arch:{uz:'Arxitektura loyihalash',ru:'Архитектурное проектирование'},
+    interior:{uz:'Interyer dizayn',ru:'Дизайн интерьера'},
+    turnkey:{uz:'Pod klyuch',ru:'Под ключ'}
+  };
+  const svcLabel=SERVICE_LABEL[calcState.service][lang];
+  const SOTIX_LABEL={uz:'sotix',ru:'сот.'};
+  if(msgEl){
+    if(calcState.service==='arch'){
+      const floor=PRICING.architecture.floors.find(f=>f.id===calcState.archFloors);
+      msgEl.value=`${svcLabel}, ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — taxminiy ${resultTxt}`;
+    }else if(calcState.service==='interior'){
+      const pkg=PRICING.interior.packages.find(p=>p.id===calcState.interiorPackage);
+      msgEl.value=`${svcLabel} (${pkg?pkg[lang]:''}), ${calcState.area} m² — taxminiy ${resultTxt}`;
+    }else{
+      msgEl.value=`${svcLabel}, ${calcState.area} m² — taxminiy ${resultTxt}`;
+    }
+  }
+  const svcSelect=document.getElementById('svcSelect');
+  if(svcSelect){
+    const map={arch:0,interior:1,turnkey:2};
+    svcSelect.selectedIndex=map[calcState.service]??0;
+  }
+}
+
+async function handleSubmit(e){
+  e.preventDefault();
+  const lang=currentLang();
+  const form=e.target;
+  const btn=form.querySelector('.submit-btn');
+  const original=btn.innerHTML;
+  const payload={
+    name:document.getElementById('cName')?.value||'',
+    phone:document.getElementById('cPhone')?.value||'',
+    service:document.getElementById('svcSelect')?.value||'',
+    message:document.getElementById('cMessage')?.value||'',
+    lang,page:location.href,ts:new Date().toISOString()
+  };
+  btn.disabled=true;
+  btn.textContent=lang==='uz'?"Yuborilmoqda...":"Отправка...";
+  try{
+    const res=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!res.ok)throw new Error('request_failed');
+    btn.classList.add('sent');
+    btn.textContent=lang==='uz'?"Yuborildi ✓":"Отправлено ✓";
+    form.reset();
+  }catch(err){
+    btn.textContent=lang==='uz'?"Xatolik — Telegram orqali yozing":"Ошибка — напишите в Telegram";
+    btn.style.background='#B14B4B';
+  }finally{
+    setTimeout(()=>{btn.classList.remove('sent');btn.disabled=false;btn.innerHTML=original;btn.style.background='';},3200);
+  }
+}
+
+function toggleMobileMenu(){
+  const menu=document.getElementById('mobileMenu');
+  const burger=document.getElementById('navBurger');
+  const opening=!menu.classList.contains('active');
+  menu.classList.toggle('active',opening);
+  burger.classList.toggle('active',opening);
+  document.body.style.overflow=opening?'hidden':'';
+}
+
+setLang(savedLang);
+initSplitHeadings();
+observeSplitHeadings();
+observeReveals();
+initBlueprintDraw();
+observeBlueprints();
+updateBpRail();
+
+// ═══ ADMIN PANELDAN DINAMIK KONTENT — mavjud bo'lsa hardcoded ma'lumotlarni almashtiradi.
+// Agar /api/content mavjud bo'lmasa yoki xatolik bersa, sayt yuqoridagi standart
+// (hardcoded) ma'lumotlar bilan to'liq ishlayveradi — hech narsa buzilmaydi. ═══
+async function loadDynamicContent(){
+  try{
+    const res=await fetch('/api/content');
+    if(!res.ok)return;
+    const data=await res.json();
+    if(!data||!data.ok)return;
+
+    if(Array.isArray(data.projects)&&data.projects.length){
+      PROJECTS.length=0;
+      data.projects.forEach(p=>PROJECTS.push(p));
+      renderProjects();
+    }
+    if(data.pricing&&typeof data.pricing==='object'&&data.pricing.architecture){
+      const p=data.pricing;
+      if(typeof p.usdRate==='number')PRICING.usdRate=p.usdRate;
+      if(Array.isArray(p.styles)&&p.styles.length)PRICING.styles=p.styles;
+      if(p.architecture){
+        if(typeof p.architecture.ratePerSotix==='number')PRICING.architecture.ratePerSotix=p.architecture.ratePerSotix;
+        if(Array.isArray(p.architecture.addons))PRICING.architecture.addons=p.architecture.addons;
+        if(Array.isArray(p.architecture.floors)&&p.architecture.floors.length)PRICING.architecture.floors=p.architecture.floors;
+        if(p.architecture.styleFeatures)PRICING.architecture.styleFeatures=p.architecture.styleFeatures;
+      }
+      if(p.interior){
+        if(p.interior.features)PRICING.interior.features=p.interior.features;
+        if(Array.isArray(p.interior.packages)&&p.interior.packages.length)PRICING.interior.packages=p.interior.packages;
+      }
+      if(p.turnkey){
+        if(Array.isArray(p.turnkey.components)&&p.turnkey.components.length)PRICING.turnkey.components=p.turnkey.components;
+        // eski sxema (rateMin/rateMax) hali ham kelib qolsa e'tiborsiz qoldiramiz — faqat yangi (labor/material/furniture) sxema qabul qilinadi
+        if(Array.isArray(p.turnkey.areaTiers)&&p.turnkey.areaTiers.length&&p.turnkey.areaTiers[0].labor)PRICING.turnkey.areaTiers=p.turnkey.areaTiers;
+        if(Array.isArray(p.turnkey.managementTiers)&&p.turnkey.managementTiers.length)PRICING.turnkey.managementTiers=p.turnkey.managementTiers;
+      }
+      if(p.timelines)PRICING.timelines=p.timelines;
+      if(p.turnkeyScope)PRICING.turnkeyScope=p.turnkeyScope;
+      if(Array.isArray(p.paymentStages)&&p.paymentStages.length)PRICING.paymentStages=p.paymentStages;
+      if(calcState.interiorPackage&&!PRICING.interior.packages.find(pk=>pk.id===calcState.interiorPackage)){
+        calcState.interiorPackage=PRICING.interior.packages[0]?.id||'full';
+      }
+      renderCalc();
+    }
+    if(Array.isArray(data.testimonials)&&data.testimonials.length){
+      TESTIMONIALS.length=0;
+      data.testimonials.forEach(t=>TESTIMONIALS.push(t));
+      renderTestimonials();
+    }
+    if(data.settings){
+      const s=data.settings;
+      const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.textContent=val;};
+      if(s.phone){
+        const el=document.getElementById('cdPhone');
+        if(el){el.textContent=s.phone;el.href='tel:'+s.phone.replace(/\s+/g,'');}
+      }
+      if(s.email){
+        const el=document.getElementById('cdEmail');
+        if(el){el.textContent=s.email;el.href='mailto:'+s.email;}
+      }
+      if(s.telegram){
+        const el=document.getElementById('cdTelegram');
+        if(el){el.textContent=s.telegram;el.href='https://t.me/'+s.telegram.replace('@','');}
+      }
+      const showSocial=(ids,url)=>{
+        if(!url)return;
+        ids.forEach(id=>{
+          const el=document.getElementById(id);
+          if(el){el.href=url;el.style.display='flex';}
+        });
+      };
+      showSocial(['navInstagram','navInstagramMobile','footerInstagram'],s.instagram);
+      showSocial(['navYoutube','navYoutubeMobile','footerYoutube'],s.youtube);
+      if(s.address){ set('cdAddrUz',s.address.uz); set('cdAddrRu',s.address.ru); }
+      if(s.stats){ set('statYears',s.stats.years); set('statProjects',s.stats.projects); }
+    }
+  }catch(e){
+    // Jim tarzda e'tiborsiz qoldiramiz — sayt standart ma'lumotlar bilan ishlashda davom etadi.
+  }
+}
+loadDynamicContent();
+
+window.addEventListener('load',()=>{
+  document.getElementById('preloader').classList.add('done');
+  if(location.hash){
+    const target=document.querySelector(location.hash);
+    if(target)setTimeout(()=>target.scrollIntoView({behavior:'auto',block:'start'}),60);
+  }
+});
+setTimeout(()=>document.getElementById('preloader')?.classList.add('done'),2200);
+window.matchMedia('(min-width:901px)').addEventListener('change',e=>{
+  if(e.matches){
+    document.getElementById('mobileMenu').classList.remove('active');
+    document.getElementById('navBurger').classList.remove('active');
+    document.body.style.overflow='';
+  }
+});
+</script>
+</body>
+</html>
