@@ -869,7 +869,8 @@ function renderSettingsForm(){
     <div class="form-grid" style="max-width:640px">
       <div class="field"><label>Telefon</label><input type="text" id="sPhone" value="${s.phone||''}"></div>
       <div class="field"><label>Email</label><input type="text" id="sEmail" value="${s.email||''}"></div>
-      <div class="field"><label>Telegram</label><input type="text" id="sTelegram" value="${s.telegram||''}"></div>
+      <div class="field"><label>Telegram kanal (header/footer ikonkalari, @username)</label><input type="text" id="sTelegram" value="${s.telegram||''}" placeholder="@visartdesign"></div>
+      <div class="field"><label>Telegram shaxsiy (murojaat tugmalari, @username)</label><input type="text" id="sTelegramPersonal" value="${s.telegram_personal||''}" placeholder="@visartadmin"></div>
       <div class="field"><label>Instagram (to'liq havola)</label><input type="text" id="sInstagram" value="${s.instagram||''}" placeholder="https://instagram.com/..."></div>
       <div class="field"><label>YouTube (to'liq havola)</label><input type="text" id="sYoutube" value="${s.youtube||''}" placeholder="https://youtube.com/@..."></div>
       <div class="field"><label>Manzil (UZ)</label><input type="text" id="sAddrUz" value="${s.address_uz||''}"></div>
@@ -885,6 +886,7 @@ async function saveSettings(){
     phone: document.getElementById('sPhone').value,
     email: document.getElementById('sEmail').value,
     telegram: document.getElementById('sTelegram').value,
+    telegram_personal: document.getElementById('sTelegramPersonal').value,
     instagram: document.getElementById('sInstagram').value,
     youtube: document.getElementById('sYoutube').value,
     address_uz: document.getElementById('sAddrUz').value,
