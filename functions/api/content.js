@@ -51,6 +51,7 @@ export async function onRequestGet({ env }) {
         email: settings.email,
         telegram: settings.telegram,
         instagram: settings.instagram,
+        youtube: settings.youtube,
         address: { uz: settings.address_uz, ru: settings.address_ru },
         stats: { years: settings.stats_years, projects: settings.stats_projects },
       },
