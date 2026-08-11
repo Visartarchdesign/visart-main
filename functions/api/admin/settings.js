@@ -1,7 +1,7 @@
 // /api/admin/settings — kontakt ma'lumotlari va statistikalar
 import { json } from '../../_lib/auth.js';
 
-const KEYS = ['phone', 'email', 'telegram', 'instagram', 'address_uz', 'address_ru', 'stats_years', 'stats_projects'];
+const KEYS = ['phone', 'email', 'telegram', 'instagram', 'youtube', 'address_uz', 'address_ru', 'stats_years', 'stats_projects'];
 
 export async function onRequestGet({ env }) {
   try {
