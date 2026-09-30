@@ -52,10 +52,10 @@
   "sameAs": ["https://t.me/visartdesign", "https://instagram.com/visart.design", "https://www.youtube.com/@visartdesign"]
 }
 </script>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Loyiha narxi nimaga bog'liq?", "acceptedAnswer": {"@type": "Answer", "text": "Narx maydon, uslub darajasi (Standart, Premium, Lyuks), qavatlar soni va tanlangan xizmatlar tarkibiga bog'liq. Saytdagi kalkulyator taxminiy narxni ko'rsatadi, aniq narx bepul konsultatsiyada belgilanadi."}}, {"@type": "Question", "name": "Loyiha qancha vaqtda tayyor bo'ladi?", "acceptedAnswer": {"@type": "Answer", "text": "Arxitektura loyihasi odatda 15–25 kun, interyer dizayn paketga qarab 10–35 kun davom etadi. Pod klyuch qurilish maydonga qarab 3 oydan 12 oygacha."}}, {"@type": "Question", "name": "To'lov qanday amalga oshiriladi?", "acceptedAnswer": {"@type": "Answer", "text": "Barcha ishlar shartnoma asosida bajariladi. Pod klyuch qurilishda to'lov 4 bosqichda: 30% — shartnomada, 30% — qurilish ishlaridan keyin, 30% — pardozlash bosqichida, 10% — topshirishda. Loyihalash xizmatlari bo'yicha to'lov tartibi shartnomada kelishiladi."}}, {"@type": "Question", "name": "Ruxsatnoma va hujjatlarni ham tayyorlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Kadastr, mygov.uz orqali olinadigan qurilish ruxsatnomalari va qurilishdan oldin kerak bo'ladigan boshqa rasmiy hujjatlarni tayyorlaymiz."}}, {"@type": "Question", "name": "Qurilish jarayonini nazorat qilasizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Mualliflik nazorati doirasida obyektga muntazam borib, ishlar loyihaga mos bajarilishini tekshiramiz. Pod klyuch xizmatda qurilishni to'liq o'zimiz olib boramiz."}}, {"@type": "Question", "name": "Toshkentdan tashqarida ham ishlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha, O'zbekiston bo'ylab va MDH davlatlarida loyihalar bajaramiz. Konsultatsiya va loyihani kelishish onlayn ham o'tkazilishi mumkin."}}]}</script>
+<script type="application/ld+json" id="faqLd">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Loyiha narxi nimaga bog'liq?", "acceptedAnswer": {"@type": "Answer", "text": "Narx maydon, uslub darajasi (Standart, Premium, Lyuks), qavatlar soni va tanlangan xizmatlar tarkibiga bog'liq. Saytdagi kalkulyator taxminiy narxni ko'rsatadi, aniq narx bepul konsultatsiyada belgilanadi."}}, {"@type": "Question", "name": "Loyiha qancha vaqtda tayyor bo'ladi?", "acceptedAnswer": {"@type": "Answer", "text": "Arxitektura loyihasi odatda 15–25 kun, interyer dizayn paketga qarab 10–35 kun davom etadi. Pod klyuch qurilish maydonga qarab 3 oydan 12 oygacha."}}, {"@type": "Question", "name": "To'lov qanday amalga oshiriladi?", "acceptedAnswer": {"@type": "Answer", "text": "Barcha ishlar shartnoma asosida bajariladi. Pod klyuch qurilishda to'lov 4 bosqichda: 30% — shartnomada, 30% — qurilish ishlaridan keyin, 30% — pardozlash bosqichida, 10% — topshirishda. Loyihalash xizmatlari bo'yicha to'lov tartibi shartnomada kelishiladi."}}, {"@type": "Question", "name": "Ruxsatnoma va hujjatlarni ham tayyorlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Kadastr, mygov.uz orqali olinadigan qurilish ruxsatnomalari va qurilishdan oldin kerak bo'ladigan boshqa rasmiy hujjatlarni tayyorlaymiz."}}, {"@type": "Question", "name": "Qurilish jarayonini nazorat qilasizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Mualliflik nazorati doirasida obyektga muntazam borib, ishlar loyihaga mos bajarilishini tekshiramiz. Pod klyuch xizmatda qurilishni to'liq o'zimiz olib boramiz."}}, {"@type": "Question", "name": "Toshkentdan tashqarida ham ishlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha, O'zbekiston bo'ylab va MDH davlatlarida loyihalar bajaramiz. Konsultatsiya va loyihani kelishish onlayn ham o'tkazilishi mumkin."}}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="image" href="assets/hero.webp" fetchpriority="high">
+<link rel="preload" as="image" id="heroPreload" href="assets/hero.webp" fetchpriority="high">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -654,7 +654,7 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
 <!-- HERO — full bleed, one photo, one line -->
 <section class="hero">
   <div class="hero-media">
-    <img src="assets/hero.webp" fetchpriority="high" alt="VISART ARCHDESIGN — zamonaviy interyer dizayni, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
+    <img id="heroImg" src="assets/hero.webp" fetchpriority="high" alt="VISART ARCHDESIGN — zamonaviy interyer dizayni, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
   </div>
   <div class="wrap hero-inner">
     <div class="hero-line"><span data-lang="uz" class="lang-active">Arxitektura va interyer dizayn</span><span data-lang="ru">Архитектура и дизайн интерьера</span></div>
@@ -917,13 +917,13 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
 <!-- ABOUT — full bleed split -->
 <section class="about" id="about">
   <div class="about-media">
-    <img loading="lazy" decoding="async" src="assets/about-office.webp" alt="VISART ARCHDESIGN — interyer dizayn loyihasi, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1800&q=85'">
+    <img loading="lazy" decoding="async" id="aboutImg" src="assets/about-office.webp" alt="VISART ARCHDESIGN — interyer dizayn loyihasi, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=1800&q=85'">
   </div>
   <div class="wrap">
     <div class="about-inner reveal walk3d">
       <div class="eyebrow"><span data-lang="uz" class="lang-active">Biz haqimizda</span><span data-lang="ru">О нас</span></div>
       <h2 class="split-target"><span data-lang="uz" class="lang-active">Loyihani qilgan insonlar bilan quruvchilar bir tilda gaplasha oladi</span><span data-lang="ru">Те, кто создал проект, говорят со строителями на одном языке</span></h2>
-      <p><span data-lang="uz" class="lang-active">Visart Design — arxitektura va interyer firmasi. O'zbekiston va MDH bo'ylab birinchi suhbatdan to uyni topshirishgacha siz bilan bitta jamoa ishlaydi.</span><span data-lang="ru">Visart Design — архитектурно-дизайнерская фирма. По Узбекистану и странам СНГ с вами работает одна команда — от первой встречи до сдачи дома.</span></p>
+      <p class="about-text"><span data-lang="uz" class="lang-active">Visart Design — arxitektura va interyer firmasi. O'zbekiston va MDH bo'ylab birinchi suhbatdan to uyni topshirishgacha siz bilan bitta jamoa ishlaydi.</span><span data-lang="ru">Visart Design — архитектурно-дизайнерская фирма. По Узбекистану и странам СНГ с вами работает одна команда — от первой встречи до сдачи дома.</span></p>
       <div class="about-stats">
         <div><div class="astat-n" id="statYears">10+</div><div class="astat-l"><span data-lang="uz" class="lang-active">yillik tajriba</span><span data-lang="ru">лет опыта</span></div></div>
         <div><div class="astat-n" id="statProjects">200+</div><div class="astat-l"><span data-lang="uz" class="lang-active">loyiha</span><span data-lang="ru">проектов</span></div></div>
@@ -964,7 +964,7 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
     <form class="contact-form reveal" onsubmit="handleSubmit(event)">
       <div class="form-row">
         <div class="field"><label data-lang="uz" class="lang-active">Ism</label><label data-lang="ru">Имя</label><input type="text" id="cName" name="name" required placeholder="Alisher Karimov"></div>
-        <div class="field"><label>Telefon</label><input type="text" id="cPhone" name="phone" required placeholder="+998 90 ..."></div>
+        <div class="field"><label>Telefon</label><input type="tel" id="cPhone" name="phone" required inputmode="tel" autocomplete="tel" placeholder="+998 90 ..."><input type="text" id="cWebsite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0"></div>
       </div>
       <div class="field">
         <label data-lang="uz" class="lang-active">Xizmat turi</label><label data-lang="ru">Тип услуги</label>
@@ -1009,12 +1009,14 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
       <div class="eyebrow"><span data-lang="uz" class="lang-active">Savol-javob</span><span data-lang="ru">Вопросы и ответы</span></div>
       <h2><span data-lang="uz" class="lang-active">Ko'p beriladigan savollar</span><span data-lang="ru">Частые вопросы</span></h2>
     </div>
+    <div id="faqList">
     <details><summary><span data-lang="uz" class="lang-active">Loyiha narxi nimaga bog'liq?</span><span data-lang="ru">От чего зависит стоимость проекта?</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">Narx maydon, uslub darajasi (Standart, Premium, Lyuks), qavatlar soni va tanlangan xizmatlar tarkibiga bog'liq. Saytdagi kalkulyator taxminiy narxni ko'rsatadi, aniq narx bepul konsultatsiyada belgilanadi.</span><span data-lang="ru">Стоимость зависит от площади, уровня стиля (Стандарт, Премиум, Люкс), этажности и состава услуг. Калькулятор на сайте показывает примерную цену, точная определяется на бесплатной консультации.</span></div></details>
     <details><summary><span data-lang="uz" class="lang-active">Loyiha qancha vaqtda tayyor bo'ladi?</span><span data-lang="ru">Сколько времени занимает проект?</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">Arxitektura loyihasi odatda 15–25 kun, interyer dizayn paketga qarab 10–35 kun davom etadi. Pod klyuch qurilish maydonga qarab 3 oydan 12 oygacha.</span><span data-lang="ru">Архитектурный проект обычно занимает 15–25 дней, дизайн интерьера — 10–35 дней в зависимости от пакета. Строительство под ключ — от 3 до 12 месяцев в зависимости от площади.</span></div></details>
     <details><summary><span data-lang="uz" class="lang-active">To'lov qanday amalga oshiriladi?</span><span data-lang="ru">Как происходит оплата?</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">Barcha ishlar shartnoma asosida bajariladi. Pod klyuch qurilishda to'lov 4 bosqichda: 30% — shartnomada, 30% — qurilish ishlaridan keyin, 30% — pardozlash bosqichida, 10% — topshirishda. Loyihalash xizmatlari bo'yicha to'lov tartibi shartnomada kelishiladi.</span><span data-lang="ru">Все работы выполняются по договору. При строительстве под ключ оплата в 4 этапа: 30% — при подписании, 30% — после строительных работ, 30% — на этапе отделки, 10% — при сдаче. Порядок оплаты проектных услуг согласуется в договоре.</span></div></details>
     <details><summary><span data-lang="uz" class="lang-active">Ruxsatnoma va hujjatlarni ham tayyorlaysizmi?</span><span data-lang="ru">Оформляете ли вы разрешения и документы?</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">Ha. Kadastr, mygov.uz orqali olinadigan qurilish ruxsatnomalari va qurilishdan oldin kerak bo'ladigan boshqa rasmiy hujjatlarni tayyorlaymiz.</span><span data-lang="ru">Да. Готовим кадастр, разрешения на строительство через mygov.uz и другие официальные документы, необходимые до начала строительства.</span></div></details>
     <details><summary><span data-lang="uz" class="lang-active">Qurilish jarayonini nazorat qilasizmi?</span><span data-lang="ru">Контролируете ли вы строительство?</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">Ha. Mualliflik nazorati doirasida obyektga muntazam borib, ishlar loyihaga mos bajarilishini tekshiramiz. Pod klyuch xizmatda qurilishni to'liq o'zimiz olib boramiz.</span><span data-lang="ru">Да. В рамках авторского надзора регулярно выезжаем на объект и проверяем соответствие работ проекту. В услуге под ключ ведём строительство полностью сами.</span></div></details>
     <details><summary><span data-lang="uz" class="lang-active">Toshkentdan tashqarida ham ishlaysizmi?</span><span data-lang="ru">Работаете ли вы за пределами Ташкента?</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">Ha, O'zbekiston bo'ylab va MDH davlatlarida loyihalar bajaramiz. Konsultatsiya va loyihani kelishish onlayn ham o'tkazilishi mumkin.</span><span data-lang="ru">Да, работаем по всему Узбекистану и в странах СНГ. Консультация и согласование проекта возможны онлайн.</span></div></details>
+    </div>
   </div>
 </section>
 
@@ -1739,8 +1741,17 @@ async function handleSubmit(e){
     phone:document.getElementById('cPhone')?.value||'',
     service:document.getElementById('svcSelect')?.value||'',
     message:document.getElementById('cMessage')?.value||'',
+    website:document.getElementById('cWebsite')?.value||'',
     lang,page:location.href,ts:new Date().toISOString()
   };
+  const digits=payload.phone.replace(/\D/g,'');
+  if(digits.length<9||digits.length>15){
+    const ph=document.getElementById('cPhone');
+    ph.setCustomValidity(lang==='uz'?"Telefon raqamini to'liq kiriting, masalan +998 90 123 45 67":"Введите полный номер, например +998 90 123 45 67");
+    ph.reportValidity();
+    setTimeout(()=>ph.setCustomValidity(''),2500);
+    return;
+  }
   btn.disabled=true;
   btn.textContent=lang==='uz'?"Yuborilmoqda...":"Отправка...";
   try{

@@ -95,6 +95,30 @@ input,select,textarea{font-family:inherit;font-size:14px}
 #pSeoList li.ok{color:#3E7B4F}#pSeoList li.ok::before{content:'✓ '}#pSeoList li.no::before{content:'○ '}
 .seo-box .hint{display:block;margin-top:6px}
 .seo-sep{font-size:12px;font-weight:600;color:var(--gold,#A9895A);border-top:1px solid var(--line);padding-top:14px;letter-spacing:.3px;text-transform:uppercase}
+.tabs{flex-wrap:wrap}
+.tab-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:9px;background:#B5483B;color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
+.tab-badge[hidden]{display:none}
+.mini-select{padding:9px 10px;border:1px solid var(--line);border-radius:3px;font-size:13px;background:#fff}
+.panel-hint{font-size:12.5px;color:var(--t3);margin:-6px 0 18px;max-width:760px;line-height:1.6}
+.lead-status{padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px}
+.lead-status.st-new{background:#FDECEA;border-color:#E9B4AE}
+.lead-status.st-contacted{background:#FFF6E0;border-color:#E8D3A0}
+.lead-status.st-contract{background:#E7F4EA;border-color:#A9D2B2}
+.lead-status.st-rejected{background:#F1F1F1}
+.lead-note{width:100%;min-width:140px;padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px}
+.lead-msg{max-width:280px;font-size:12.5px;color:var(--t2);white-space:pre-wrap}
+.site-card{background:#fff;border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:18px}
+.site-card h3{font-size:15px;margin-bottom:14px}
+.site-img-row{display:flex;gap:16px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.site-img-row img{width:220px;height:124px;object-fit:cover;border-radius:3px;background:#eee}
+.counter{font-size:11px;color:var(--t3);float:right;text-transform:none;letter-spacing:0}
+.counter.bad{color:#B5483B}
+.faq-item{border:1px solid var(--line);border-radius:4px;padding:14px 16px;margin-bottom:12px;background:#FCFBF9}
+.faq-item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;color:var(--t3)}
+.gpreview{border:1px solid var(--line);border-radius:6px;padding:14px 16px;background:#fff;max-width:640px;margin-bottom:18px;font-family:Arial,sans-serif}
+.gpreview .u{font-size:12px;color:#202124}
+.gpreview .t{font-size:19px;color:#1a0dab;margin:4px 0;line-height:1.3}
+.gpreview .d{font-size:13px;color:#4d5156;line-height:1.5}
 </style>
 </head>
 <body>
@@ -116,14 +140,52 @@ input,select,textarea{font-family:inherit;font-size:14px}
     <button class="logout-btn" onclick="doLogout()">Chiqish</button>
   </div>
   <div class="tabs">
-    <button class="tab-btn active" data-tab="portfolio" onclick="switchTab('portfolio')">Portfolio</button>
+    <button class="tab-btn active" data-tab="leads" onclick="switchTab('leads')">Murojaatlar <span class="tab-badge" id="leadsBadge" hidden></span></button>
+    <button class="tab-btn" data-tab="portfolio" onclick="switchTab('portfolio')">Portfolio</button>
+    <button class="tab-btn" data-tab="appearance" onclick="switchTab('appearance')">Sayt ko'rinishi</button>
+    <button class="tab-btn" data-tab="content" onclick="switchTab('content')">FAQ va xizmatlar</button>
     <button class="tab-btn" data-tab="pricing" onclick="switchTab('pricing')">Narxlar</button>
     <button class="tab-btn" data-tab="testimonials" onclick="switchTab('testimonials')">Sharhlar</button>
+    <button class="tab-btn" data-tab="seo" onclick="switchTab('seo')">SEO va analitika</button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">Sozlamalar</button>
   </div>
 
+  <!-- LEADS -->
+  <section class="tab-panel active" id="tab-leads">
+    <div class="panel-head">
+      <h2>Murojaatlar</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="leadsFilter" onchange="renderLeads()" class="mini-select">
+          <option value="">Barchasi</option><option value="new">Yangi</option><option value="contacted">Bog'lanildi</option><option value="contract">Shartnoma</option><option value="rejected">Rad etildi</option>
+        </select>
+        <button class="btn-secondary" onclick="exportLeads()">Excel'ga yuklab olish</button>
+        <button class="btn-secondary" onclick="loadLeads()">Yangilash</button>
+      </div>
+    </div>
+    <div id="leadsWrap"></div>
+  </section>
+
+  <!-- APPEARANCE -->
+  <section class="tab-panel" id="tab-appearance">
+    <div class="panel-head"><h2>Sayt ko'rinishi</h2><button class="btn btn-primary" onclick="saveSite()">Saqlash</button></div>
+    <p class="panel-hint">Bosh ekran va "Biz haqimizda" bo'limining rasmi va matnlari. O'zgarishlar saqlangach darhol saytda ko'rinadi. Katta rasm uchun gorizontal (eni 1600–2400 px) surat tanlang.</p>
+    <div id="appearanceForm"></div>
+  </section>
+
+  <!-- CONTENT: FAQ + SERVICES -->
+  <section class="tab-panel" id="tab-content">
+    <div class="panel-head"><h2>FAQ va xizmatlar</h2><button class="btn btn-primary" onclick="saveSite()">Saqlash</button></div>
+    <div id="contentForm"></div>
+  </section>
+
+  <!-- SEO -->
+  <section class="tab-panel" id="tab-seo">
+    <div class="panel-head"><h2>SEO va analitika</h2><button class="btn btn-primary" onclick="saveSite()">Saqlash</button></div>
+    <div id="seoForm"></div>
+  </section>
+
   <!-- PORTFOLIO -->
-  <section class="tab-panel active" id="tab-portfolio">
+  <section class="tab-panel" id="tab-portfolio">
     <div class="panel-head">
       <h2>Portfolio loyihalari</h2>
       <button class="btn btn-primary" onclick="openProjectForm(null)">+ Yangi loyiha</button>
@@ -287,7 +349,7 @@ async function checkAuth(){
 function showDashboard(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('dashboard').style.display='block';
-  loadProjects(); loadPricing(); loadTestimonials(); loadSettings();
+  loadProjects(); loadPricing(); loadTestimonials(); loadSettings(); loadLeads(); loadSite();
 }
 
 // ═══ TABS ═══
@@ -987,6 +1049,211 @@ async function saveSettings(){
 }
 
 checkAuth();
+
+// ═══ MUROJAATLAR (LEADS) ═══
+const LEAD_ST = {new:"Yangi", contacted:"Bog'lanildi", contract:"Shartnoma", rejected:"Rad etildi"};
+async function loadLeads(){
+  try { const r = await apiFetch('/admin/leads'); CACHE.leads = r.leads || []; }
+  catch(e){ CACHE.leads = []; document.getElementById('leadsWrap').innerHTML = '<div class="empty-state">Murojaatlar jadvali hali yaratilmagan. Cloudflare D1 konsolida <b>migration_leads.sql</b> buyrug\'ini ishga tushiring.</div>'; updateLeadsBadge(); return; }
+  renderLeads(); updateLeadsBadge();
+}
+function updateLeadsBadge(){
+  const n = (CACHE.leads||[]).filter(l=>l.status==='new').length;
+  const b = document.getElementById('leadsBadge'); b.textContent = n; b.hidden = !n;
+}
+function escA(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderLeads(){
+  const wrap = document.getElementById('leadsWrap');
+  const f = document.getElementById('leadsFilter').value;
+  const list = (CACHE.leads||[]).filter(l=>!f || l.status===f);
+  if (!list.length){ wrap.innerHTML = '<div class="empty-state">Hozircha murojaat yo\'q. Saytdagi forma orqali yuborilgan har bir ariza shu yerda paydo bo\'ladi.</div>'; return; }
+  wrap.innerHTML = `<table class="data-table"><thead><tr><th>Sana</th><th>Ism</th><th>Telefon</th><th>Xizmat</th><th>Xabar</th><th>Holat</th><th>Izoh</th><th></th></tr></thead><tbody>
+    ${list.map(l=>`<tr>
+      <td style="white-space:nowrap;font-size:12px">${escA((l.created_at||'').replace('T',' ').slice(0,16))}</td>
+      <td>${escA(l.name)}</td>
+      <td style="white-space:nowrap"><a href="tel:${escA((l.phone||'').replace(/[^+\d]/g,''))}">${escA(l.phone)}</a></td>
+      <td style="font-size:12.5px">${escA(l.service)}</td>
+      <td><div class="lead-msg">${escA(l.message)}</div></td>
+      <td><select class="lead-status st-${escA(l.status)}" onchange="updateLead(${l.id},{status:this.value})">
+        ${Object.entries(LEAD_ST).map(([k,v])=>`<option value="${k}" ${l.status===k?'selected':''}>${v}</option>`).join('')}
+      </select></td>
+      <td><input class="lead-note" value="${escA(l.note)}" placeholder="Izoh..." onchange="updateLead(${l.id},{note:this.value})"></td>
+      <td><button class="icon-btn danger" onclick="deleteLead(${l.id})">O'chirish</button></td>
+    </tr>`).join('')}
+  </tbody></table>`;
+}
+async function updateLead(id, patch){
+  try { await apiFetch('/admin/leads/'+id, {method:'PUT', body:JSON.stringify(patch)});
+    const l = CACHE.leads.find(x=>x.id===id); Object.assign(l, patch); renderLeads(); updateLeadsBadge(); toast('Saqlandi'); }
+  catch(e){ toast('Saqlashda xatolik', true); }
+}
+async function deleteLead(id){
+  if (!confirm("Murojaatni o'chirishni tasdiqlaysizmi?")) return;
+  try { await apiFetch('/admin/leads/'+id, {method:'DELETE'}); CACHE.leads = CACHE.leads.filter(x=>x.id!==id); renderLeads(); updateLeadsBadge(); toast("O'chirildi"); }
+  catch(e){ toast("O'chirishda xatolik", true); }
+}
+function exportLeads(){
+  const rows = [['Sana','Ism','Telefon','Xizmat','Xabar','Holat','Izoh']].concat(
+    (CACHE.leads||[]).map(l=>[l.created_at,l.name,l.phone,l.service,l.message,LEAD_ST[l.status]||l.status,l.note]));
+  const csv = '﻿' + rows.map(r=>r.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = 'murojaatlar-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ═══ SAYT KO'RINISHI / FAQ / SEO (site_json) ═══
+const SITE_DEFAULTS = {"hero": {"image": "", "title": {"uz": "Chizmadan to Qurilishgacha", "ru": "От чертежа до строительства"}, "sub": {"uz": "Toshkentda arxitektura loyihalash, interyer dizayn va pod klyuch qurilish — loyihadan kalit topshirishgacha bitta jamoa.", "ru": "Архитектурное проектирование, дизайн интерьера и строительство под ключ в Ташкенте — одна команда от проекта до сдачи ключей."}}, "about": {"image": "", "title": {"uz": "Loyihani qilgan insonlar bilan quruvchilar bir tilda gaplasha oladi", "ru": "Те, кто создал проект, говорят со строителями на одном языке"}, "text": {"uz": "Visart Design — arxitektura va interyer firmasi. O'zbekiston va MDH bo'ylab birinchi suhbatdan to uyni topshirishgacha siz bilan bitta jamoa ishlaydi.", "ru": "Visart Design — архитектурно-дизайнерская фирма. По Узбекистану и странам СНГ с вами работает одна команда — от первой встречи до сдачи дома."}}, "seo": {"title": "VISART ARCHDESIGN — Arxitektura va interyer dizayn | Toshkent", "description": "VISART ARCHDESIGN — Toshkentda arxitektura loyihalash, interyer dizayn va qurilish nazorati. Chizmadan topshirishgacha bitta jamoa. Bepul konsultatsiya.", "gsc": "", "yandex": "", "ga4": "", "metrika": ""}, "services": [{"id": "svc-arxitektura", "title": {"uz": "Arxitektura loyihalash", "ru": "Архитектурное проектирование"}, "desc": {"uz": "Har qanday binoni — uy, noturar bino — loyihasidan boshlab 3D dizayn va ishchi chizmalargacha qilib beramiz.", "ru": "Любое здание — жилое, нежилое — от проекта до 3D-дизайна и рабочих чертежей."}}, {"id": "svc-interyer", "title": {"uz": "Interyer dizayn", "ru": "Дизайн интерьера"}, "desc": {"uz": "Uyingizning ichki dizaynini siz xohlagan uslubda — 3D ko'rinishidan tortib ustalar uchun ishchi chizmalargacha (elektrika, devor, shift, mebel joylashuvi) to'liq tayyorlab beramiz.", "ru": "Дизайн интерьера в выбранном стиле — от 3D-визуализации до полного комплекта рабочих чертежей для мастеров (электрика, перегородки, потолки, расстановка мебели)."}}, {"id": "svc-hujjat", "title": {"uz": "Hujjat va nazorat", "ru": "Документация и надзор"}, "desc": {"uz": "Kadastr, mygov.uz orqali olinadigan ruxsatnomalar va boshqa hujjatlarni — qurilishdan oldin kerak bo'ladigan barcha rasmiy hujjatlarni tayyorlab beramiz.", "ru": "Кадастр, разрешения через mygov.uz и другие документы — оформляем всю официальную документацию, необходимую перед началом строительства."}}, {"id": "svc-qurilish", "title": {"uz": "Qurilish va mualliflik nazorati", "ru": "Строительство и авторский надзор"}, "desc": {"uz": "Eksteryer va interyer dizaynini kalit ostida — ta'mirlash va qurilish ishlarini professional tarzda amalga oshirib beramiz.", "ru": "Экстерьер и интерьер под ключ — ремонт и строительство на профессиональном уровне."}}], "faq": [{"q": {"uz": "Loyiha narxi nimaga bog'liq?", "ru": "От чего зависит стоимость проекта?"}, "a": {"uz": "Narx maydon, uslub darajasi (Standart, Premium, Lyuks), qavatlar soni va tanlangan xizmatlar tarkibiga bog'liq. Saytdagi kalkulyator taxminiy narxni ko'rsatadi, aniq narx bepul konsultatsiyada belgilanadi.", "ru": "Стоимость зависит от площади, уровня стиля (Стандарт, Премиум, Люкс), этажности и состава услуг. Калькулятор на сайте показывает примерную цену, точная определяется на бесплатной консультации."}}, {"q": {"uz": "Loyiha qancha vaqtda tayyor bo'ladi?", "ru": "Сколько времени занимает проект?"}, "a": {"uz": "Arxitektura loyihasi odatda 15–25 kun, interyer dizayn paketga qarab 10–35 kun davom etadi. Pod klyuch qurilish maydonga qarab 3 oydan 12 oygacha.", "ru": "Архитектурный проект обычно занимает 15–25 дней, дизайн интерьера — 10–35 дней в зависимости от пакета. Строительство под ключ — от 3 до 12 месяцев в зависимости от площади."}}, {"q": {"uz": "To'lov qanday amalga oshiriladi?", "ru": "Как происходит оплата?"}, "a": {"uz": "Barcha ishlar shartnoma asosida bajariladi. Pod klyuch qurilishda to'lov 4 bosqichda: 30% — shartnomada, 30% — qurilish ishlaridan keyin, 30% — pardozlash bosqichida, 10% — topshirishda. Loyihalash xizmatlari bo'yicha to'lov tartibi shartnomada kelishiladi.", "ru": "Все работы выполняются по договору. При строительстве под ключ оплата в 4 этапа: 30% — при подписании, 30% — после строительных работ, 30% — на этапе отделки, 10% — при сдаче. Порядок оплаты проектных услуг согласуется в договоре."}}, {"q": {"uz": "Ruxsatnoma va hujjatlarni ham tayyorlaysizmi?", "ru": "Оформляете ли вы разрешения и документы?"}, "a": {"uz": "Ha. Kadastr, mygov.uz orqali olinadigan qurilish ruxsatnomalari va qurilishdan oldin kerak bo'ladigan boshqa rasmiy hujjatlarni tayyorlaymiz.", "ru": "Да. Готовим кадастр, разрешения на строительство через mygov.uz и другие официальные документы, необходимые до начала строительства."}}, {"q": {"uz": "Qurilish jarayonini nazorat qilasizmi?", "ru": "Контролируете ли вы строительство?"}, "a": {"uz": "Ha. Mualliflik nazorati doirasida obyektga muntazam borib, ishlar loyihaga mos bajarilishini tekshiramiz. Pod klyuch xizmatda qurilishni to'liq o'zimiz olib boramiz.", "ru": "Да. В рамках авторского надзора регулярно выезжаем на объект и проверяем соответствие работ проекту. В услуге под ключ ведём строительство полностью сами."}}, {"q": {"uz": "Toshkentdan tashqarida ham ishlaysizmi?", "ru": "Работаете ли вы за пределами Ташкента?"}, "a": {"uz": "Ha, O'zbekiston bo'ylab va MDH davlatlarida loyihalar bajaramiz. Konsultatsiya va loyihani kelishish onlayn ham o'tkazilishi mumkin.", "ru": "Да, работаем по всему Узбекистану и в странах СНГ. Консультация и согласование проекта возможны онлайн."}}]};
+let SITE = null;
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function mergeSite(saved){
+  const d = clone(SITE_DEFAULTS);
+  if (!saved || typeof saved!=='object') return d;
+  ['hero','about','seo'].forEach(k=>{
+    if (saved[k] && typeof saved[k]==='object'){
+      Object.keys(saved[k]).forEach(f=>{
+        const v = saved[k][f];
+        if (v && typeof v==='object' && !Array.isArray(v)) d[k][f] = Object.assign({}, d[k][f]||{}, v);
+        else if (v!==undefined) d[k][f] = v;
+      });
+    }
+  });
+  if (Array.isArray(saved.services)) d.services = d.services.map(s=>{ const x = saved.services.find(y=>y&&y.id===s.id); return x ? {id:s.id, title:Object.assign({},s.title,x.title), desc:Object.assign({},s.desc,x.desc)} : s; });
+  if (Array.isArray(saved.faq) && saved.faq.length) d.faq = saved.faq;
+  return d;
+}
+async function loadSite(){
+  try { const r = await apiFetch('/admin/site'); SITE = mergeSite(r.site); } catch(e){ SITE = mergeSite(null); }
+  renderSiteForms();
+}
+function getPath(o,p){ return p.split('.').reduce((a,k)=>a==null?a:a[k], o); }
+function setPath(o,p,v){ const ks=p.split('.'); let a=o; ks.slice(0,-1).forEach((k,i)=>{ if(a[k]==null) a[k]=/^\d+$/.test(ks[i+1])?[]:{}; a=a[k]; }); a[ks[ks.length-1]]=v; }
+function fIn(path,label,opts={}){
+  const v = getPath(SITE,path)||'';
+  const cnt = opts.max ? `<span class="counter" data-counter="${path}" data-max="${opts.max}"></span>` : '';
+  const ru = path.endsWith('.ru') ? ' data-ru="1"' : '';
+  const input = opts.area
+    ? `<textarea data-path="${path}"${ru} rows="${opts.rows||3}" placeholder="${escA(opts.ph||'')}">${escA(v)}</textarea>`
+    : `<input type="text" data-path="${path}"${ru} value="${escA(v)}" placeholder="${escA(opts.ph||'')}">`;
+  return `<div class="field ${opts.full?'full':''}"><label>${label}${cnt}</label>${input}${opts.hint?`<div class="hint">${opts.hint}</div>`:''}</div>`;
+}
+function imgPicker(path,label,fallback){
+  const v = getPath(SITE,path)||'';
+  const id = path.replace(/\./g,'_');
+  return `<div class="site-img-row">
+    <img id="${id}_prev" src="${escA(v||fallback)}" alt="">
+    <div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:8px">${label}${v?'':' — hozir standart rasm'}</div>
+      <input type="hidden" data-path="${path}" id="${id}" value="${escA(v)}">
+      <input type="file" accept="image/*" id="${id}_file" style="display:none" onchange="uploadToField(this,'${id}','${id}_prev')">
+      <button type="button" class="icon-btn" onclick="document.getElementById('${id}_file').click()">Rasm tanlash</button>
+      <button type="button" class="icon-btn" onclick="document.getElementById('${id}').value='';document.getElementById('${id}_prev').src='${fallback}'">Standartga qaytarish</button>
+    </div></div>`;
+}
+function trBtn(){ return `<button type="button" class="icon-btn" onclick="translateSite(this)">UZ → RU tarjima (bo'sh ruscha maydonlar)</button>`; }
+function renderSiteForms(){
+  if (!SITE) return;
+  document.getElementById('appearanceForm').innerHTML = `
+    <div class="site-card"><h3>Bosh ekran (hero)</h3>
+      ${imgPicker('hero.image','Bosh ekran rasmi','/assets/hero.webp')}
+      <div class="form-grid">
+        ${fIn('hero.title.uz','Sarlavha (UZ)',{max:60})}${fIn('hero.title.ru','Sarlavha (RU)',{max:60})}
+        ${fIn('hero.sub.uz','Qisqa tavsif (UZ)',{area:true,max:180})}${fIn('hero.sub.ru','Qisqa tavsif (RU)',{area:true,max:180})}
+      </div></div>
+    <div class="site-card"><h3>"Biz haqimizda" bo'limi</h3>
+      ${imgPicker('about.image','Fon rasmi','/assets/about-office.webp')}
+      <div class="form-grid">
+        ${fIn('about.title.uz','Sarlavha (UZ)')}${fIn('about.title.ru','Sarlavha (RU)')}
+        ${fIn('about.text.uz','Matn (UZ)',{area:true,rows:4})}${fIn('about.text.ru','Matn (RU)',{area:true,rows:4})}
+      </div></div>
+    ${trBtn()}`;
+  document.getElementById('contentForm').innerHTML = `
+    <div class="site-card"><h3>Xizmatlar (4 ta)</h3>
+      ${SITE.services.map((s,i)=>`<div class="faq-item"><div class="faq-item-head">${i+1}-xizmat</div><div class="form-grid">
+        ${fIn(`services.${i}.title.uz`,'Nomi (UZ)')}${fIn(`services.${i}.title.ru`,'Nomi (RU)')}
+        ${fIn(`services.${i}.desc.uz`,'Tavsif (UZ)',{area:true})}${fIn(`services.${i}.desc.ru`,'Tavsif (RU)',{area:true})}
+      </div></div>`).join('')}
+    </div>
+    <div class="site-card"><h3>Savol-javob (FAQ) <span class="counter">Google natijalarida chiqishi uchun 4–8 ta savol tavsiya etiladi</span></h3>
+      ${SITE.faq.map((f,i)=>`<div class="faq-item"><div class="faq-item-head"><span>${i+1}-savol</span><span>
+        <button type="button" class="icon-btn" style="padding:3px 8px" onclick="moveFaq(${i},-1)" ${i===0?'disabled':''}>&#9650;</button>
+        <button type="button" class="icon-btn" style="padding:3px 8px" onclick="moveFaq(${i},1)" ${i===SITE.faq.length-1?'disabled':''}>&#9660;</button>
+        <button type="button" class="icon-btn danger" onclick="removeFaq(${i})">O'chirish</button></span></div>
+        <div class="form-grid">
+          ${fIn(`faq.${i}.q.uz`,'Savol (UZ)')}${fIn(`faq.${i}.q.ru`,'Savol (RU)')}
+          ${fIn(`faq.${i}.a.uz`,'Javob (UZ)',{area:true})}${fIn(`faq.${i}.a.ru`,'Javob (RU)',{area:true})}
+        </div></div>`).join('')}
+      <button type="button" class="icon-btn" onclick="addFaq()">+ Savol qo'shish</button>
+    </div>
+    ${trBtn()}`;
+  document.getElementById('seoForm').innerHTML = `
+    <div class="site-card"><h3>Google'da qanday ko'rinadi</h3>
+      <div class="gpreview"><div class="u">visartdesign.uz</div><div class="t" id="gpT"></div><div class="d" id="gpD"></div></div>
+      <div class="form-grid">
+        ${fIn('seo.title','Sahifa sarlavhasi (title)',{max:60,full:true,hint:"50–60 belgi. Asosiy kalit so'z va shahar nomi boshida bo'lsin: \"Arxitektura va interyer dizayn Toshkent\"."})}
+        ${fIn('seo.description','Tavsif (meta description)',{area:true,max:160,full:true,hint:"140–160 belgi. Nima taklif qilasiz + qayerda + harakatga chaqiruv (bepul konsultatsiya)."})}
+      </div></div>
+    <div class="site-card"><h3>Qidiruv tizimlari va analitika</h3>
+      <div class="form-grid">
+        ${fIn('seo.gsc','Google Search Console kodi',{ph:'masalan: 9E6f7W1IiJwMtJN79...',hint:'Search Console → "HTML tag" usuli → content="..." ichidagi qiymat.'})}
+        ${fIn('seo.yandex','Yandex.Webmaster kodi',{ph:'masalan: 48e42c395e7c6d7b',hint:'Yandex.Webmaster → "Meta-teg" usuli → content="..." ichidagi qiymat.'})}
+        ${fIn('seo.ga4','Google Analytics 4 ID',{ph:'G-XXXXXXXXXX',hint:"GA4 → Admin → Data streams → Measurement ID."})}
+        ${fIn('seo.metrika','Yandex Metrika hisoblagich raqami',{ph:'masalan: 98765432',hint:'Metrika → hisoblagich sozlamalaridagi raqam.'})}
+      </div></div>`;
+  refreshCounters();
+}
+function collectSite(){
+  document.querySelectorAll('[data-path]').forEach(el=>setPath(SITE, el.dataset.path, el.value));
+  return SITE;
+}
+function refreshCounters(){
+  document.querySelectorAll('[data-counter]').forEach(c=>{
+    const el = document.querySelector(`[data-path="${c.dataset.counter}"]`); const n = (el.value||'').length; const max = +c.dataset.max;
+    c.textContent = n+' / '+max; c.classList.toggle('bad', n>max);
+  });
+  const t = document.querySelector('[data-path="seo.title"]'), d = document.querySelector('[data-path="seo.description"]');
+  if (t){ document.getElementById('gpT').textContent = t.value; document.getElementById('gpD').textContent = d.value; }
+}
+document.addEventListener('input', e=>{ if (e.target.dataset && e.target.dataset.path) refreshCounters(); });
+function addFaq(){ collectSite(); SITE.faq.push({q:{uz:'',ru:''},a:{uz:'',ru:''}}); renderSiteForms(); }
+function removeFaq(i){ if(!confirm("Savolni o'chirasizmi?")) return; collectSite(); SITE.faq.splice(i,1); renderSiteForms(); }
+function moveFaq(i,d){ collectSite(); const j=i+d; if(j<0||j>=SITE.faq.length) return; [SITE.faq[i],SITE.faq[j]]=[SITE.faq[j],SITE.faq[i]]; renderSiteForms(); }
+function validateSeoIds(s){
+  const e=[];
+  if (s.seo.ga4 && !/^G-[A-Z0-9]{4,20}$/.test(s.seo.ga4.trim())) e.push('GA4 ID "G-" bilan boshlanishi kerak');
+  if (s.seo.metrika && !/^\d{5,12}$/.test(s.seo.metrika.trim())) e.push('Metrika raqami faqat raqamlardan iborat bo\'lishi kerak');
+  if (s.seo.gsc && !/^[A-Za-z0-9_-]{10,100}$/.test(s.seo.gsc.trim())) e.push('Search Console kodida faqat content="..." ichidagi qiymatni kiriting');
+  if (s.seo.yandex && !/^[A-Za-z0-9]{8,64}$/.test(s.seo.yandex.trim())) e.push('Yandex kodida faqat content="..." ichidagi qiymatni kiriting');
+  return e;
+}
+async function saveSite(){
+  const s = collectSite();
+  s.faq = s.faq.filter(f=>f.q.uz.trim() && f.a.uz.trim());
+  const errs = validateSeoIds(s);
+  if (errs.length){ toast(errs[0], true); return; }
+  try { await apiFetch('/admin/site', {method:'PUT', body:JSON.stringify(s)}); toast('Saqlandi — saytda yangilandi'); renderSiteForms(); }
+  catch(e){ toast('Saqlashda xatolik', true); }
+}
+async function translateSite(btn){
+  collectSite();
+  const texts = {};
+  document.querySelectorAll('[data-path][data-ru="1"]').forEach(el=>{
+    if (el.value.trim()) return;
+    const uzPath = el.dataset.path.replace(/\.ru$/,'.uz');
+    const uz = getPath(SITE, uzPath);
+    if (uz && uz.trim()) texts[el.dataset.path] = uz;
+  });
+  if (!Object.keys(texts).length){ toast("Bo'sh ruscha maydon yo'q. O'zgartirgan matningizning ruscha maydonini tozalab, qayta bosing.", true); return; }
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Tarjima qilinmoqda...';
+  try {
+    const r = await apiFetch('/admin/translate', {method:'POST', body:JSON.stringify({texts})});
+    Object.entries(r.translations||{}).forEach(([p,v])=>{ if(v){ setPath(SITE,p,v); const el=document.querySelector(`[data-path="${p}"]`); if(el) el.value=v; } });
+    refreshCounters(); toast('Tarjima tayyor — tekshirib, Saqlash tugmasini bosing');
+  } catch(e){
+    const code=(e&&e.data&&e.data.error)||'';
+    toast(code==='ai_not_configured' ? "Tarjima sozlanmagan: Cloudflare'da Workers AI (AI) bog'lamasini qo'shing" : 'Tarjimada xatolik', true);
+  } finally { btn.disabled=false; btn.textContent=old; }
+}
 </script>
 </body>
 </html>
