@@ -18,12 +18,19 @@ export async function onRequestGet({ env }) {
       id: p.id,
       cat: p.category,
       status: p.status,
+      slug: p.slug || '',
+      slugRu: p.slug_ru || '',
       title: { uz: p.title_uz, ru: p.title_ru },
       type: { uz: p.type_uz, ru: p.type_ru },
       desc: { uz: p.desc_uz, ru: p.desc_ru },
       thumb: p.thumb_url,
       hero: p.hero_url,
       gallery: JSON.parse(p.gallery_urls || '[]'),
+      area: p.area_m2 || null,
+      year: p.year || null,
+      location: { uz: p.location_uz || '', ru: p.location_ru || '' },
+      style: { uz: p.style_uz || '', ru: p.style_ru || '' },
+      duration: { uz: p.duration_uz || '', ru: p.duration_ru || '' },
     }));
 
     const testimonials = testimonialsRes.results.map((t) => ({

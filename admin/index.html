@@ -87,6 +87,14 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .stars-input{display:flex;gap:4px}
 .hint{font-size:11.5px;color:var(--t3);margin-top:6px}
 @media(max-width:700px){.form-grid{grid-template-columns:1fr}.tab-panel{padding:18px}}
+.seo-box{background:#F6F3EE;border:1px solid var(--line);border-radius:4px;padding:14px 16px;margin-bottom:18px}
+.seo-top{display:flex;align-items:center;gap:14px;margin-bottom:8px;font-size:13px}
+.seo-bar{flex:1;height:6px;background:#E7E3D9;border-radius:3px;overflow:hidden}
+.seo-bar i{display:block;height:100%;width:0;background:#B5483B;transition:width .3s,background .3s}
+#pSeoList{list-style:none;font-size:12px;color:#6B675C;margin:0 0 10px;display:grid;grid-template-columns:1fr 1fr;gap:3px 16px}
+#pSeoList li.ok{color:#3E7B4F}#pSeoList li.ok::before{content:'✓ '}#pSeoList li.no::before{content:'○ '}
+.seo-box .hint{display:block;margin-top:6px}
+.seo-sep{font-size:12px;font-weight:600;color:var(--gold,#A9895A);border-top:1px solid var(--line);padding-top:14px;letter-spacing:.3px;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -150,6 +158,12 @@ input,select,textarea{font-family:inherit;font-size:14px}
   <div class="modal-box">
     <h3 id="projectModalTitle">Yangi loyiha</h3>
     <input type="hidden" id="pId">
+    <div class="seo-box">
+      <div class="seo-top"><strong>SEO tayyorligi: <span id="pSeoPct">0%</span></strong><div class="seo-bar"><i id="pSeoBar"></i></div></div>
+      <ul id="pSeoList"></ul>
+      <button type="button" class="icon-btn" id="pTranslateBtn" onclick="translateProject()">UZ → RU avtomatik tarjima</button>
+      <span class="hint">O'zbekcha maydonlarni to'ldiring, so'ng tugmani bosing — ruscha maydonlar to'ldiriladi. Saqlashdan oldin tekshirib chiqing.</span>
+    </div>
     <div class="form-grid">
       <div class="field"><label>Kategoriya</label>
         <select id="pCategory"><option value="interior">Interyer</option><option value="architecture">Arxitektura</option><option value="drawings">Chizmalar</option></select>
@@ -161,8 +175,19 @@ input,select,textarea{font-family:inherit;font-size:14px}
       <div class="field"><label>Nomi (RU)</label><input type="text" id="pTitleRu"></div>
       <div class="field"><label>Turi (UZ)</label><input type="text" id="pTypeUz" placeholder="Interyer dizayn"></div>
       <div class="field"><label>Turi (RU)</label><input type="text" id="pTypeRu" placeholder="Дизайн интерьера"></div>
-      <div class="field full"><label>Tavsif (UZ)</label><textarea id="pDescUz"></textarea></div>
-      <div class="field full"><label>Tavsif (RU)</label><textarea id="pDescRu"></textarea></div>
+      <div class="field full"><label>Tavsif (UZ) — kamida 300 belgi</label><textarea id="pDescUz" rows="5" placeholder="Loyiha nima haqida, qanday yechimlar qo'llanildi, qaysi xonalar, materiallar, natija..."></textarea></div>
+      <div class="field full"><label>Tavsif (RU)</label><textarea id="pDescRu" rows="5"></textarea></div>
+      <div class="field full seo-sep">Loyiha dalillari — Google va mijoz uchun eng muhim ma'lumotlar</div>
+      <div class="field"><label>Maydon (m²)</label><input type="number" id="pArea" min="1" placeholder="180"></div>
+      <div class="field"><label>Yil</label><input type="number" id="pYear" min="2000" max="2100" placeholder="2025"></div>
+      <div class="field"><label>Joylashuv (UZ)</label><input type="text" id="pLocUz" placeholder="Yunusobod tumani"></div>
+      <div class="field"><label>Joylashuv (RU)</label><input type="text" id="pLocRu" placeholder="Юнусабадский район"></div>
+      <div class="field"><label>Uslub (UZ)</label><input type="text" id="pStyleUz" placeholder="Zamonaviy klassika"></div>
+      <div class="field"><label>Uslub (RU)</label><input type="text" id="pStyleRu" placeholder="Современная классика"></div>
+      <div class="field"><label>Muddat (UZ)</label><input type="text" id="pDurUz" placeholder="3 oy"></div>
+      <div class="field"><label>Muddat (RU)</label><input type="text" id="pDurRu" placeholder="3 месяца"></div>
+      <div class="field full"><label>Vazifa (UZ) — mijoz nimani so'radi</label><textarea id="pTaskUz" rows="3" placeholder="Masalan: 4 kishilik oila uchun yorug' va saqlash joyi ko'p kvartira..."></textarea></div>
+      <div class="field full"><label>Vazifa (RU)</label><textarea id="pTaskRu" rows="3"></textarea></div>
       <div class="field full"><label>Asosiy rasm (thumb / hero)</label>
         <div class="upload-row">
           <img id="pThumbPreview" src="" alt="">
@@ -328,6 +353,7 @@ async function uploadToField(input, urlFieldId, previewId){
     const url = await uploadFile(file);
     document.getElementById(urlFieldId).value = url;
     document.getElementById(previewId).src = url;
+    if (document.getElementById('pSeoPct')) updateSeoScore();
     toast('Rasm yuklandi');
   } catch(e){ toast('Rasm yuklashda xatolik', true); }
 }
@@ -344,6 +370,7 @@ async function uploadGalleryFiles(input){
   input.value = '';
 }
 function renderGalleryList(){
+  setTimeout(()=>{ if(typeof updateSeoScore==='function' && document.getElementById('pSeoPct')) updateSeoScore(); },0);
   const wrap = document.getElementById('pGalleryList');
   wrap.innerHTML = currentGalleryUrls.map((u,i)=>`
     <div class="gallery-item"><img src="${u}"><button type="button" onclick="removeGalleryImg(${i})">×</button></div>
@@ -366,7 +393,7 @@ function renderProjectsTable(){
     return;
   }
   wrap.innerHTML = `<table class="data-table"><thead><tr>
-    <th>Tartib</th><th>Rasm</th><th>Nomi</th><th>Kategoriya</th><th>Holati</th><th></th>
+    <th>Tartib</th><th>Rasm</th><th>Nomi</th><th>Kategoriya</th><th>Holati</th><th>URL (SEO)</th><th></th>
   </tr></thead><tbody>
     ${CACHE.projects.map((p,i)=>`
       <tr>
@@ -378,6 +405,7 @@ function renderProjectsTable(){
         <td>${p.title_uz}</td>
         <td>${p.category}</td>
         <td>${p.status==='done'?'Bajarilgan':'3D vizualizatsiya'}</td>
+        <td style="font-size:11px">${p.slug?`<a href="/loyihalar/${p.slug}" target="_blank" rel="noopener">/loyihalar/${p.slug}</a>`:'<span style="color:var(--muted)">saqlangach paydo bo\'ladi</span>'}</td>
         <td class="row-actions">
           <button class="icon-btn" onclick="openProjectForm(${p.id})">Tahrirlash</button>
           <button class="icon-btn danger" onclick="deleteProject(${p.id})">O'chirish</button>
@@ -385,7 +413,7 @@ function renderProjectsTable(){
       </tr>
     `).join('')}
   </tbody></table>
-  <p style="font-size:11.5px;color:var(--muted);margin-top:10px">Tartib o'qlari orqali loyihalarning bosh sahifadagi Portfolio bo'limida chiqish tartibini belgilaysiz — yuqoridagi loyiha birinchi ko'rinadi.</p>`;
+  <p style="font-size:11.5px;color:var(--muted);margin-top:10px">Tartib o'qlari orqali loyihalarning bosh sahifadagi Portfolio bo'limida chiqish tartibini belgilaysiz — yuqoridagi loyiha birinchi ko'rinadi. URL ustuni — har bir loyihaning Google'da ko'rinadigan mustaqil sahifasi, avtomatik yaratiladi.</p>`;
 }
 async function moveProject(id, dir){
   const idx = CACHE.projects.findIndex(p=>p.id===id);
@@ -423,11 +451,61 @@ function openProjectForm(id){
   document.getElementById('pTypeRu').value = p ? p.type_ru : '';
   document.getElementById('pDescUz').value = p ? p.desc_uz : '';
   document.getElementById('pDescRu').value = p ? p.desc_ru : '';
+  const setv=(id,v)=>{document.getElementById(id).value = (v===null||v===undefined)?'':v;};
+  setv('pArea', p&&p.area_m2); setv('pYear', p&&p.year);
+  setv('pLocUz', p&&p.location_uz); setv('pLocRu', p&&p.location_ru);
+  setv('pStyleUz', p&&p.style_uz); setv('pStyleRu', p&&p.style_ru);
+  setv('pDurUz', p&&p.duration_uz); setv('pDurRu', p&&p.duration_ru);
+  setv('pTaskUz', p&&p.task_uz); setv('pTaskRu', p&&p.task_ru);
   document.getElementById('pThumbUrl').value = p ? p.thumb_url : '';
   document.getElementById('pThumbPreview').src = p ? p.thumb_url : '';
   currentGalleryUrls = p ? JSON.parse(p.gallery_urls || '[]') : [];
   renderGalleryList();
+  updateSeoScore();
   document.getElementById('projectModal').classList.add('active');
+}
+// ═══ SEO TAYYORLIGI ═══
+function projectSeoChecks(){
+  const v=id=>(document.getElementById(id).value||'').trim();
+  return [
+    ['Nomi (UZ va RU)', v('pTitleUz').length>=4 && v('pTitleRu').length>=4],
+    ['Tavsif UZ ≥ 300 belgi', v('pDescUz').length>=300],
+    ['Tavsif RU ≥ 300 belgi', v('pDescRu').length>=300],
+    ['Maydon (m²)', !!v('pArea')],
+    ['Joylashuv', !!v('pLocUz') && !!v('pLocRu')],
+    ['Yil', !!v('pYear')],
+    ['Uslub', !!v('pStyleUz') && !!v('pStyleRu')],
+    ['Vazifa', !!v('pTaskUz') && !!v('pTaskRu')],
+    ['Asosiy rasm', !!v('pThumbUrl')],
+    ['Galereya ≥ 4 rasm', (currentGalleryUrls||[]).length>=4],
+  ];
+}
+function updateSeoScore(){
+  const checks=projectSeoChecks();
+  const ok=checks.filter(c=>c[1]).length, pct=Math.round(ok/checks.length*100);
+  document.getElementById('pSeoPct').textContent=pct+'%';
+  const bar=document.getElementById('pSeoBar'); bar.style.width=pct+'%';
+  bar.style.background=pct>=80?'#3E7B4F':pct>=50?'#C49A3A':'#B5483B';
+  document.getElementById('pSeoList').innerHTML=checks.map(c=>`<li class="${c[1]?'ok':'no'}">${c[0]}</li>`).join('');
+}
+document.addEventListener('input',e=>{ if(e.target.closest && e.target.closest('#projectModal')) updateSeoScore(); });
+// ═══ UZ → RU TARJIMA ═══
+async function translateProject(){
+  const pairs=[['pTitleUz','pTitleRu'],['pTypeUz','pTypeRu'],['pDescUz','pDescRu'],['pLocUz','pLocRu'],['pStyleUz','pStyleRu'],['pDurUz','pDurRu'],['pTaskUz','pTaskRu']];
+  const texts={};
+  pairs.forEach(([uz,ru])=>{ const t=document.getElementById(uz).value.trim(); if(t) texts[ru]=t; });
+  if(!Object.keys(texts).length){ toast("Avval o'zbekcha maydonlarni to'ldiring", true); return; }
+  const btn=document.getElementById('pTranslateBtn'); btn.disabled=true; const old=btn.textContent; btn.textContent='Tarjima qilinmoqda...';
+  try{
+    const r=await apiFetch('/admin/translate',{method:'POST',body:JSON.stringify({texts})});
+    if(!r || !r.ok) throw new Error(r&&r.error);
+    Object.entries(r.translations||{}).forEach(([id,val])=>{ if(val) document.getElementById(id).value=val; });
+    updateSeoScore();
+    toast("Tarjima tayyor — saqlashdan oldin tekshirib chiqing");
+  }catch(e){
+    const code=(e&&e.data&&e.data.error)||(e&&e.message)||'';
+    toast(String(code).includes('ai_not_configured') ? "Tarjima sozlanmagan: Cloudflare'da Workers AI (AI) bog'lamasini qo'shing" : "Tarjimada xatolik", true);
+  }finally{ btn.disabled=false; btn.textContent=old; }
 }
 async function saveProject(){
   const id = document.getElementById('pId').value;
@@ -443,6 +521,16 @@ async function saveProject(){
     thumb_url: document.getElementById('pThumbUrl').value,
     hero_url: document.getElementById('pThumbUrl').value,
     gallery_urls: currentGalleryUrls,
+    area_m2: document.getElementById('pArea').value,
+    year: document.getElementById('pYear').value,
+    location_uz: document.getElementById('pLocUz').value,
+    location_ru: document.getElementById('pLocRu').value,
+    style_uz: document.getElementById('pStyleUz').value,
+    style_ru: document.getElementById('pStyleRu').value,
+    duration_uz: document.getElementById('pDurUz').value,
+    duration_ru: document.getElementById('pDurRu').value,
+    task_uz: document.getElementById('pTaskUz').value,
+    task_ru: document.getElementById('pTaskRu').value,
   };
   if (!body.title_uz || !body.title_ru || !body.thumb_url){
     toast("Nomi va rasm majburiy", true); return;
