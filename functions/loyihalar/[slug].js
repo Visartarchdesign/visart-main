@@ -3,7 +3,9 @@ import { renderProjectPage, notFound } from '../_lib/renderProject.js';
 
 export async function onRequestGet({ params, env }) {
   try {
-    const row = await env.DB.prepare('SELECT * FROM projects WHERE slug = ?').bind(params.slug).first();
+    let slug = String(params.slug || '');
+    try { slug = decodeURIComponent(slug); } catch (e) { /* o'zgarishsiz */ }
+    const row = await env.DB.prepare('SELECT * FROM projects WHERE slug = ?').bind(slug).first();
     if (!row) return notFound(env);
     const rel = await env.DB.prepare(
       'SELECT * FROM projects WHERE id != ? ORDER BY (category = ?) DESC, sort_order ASC LIMIT 3'
