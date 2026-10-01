@@ -305,6 +305,8 @@ input,select,textarea{font-family:inherit;font-size:14px}
 
 <script>
 const API = '/api';
+// Bazadagi nisbiy rasm manzillarini (assets/...) admin sahifasida ham to'g'ri ochilishi uchun ildizdan boshlaymiz.
+function imgSrc(u){ if(!u) return ''; return /^(https?:|data:|blob:|\/)/.test(u) ? u : '/'+u; }
 let CACHE = { projects: [], testimonials: [], pricing: null, settings: null };
 let currentGalleryUrls = [];
 
@@ -458,7 +460,7 @@ function renderAltList(){
   syncAltsFromInputs();
   const imgs = projectImages();
   wrap.innerHTML = imgs.length ? imgs.map(u=>{ const a = currentAlts[u]||{}; const e=v=>String(v||'').replace(/"/g,'&quot;');
-    return `<div class="alt-row"><img src="${e(u)}" alt=""><input data-alt-url="${e(u)}" data-alt-lang="uz" value="${e(a.uz)}" placeholder="Alt-matn (UZ)"><input data-alt-url="${e(u)}" data-alt-lang="ru" value="${e(a.ru)}" placeholder="Alt-matn (RU)"></div>`; }).join('')
+    return `<div class="alt-row"><img src="${e(imgSrc(u))}" alt=""><input data-alt-url="${e(u)}" data-alt-lang="uz" value="${e(a.uz)}" placeholder="Alt-matn (UZ)"><input data-alt-url="${e(u)}" data-alt-lang="ru" value="${e(a.ru)}" placeholder="Alt-matn (RU)"></div>`; }).join('')
     : '<span class="hint">Avval rasm yuklang.</span>';
 }
 // Rasmni brauzerda kichraytirib (640px JPEG) base64 ko'rinishga keltiradi — AI'ga yuborish uchun.
@@ -473,7 +475,7 @@ function imageToB64(url, maxDim){
       resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
     } catch(e){ reject(e); } };
     img.onerror = reject;
-    img.src = url;
+    img.src = imgSrc(url);
   });
 }
 function aiErr(e){
@@ -517,7 +519,7 @@ function renderGalleryList(){
   setTimeout(()=>{ if(typeof updateSeoScore==='function' && document.getElementById('pSeoPct')) updateSeoScore(); },0);
   const wrap = document.getElementById('pGalleryList');
   wrap.innerHTML = currentGalleryUrls.map((u,i)=>`
-    <div class="gallery-item"><img src="${u}"><button type="button" onclick="removeGalleryImg(${i})">×</button></div>
+    <div class="gallery-item"><img src="${imgSrc(u)}"><button type="button" onclick="removeGalleryImg(${i})">×</button></div>
   `).join('');
 }
 function removeGalleryImg(i){ currentGalleryUrls.splice(i,1); renderGalleryList(); }
@@ -545,7 +547,7 @@ function renderProjectsTable(){
           <button class="icon-btn" style="padding:4px 8px" onclick="moveProject(${p.id},-1)" ${i===0?'disabled':''} title="Yuqoriga">&#9650;</button>
           <button class="icon-btn" style="padding:4px 8px" onclick="moveProject(${p.id},1)" ${i===CACHE.projects.length-1?'disabled':''} title="Pastga">&#9660;</button>
         </td>
-        <td><img class="thumb" src="${p.thumb_url}" onerror="this.style.opacity=0.2"></td>
+        <td><img class="thumb" src="${imgSrc(p.thumb_url)}" onerror="this.style.opacity=0.2"></td>
         <td>${p.title_uz}</td>
         <td>${p.category}</td>
         <td>${p.status==='done'?'Bajarilgan':'3D vizualizatsiya'}</td>
@@ -602,7 +604,7 @@ function openProjectForm(id){
   setv('pDurUz', p&&p.duration_uz); setv('pDurRu', p&&p.duration_ru);
   setv('pTaskUz', p&&p.task_uz); setv('pTaskRu', p&&p.task_ru);
   document.getElementById('pThumbUrl').value = p ? p.thumb_url : '';
-  document.getElementById('pThumbPreview').src = p ? p.thumb_url : '';
+  document.getElementById('pThumbPreview').src = p ? imgSrc(p.thumb_url) : '';
   currentGalleryUrls = p ? JSON.parse(p.gallery_urls || '[]') : [];
   try { currentAlts = p ? (JSON.parse(p.alts_json || '{}') || {}) : {}; } catch(e){ currentAlts = {}; }
   document.getElementById('pAltList').innerHTML='';
