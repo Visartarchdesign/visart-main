@@ -508,9 +508,12 @@ async function aiAltProject(){
   try {
     let images; try { images = await Promise.all(todo.map(u=>imageToB64(u))); } catch(err){ throw {message:'Rasmni o\'qib bo\'lmadi (rasm manzilini tekshiring)'}; }
     const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'alt', images})});
+    let filled = 0;
     (r.alts||[]).forEach((a,i)=>{ const u = todo[i]; currentAlts[u] = currentAlts[u]||{uz:'',ru:''};
-      if (!currentAlts[u].uz && a.uz) currentAlts[u].uz = a.uz; if (!currentAlts[u].ru && a.ru) currentAlts[u].ru = a.ru; });
-    document.getElementById('pAltList').innerHTML=''; renderAltList(); toast('Alt-matnlar yozildi — tekshirib, Saqlash bosing');
+      if (!currentAlts[u].uz && a.uz){ currentAlts[u].uz = a.uz; filled++; } if (!currentAlts[u].ru && a.ru){ currentAlts[u].ru = a.ru; filled++; } });
+    document.getElementById('pAltList').innerHTML=''; renderAltList();
+    if (filled) toast(`${filled} ta alt-matn yozildi — tekshirib, Saqlash bosing`);
+    else toast('AI matn qaytarmadi: ' + String(((r.alts||[])[0]||{}).en||'bo\'sh javob').slice(0,120), true);
   } catch(e){ toast(aiErr(e), true); }
   finally { btn.disabled = false; btn.textContent = old; }
 }

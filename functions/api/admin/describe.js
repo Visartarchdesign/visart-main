@@ -44,21 +44,24 @@ async function see(env, imageB64, prompt) {
   throw new Error('vision_failed: ' + errors.join(' | '));
 }
 
+// Model javobini matnga aylantiradi (ba'zan "response" obyekt bo'lib keladi).
+function toText(r) {
+  const v = r && (r.response !== undefined ? r.response : r.result !== undefined ? r.result : r.description);
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  try { return JSON.stringify(v); } catch (e) { return String(v); }
+}
+function clean(t) {
+  return String(t || '').replace(/^```[a-z]*\s*|```$/gim, '').replace(/^["«]|["»]$/g, '').trim();
+}
+
 async function ask(env, system, user, maxTokens = 900) {
   const input = { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], max_tokens: maxTokens, temperature: 0.3 };
   try {
-    const r = await env.AI.run(LLM, input);
-    const out = String((r && (r.response || r.result)) || '').trim();
+    const out = clean(toText(await env.AI.run(LLM, input)));
     if (out) return out;
   } catch (e) { /* zaxira modelga o'tamiz */ }
-  const r = await env.AI.run(LLM_FALLBACK, input);
-  return String((r && (r.response || r.result)) || '').trim();
-}
-
-function parseJson(text) {
-  const m = String(text).match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  try { return JSON.parse(m[0]); } catch (e) { return null; }
+  return clean(toText(await env.AI.run(LLM_FALLBACK, input)));
 }
 
 const ALT_PROMPT =
@@ -66,11 +69,11 @@ const ALT_PROMPT =
 const OBS_PROMPT =
   'You are an architect. List the design elements clearly visible in this image as short bullet points: type of space or building, architectural or interior style, materials and finishes, color palette, furniture and decor, lighting, notable details. Only what is visible. Do not guess location, area, client, price or dates. English.';
 
-const TR_SYSTEM =
-  'Translate the given English alt text into Russian and into Uzbek (Latin script). Natural, concise, professional interior/architecture vocabulary. Return ONLY JSON: {"ru":"...","uz":"..."}';
+const TO_RU = 'Translate the user text into natural professional Russian (architecture / interior design vocabulary). Output ONLY the translation, no quotes, no comments.';
+const TO_UZ = "Translate the user text into natural professional Uzbek in Latin script (modern spelling with o' and g'; architecture / interior design vocabulary). Output ONLY the translation, no quotes, no comments.";
 
 const DESC_SYSTEM =
-  "You write portfolio project descriptions for VISART ARCHDESIGN, an architecture and interior design studio in Tashkent. Write TWO versions: Russian and Uzbek (Latin script, modern standard spelling with o' and g'). Each 110-170 words, 2 short paragraphs, warm and professional, no exaggeration. Use ONLY the visual observations and the given project title/type/style. STRICTLY do not invent facts: no area, address, district, year, timeline, budget, client details or quotes. Do not use the words 'luxury' or 'unique' more than once. Return ONLY JSON: {\"ru\":\"...\",\"uz\":\"...\"}";
+  "You write a portfolio project description in Russian for VISART ARCHDESIGN, an architecture and interior design studio in Tashkent. 110-170 words, 2 short paragraphs, warm and professional, no exaggeration. Use ONLY the visual observations and the given title/type/style. STRICTLY do not invent facts: no area, address, district, year, timeline, budget, client details or quotes. Output ONLY the description text in Russian, no headings, no quotes.";
 
 export async function onRequestPost({ request, env }) {
   if (!env.AI) return json({ ok: false, error: 'ai_not_configured' }, 500);
@@ -83,9 +86,10 @@ export async function onRequestPost({ request, env }) {
     if (mode === 'alt') {
       const out = [];
       for (const img of images.slice(0, 12)) {
-        const en = await see(env, img, ALT_PROMPT);
-        const tr = parseJson(await ask(env, TR_SYSTEM, en, 300)) || {};
-        out.push({ en, ru: String(tr.ru || '').trim(), uz: String(tr.uz || '').trim() });
+        const en = clean(await see(env, img, ALT_PROMPT));
+        const ru = await ask(env, TO_RU, en, 200);
+        const uz = await ask(env, TO_UZ, en, 200);
+        out.push({ en, ru, uz });
       }
       return json({ ok: true, alts: out });
     }
@@ -94,15 +98,15 @@ export async function onRequestPost({ request, env }) {
     const observations = [];
     for (const img of images.slice(0, 3)) observations.push(await see(env, img, OBS_PROMPT));
     const user =
-      `Project title (uz): ${String(ctx.title_uz || '').slice(0, 120)}\n` +
-      `Project title (ru): ${String(ctx.title_ru || '').slice(0, 120)}\n` +
-      `Service type: ${String(ctx.type_uz || '').slice(0, 80)} / ${String(ctx.type_ru || '').slice(0, 80)}\n` +
-      `Style: ${String(ctx.style_uz || '').slice(0, 80)} / ${String(ctx.style_ru || '').slice(0, 80)}\n` +
+      `Project title: ${String(ctx.title_ru || ctx.title_uz || '').slice(0, 120)}\n` +
+      `Service type: ${String(ctx.type_ru || ctx.type_uz || '').slice(0, 80)}\n` +
+      `Style: ${String(ctx.style_ru || ctx.style_uz || '').slice(0, 80)}\n` +
       `Status: ${ctx.status === 'done' ? 'completed and built' : '3D visualization concept'}\n\n` +
       `Visual observations:\n${observations.map((o, i) => `Image ${i + 1}:\n${o}`).join('\n\n')}`;
-    const res = parseJson(await ask(env, DESC_SYSTEM, user, 1400)) || {};
-    if (!res.ru && !res.uz) return json({ ok: false, error: 'generation_failed' }, 502);
-    return json({ ok: true, desc_ru: String(res.ru || '').trim(), desc_uz: String(res.uz || '').trim() });
+    const ru = await ask(env, DESC_SYSTEM, user, 900);
+    if (!ru) return json({ ok: false, error: 'generation_failed', message: 'Model bo\'sh javob qaytardi' }, 502);
+    const uz = await ask(env, TO_UZ, ru, 1100);
+    return json({ ok: true, desc_ru: ru, desc_uz: uz });
   } catch (e) {
     return json({ ok: false, error: 'server_error', message: String(e && e.message) }, 500);
   }
