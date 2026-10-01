@@ -242,7 +242,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
       <div class="field"><label>Nomi (RU)</label><input type="text" id="pTitleRu"></div>
       <div class="field"><label>Turi (UZ)</label><input type="text" id="pTypeUz" placeholder="Interyer dizayn"></div>
       <div class="field"><label>Turi (RU)</label><input type="text" id="pTypeRu" placeholder="Дизайн интерьера"></div>
-      <div class="field full ai-row"><button type="button" class="icon-btn" id="pAiDescBtn" onclick="aiDescribeProject()">✨ AI: rasmlardan tavsif qoralamasi</button><span class="hint">Asosiy rasm va galereyadagi dastlabki rasmlarga qarab UZ va RU tavsif yozadi. Faqat rasmda ko'rinadigan narsalar yoziladi — joy, maydon va yilni o'zingiz qo'shing.</span></div>
+      <div class="field full ai-row"><button type="button" class="icon-btn" id="pAiDescBtn" onclick="aiDescribeProject()">✨ AI: rasmlardan SEO tavsif</button> <button type="button" class="icon-btn" id="pAiDescPolishBtn" onclick="aiPolish('desc')">✍️ Mening matnimni sayqallash</button><span class="hint">1-tugma: rasmlardagi interyerni tahlil qiladi (zonalar, uslub, materiallar, yoritish, yechimlar qanday ehtiyojga xizmat qiladi) va UZ/RU tavsif yozadi. 2-tugma: Tavsif (UZ) maydoniga yozgan xomaki fikrlaringizdan professional UZ/RU matn tayyorlaydi. Joy, maydon va yilni o'zingiz qo'shing.</span></div>
       <div class="field full"><label>Tavsif (UZ) — kamida 300 belgi</label><textarea id="pDescUz" rows="5" placeholder="Loyiha nima haqida, qanday yechimlar qo'llanildi, qaysi xonalar, materiallar, natija..."></textarea></div>
       <div class="field full"><label>Tavsif (RU)</label><textarea id="pDescRu" rows="5"></textarea></div>
       <div class="field full seo-sep">Loyiha dalillari — Google va mijoz uchun eng muhim ma'lumotlar</div>
@@ -256,6 +256,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
       <div class="field"><label>Muddat (RU)</label><input type="text" id="pDurRu" placeholder="3 месяца"></div>
       <div class="field full"><label>Vazifa (UZ) — mijoz nimani so'radi</label><textarea id="pTaskUz" rows="3" placeholder="Masalan: 4 kishilik oila uchun yorug' va saqlash joyi ko'p kvartira..."></textarea><div class="hint">2–3 gapda javob bering: <b>Kim uchun?</b> (oila, ofis, kafe) · <b>Asosiy talab nima edi?</b> · <b>Qanday muammo hal qilindi?</b> · <b>Natija</b>. Bu matnni faqat siz yozasiz — u Google uchun eng qimmatli, haqiqiy ma'lumot.</div></div>
       <div class="field full"><label>Vazifa (RU)</label><textarea id="pTaskRu" rows="3"></textarea></div>
+      <div class="field full ai-row"><button type="button" class="icon-btn" id="pAiTaskPolishBtn" onclick="aiPolish('task')">✍️ AI: eslatmadan professional matn</button> <button type="button" class="icon-btn" id="pAiTaskImgBtn" onclick="aiTaskFromImages()">✨ AI: rasmlardan taxminiy vazifa</button><span class="hint">1-tugma: Vazifa (UZ) ga qisqa yozing (masalan: "4 kishilik oila, joy kam, saqlash ko'p bo'lsin") — AI professional UZ/RU matnga aylantiradi. 2-tugma: rasmlarga qarab taxminiy vazifa yozadi — albatta tekshirib, haqiqatga moslang.</span></div>
       <div class="field full"><label>Asosiy rasm (thumb / hero)</label>
         <div class="upload-row">
           <img id="pThumbPreview" src="" alt="">
@@ -485,16 +486,47 @@ function aiErr(e){
   console.error('AI xatosi:', e);
   return "AI xatosi: " + String(detail).slice(0,220);
 }
+function aiCtx(){ const v=id=>{const el=document.getElementById(id); return el?el.value:'';};
+  return {title_uz:v('pTitleUz'), title_ru:v('pTitleRu'), type_uz:v('pTypeUz'), type_ru:v('pTypeRu'), style_uz:v('pStyleUz'), style_ru:v('pStyleRu'), location_uz:v('pLocUz'), area:v('pArea'), status:v('pStatus')}; }
+async function aiRun(btnId, busyText, fn){
+  const btn=document.getElementById(btnId), old=btn.textContent; btn.disabled=true; btn.textContent=busyText;
+  try { await fn(); } catch(e){ toast(aiErr(e), true); } finally { btn.disabled=false; btn.textContent=old; }
+}
+// Xomaki eslatma -> professional UZ/RU matn (kind: 'task' | 'desc')
+function aiPolish(kind){
+  const uzEl=document.getElementById(kind==='task'?'pTaskUz':'pDescUz'), ruEl=document.getElementById(kind==='task'?'pTaskRu':'pDescRu');
+  const notes=uzEl.value.trim();
+  if (notes.length<5){ toast((kind==='task'?'Vazifa':'Tavsif')+' (UZ) maydoniga avval qisqa eslatma yozing', true); return; }
+  if (ruEl.value.trim() && !confirm("RU maydonida matn bor. Yangi matn bilan almashtirilsinmi?")) return;
+  aiRun(kind==='task'?'pAiTaskPolishBtn':'pAiDescPolishBtn', 'AI yozmoqda... (15–40 soniya)', async ()=>{
+    const r=await apiFetch('/admin/describe',{method:'POST',body:JSON.stringify({mode:'polish', kind, notes, context:aiCtx()})});
+    if (r.uz) uzEl.value=r.uz; if (r.ru) ruEl.value=r.ru;
+    updateSeoScore(); toast('Matn tayyor — o\'qib chiqing va kerak bo\'lsa tuzating');
+  });
+}
+// Rasmlarga qarab taxminiy vazifa
+function aiTaskFromImages(){
+  const imgs=projectImages().slice(0,3);
+  if (!imgs.length){ toast('Avval asosiy rasmni yuklang', true); return; }
+  const tu=document.getElementById('pTaskUz'), tr=document.getElementById('pTaskRu');
+  if ((tu.value.trim()||tr.value.trim()) && !confirm("Vazifa maydonlarida matn bor. Almashtirilsinmi? (Eslatmadan yozish uchun 'eslatmadan professional matn' tugmasini bosing)")) return;
+  aiRun('pAiTaskImgBtn', 'AI rasmlarni tahlil qilmoqda... (30–60 soniya)', async ()=>{
+    let images; try { images=await Promise.all(imgs.map(u=>imageToB64(u))); } catch(err){ throw {message:'Rasmni o\'qib bo\'lmadi (rasm manzilini tekshiring)'}; }
+    const r=await apiFetch('/admin/describe',{method:'POST',body:JSON.stringify({mode:'task', images, context:aiCtx()})});
+    if (r.uz) tu.value=r.uz; if (r.ru) tr.value=r.ru;
+    updateSeoScore(); toast('Taxminiy vazifa yozildi — haqiqatga moslab tuzating!');
+  });
+}
 async function aiDescribeProject(){
   const imgs = projectImages().slice(0,3);
   if (!imgs.length){ toast('Avval asosiy rasmni yuklang', true); return; }
   const du = document.getElementById('pDescUz'), dr = document.getElementById('pDescRu');
   if ((du.value.trim() || dr.value.trim()) && !confirm("Tavsif maydonlarida matn bor. AI qoralamasi bilan almashtirilsinmi?")) return;
-  const btn = document.getElementById('pAiDescBtn'), old = btn.textContent; btn.disabled = true; btn.textContent = 'AI rasmlarni ko\'rib chiqmoqda... (30–60 soniya)';
+  const btn = document.getElementById('pAiDescBtn'), old = btn.textContent; btn.disabled = true; btn.textContent = 'AI interyerni tahlil qilmoqda... (40–90 soniya)';
   try {
     let images; try { images = await Promise.all(imgs.map(u=>imageToB64(u))); } catch(err){ throw {message:'Rasmni o\'qib bo\'lmadi (rasm manzilini tekshiring)'}; }
     const v = id=>document.getElementById(id).value;
-    const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'desc', images, context:{title_uz:v('pTitleUz'), title_ru:v('pTitleRu'), type_uz:v('pTypeUz'), type_ru:v('pTypeRu'), style_uz:v('pStyleUz'), style_ru:v('pStyleRu'), status:v('pStatus')}})});
+    const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'desc', images, context:aiCtx()})});
     if (r.desc_uz) du.value = r.desc_uz; if (r.desc_ru) dr.value = r.desc_ru;
     updateSeoScore(); toast('Qoralama tayyor — o\'qib chiqing, joy/maydon kabi faktlarni qo\'shing');
   } catch(e){ toast(aiErr(e), true); }
