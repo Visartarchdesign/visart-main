@@ -4,6 +4,8 @@ import { json } from '../../_lib/auth.js';
 
 const VISION = '@cf/meta/llama-3.2-11b-vision-instruct';
 const LLM = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const LLM_FALLBACK = '@cf/meta/llama-3.1-8b-instruct';
+const VISION_FALLBACK = '@cf/llava-hf/llava-1.5-7b-hf';
 
 function b64ToBytes(b64) {
   const clean = String(b64 || '').replace(/^data:image\/\w+;base64,/, '');
@@ -13,28 +15,43 @@ function b64ToBytes(b64) {
   return out;
 }
 
+// Rasm modeli: avval Llama 3.2 Vision, ishlamasa — LLaVA (zaxira).
 async function see(env, imageB64, prompt) {
-  const input = { prompt, image: b64ToBytes(imageB64), max_tokens: 300, temperature: 0.2 };
+  const bytes = b64ToBytes(imageB64);
+  const errors = [];
+  const runLlama = async () => {
+    const r = await env.AI.run(VISION, { prompt, image: bytes, max_tokens: 300, temperature: 0.2 });
+    return String((r && (r.response || r.description)) || '').trim();
+  };
   try {
-    const r = await env.AI.run(VISION, input);
-    return String((r && r.response) || '').trim();
+    const out = await runLlama();
+    if (out) return out;
   } catch (e) {
-    // Birinchi marta Meta litsenziyasiga rozilik talab qilinadi — avtomatik rozilik beramiz va qayta urinamiz.
-    if (/agree|licen/i.test(String(e && e.message))) {
-      await env.AI.run(VISION, { prompt: 'agree' }).catch(() => {});
-      const r = await env.AI.run(VISION, input);
-      return String((r && r.response) || '').trim();
+    errors.push('llama: ' + String(e && e.message));
+    if (/agree|licen|accept/i.test(String(e && e.message))) {
+      try {
+        await env.AI.run(VISION, { prompt: 'agree' });
+        const out = await runLlama();
+        if (out) return out;
+      } catch (e2) { errors.push('llama-after-agree: ' + String(e2 && e2.message)); }
     }
-    throw e;
   }
+  try {
+    const r = await env.AI.run(VISION_FALLBACK, { image: bytes, prompt, max_tokens: 300 });
+    const out = String((r && (r.description || r.response)) || '').trim();
+    if (out) return out;
+  } catch (e) { errors.push('llava: ' + String(e && e.message)); }
+  throw new Error('vision_failed: ' + errors.join(' | '));
 }
 
 async function ask(env, system, user, maxTokens = 900) {
-  const r = await env.AI.run(LLM, {
-    messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-    max_tokens: maxTokens,
-    temperature: 0.3,
-  });
+  const input = { messages: [{ role: 'system', content: system }, { role: 'user', content: user }], max_tokens: maxTokens, temperature: 0.3 };
+  try {
+    const r = await env.AI.run(LLM, input);
+    const out = String((r && (r.response || r.result)) || '').trim();
+    if (out) return out;
+  } catch (e) { /* zaxira modelga o'tamiz */ }
+  const r = await env.AI.run(LLM_FALLBACK, input);
   return String((r && (r.response || r.result)) || '').trim();
 }
 

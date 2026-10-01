@@ -478,7 +478,10 @@ function imageToB64(url, maxDim){
 }
 function aiErr(e){
   const code=(e&&e.data&&e.data.error)||'';
-  return code==='ai_not_configured' ? "AI sozlanmagan: Cloudflare'da Workers AI (AI) bog'lamasini qo'shing" : "AI javob bermadi — birozdan so'ng qayta urinib ko'ring";
+  if (code==='ai_not_configured') return "AI sozlanmagan: Cloudflare'da Workers AI (AI) bog'lamasini qo'shing";
+  const detail=(e&&e.data&&e.data.message)||(e&&e.message)||(e&&e.status?('HTTP '+e.status):'')||'nomaʼlum';
+  console.error('AI xatosi:', e);
+  return "AI xatosi: " + String(detail).slice(0,220);
 }
 async function aiDescribeProject(){
   const imgs = projectImages().slice(0,3);
@@ -487,7 +490,7 @@ async function aiDescribeProject(){
   if ((du.value.trim() || dr.value.trim()) && !confirm("Tavsif maydonlarida matn bor. AI qoralamasi bilan almashtirilsinmi?")) return;
   const btn = document.getElementById('pAiDescBtn'), old = btn.textContent; btn.disabled = true; btn.textContent = 'AI rasmlarni ko\'rib chiqmoqda... (30–60 soniya)';
   try {
-    const images = await Promise.all(imgs.map(u=>imageToB64(u)));
+    let images; try { images = await Promise.all(imgs.map(u=>imageToB64(u))); } catch(err){ throw {message:'Rasmni o\'qib bo\'lmadi (rasm manzilini tekshiring)'}; }
     const v = id=>document.getElementById(id).value;
     const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'desc', images, context:{title_uz:v('pTitleUz'), title_ru:v('pTitleRu'), type_uz:v('pTypeUz'), type_ru:v('pTypeRu'), style_uz:v('pStyleUz'), style_ru:v('pStyleRu'), status:v('pStatus')}})});
     if (r.desc_uz) du.value = r.desc_uz; if (r.desc_ru) dr.value = r.desc_ru;
@@ -501,7 +504,7 @@ async function aiAltProject(){
   if (!todo.length){ toast("Barcha rasmlarda alt-matn bor. Qayta yozish uchun maydonni tozalang.", true); return; }
   const btn = document.getElementById('pAiAltBtn'), old = btn.textContent; btn.disabled = true; btn.textContent = `AI ${todo.length} ta rasmni ko'rib chiqmoqda...`;
   try {
-    const images = await Promise.all(todo.map(u=>imageToB64(u)));
+    let images; try { images = await Promise.all(todo.map(u=>imageToB64(u))); } catch(err){ throw {message:'Rasmni o\'qib bo\'lmadi (rasm manzilini tekshiring)'}; }
     const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'alt', images})});
     (r.alts||[]).forEach((a,i)=>{ const u = todo[i]; currentAlts[u] = currentAlts[u]||{uz:'',ru:''};
       if (!currentAlts[u].uz && a.uz) currentAlts[u].uz = a.uz; if (!currentAlts[u].ru && a.ru) currentAlts[u].ru = a.ru; });
