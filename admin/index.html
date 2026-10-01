@@ -119,6 +119,11 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .gpreview .u{font-size:12px;color:#202124}
 .gpreview .t{font-size:19px;color:#1a0dab;margin:4px 0;line-height:1.3}
 .gpreview .d{font-size:13px;color:#4d5156;line-height:1.5}
+.ai-row{display:flex;flex-direction:column;gap:6px;background:#FBF7EF;border:1px dashed #D9C7A3;border-radius:4px;padding:10px 12px}
+.ai-row .icon-btn{align-self:flex-start}
+.alt-row{display:grid;grid-template-columns:64px 1fr 1fr;gap:10px;align-items:center;margin-bottom:8px}
+.alt-row img{width:64px;height:46px;object-fit:cover;border-radius:3px;background:#eee}
+.alt-row input{padding:8px 10px;border:1px solid var(--line);border-radius:3px;font-size:12.5px;width:100%}
 </style>
 </head>
 <body>
@@ -237,6 +242,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
       <div class="field"><label>Nomi (RU)</label><input type="text" id="pTitleRu"></div>
       <div class="field"><label>Turi (UZ)</label><input type="text" id="pTypeUz" placeholder="Interyer dizayn"></div>
       <div class="field"><label>Turi (RU)</label><input type="text" id="pTypeRu" placeholder="Дизайн интерьера"></div>
+      <div class="field full ai-row"><button type="button" class="icon-btn" id="pAiDescBtn" onclick="aiDescribeProject()">✨ AI: rasmlardan tavsif qoralamasi</button><span class="hint">Asosiy rasm va galereyadagi dastlabki rasmlarga qarab UZ va RU tavsif yozadi. Faqat rasmda ko'rinadigan narsalar yoziladi — joy, maydon va yilni o'zingiz qo'shing.</span></div>
       <div class="field full"><label>Tavsif (UZ) — kamida 300 belgi</label><textarea id="pDescUz" rows="5" placeholder="Loyiha nima haqida, qanday yechimlar qo'llanildi, qaysi xonalar, materiallar, natija..."></textarea></div>
       <div class="field full"><label>Tavsif (RU)</label><textarea id="pDescRu" rows="5"></textarea></div>
       <div class="field full seo-sep">Loyiha dalillari — Google va mijoz uchun eng muhim ma'lumotlar</div>
@@ -248,7 +254,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
       <div class="field"><label>Uslub (RU)</label><input type="text" id="pStyleRu" placeholder="Современная классика"></div>
       <div class="field"><label>Muddat (UZ)</label><input type="text" id="pDurUz" placeholder="3 oy"></div>
       <div class="field"><label>Muddat (RU)</label><input type="text" id="pDurRu" placeholder="3 месяца"></div>
-      <div class="field full"><label>Vazifa (UZ) — mijoz nimani so'radi</label><textarea id="pTaskUz" rows="3" placeholder="Masalan: 4 kishilik oila uchun yorug' va saqlash joyi ko'p kvartira..."></textarea></div>
+      <div class="field full"><label>Vazifa (UZ) — mijoz nimani so'radi</label><textarea id="pTaskUz" rows="3" placeholder="Masalan: 4 kishilik oila uchun yorug' va saqlash joyi ko'p kvartira..."></textarea><div class="hint">2–3 gapda javob bering: <b>Kim uchun?</b> (oila, ofis, kafe) · <b>Asosiy talab nima edi?</b> · <b>Qanday muammo hal qilindi?</b> · <b>Natija</b>. Bu matnni faqat siz yozasiz — u Google uchun eng qimmatli, haqiqiy ma'lumot.</div></div>
       <div class="field full"><label>Vazifa (RU)</label><textarea id="pTaskRu" rows="3"></textarea></div>
       <div class="field full"><label>Asosiy rasm (thumb / hero)</label>
         <div class="upload-row">
@@ -264,6 +270,9 @@ input,select,textarea{font-family:inherit;font-size:14px}
         <button type="button" class="icon-btn" onclick="document.getElementById('pGalleryFile').click()" style="margin-top:8px">+ Galereya rasm qo'shish</button>
         <div class="gallery-list" id="pGalleryList"></div>
       </div>
+      <div class="field full seo-sep">Rasm alt-matnlari — Google Rasmlar qidiruvi uchun</div>
+      <div class="field full"><button type="button" class="icon-btn" id="pAiAltBtn" onclick="aiAltProject()">✨ AI: bo'sh alt-matnlarni yozish</button><span class="hint">Har bir rasmga u yerda ko'rinadigan narsa yoziladi (xona, uslub, material, rang). Keyin tekshirib, kerak bo'lsa tuzating.</span></div>
+      <div class="field full" id="pAltList"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('projectModal')">Bekor qilish</button>
@@ -416,6 +425,7 @@ async function uploadToField(input, urlFieldId, previewId){
     document.getElementById(urlFieldId).value = url;
     document.getElementById(previewId).src = url;
     if (document.getElementById('pSeoPct')) updateSeoScore();
+    if (urlFieldId==='pThumbUrl') renderAltList();
     toast('Rasm yuklandi');
   } catch(e){ toast('Rasm yuklashda xatolik', true); }
 }
@@ -431,7 +441,76 @@ async function uploadGalleryFiles(input){
   renderGalleryList();
   input.value = '';
 }
+let currentAlts = {};
+function projectImages(){
+  const hero = document.getElementById('pThumbUrl').value;
+  return [hero].concat(currentGalleryUrls||[]).filter((u,i,a)=>u && a.indexOf(u)===i);
+}
+function syncAltsFromInputs(){
+  document.querySelectorAll('#pAltList [data-alt-url]').forEach(inp=>{
+    const u = inp.dataset.altUrl, l = inp.dataset.altLang;
+    currentAlts[u] = currentAlts[u] || {uz:'',ru:''};
+    currentAlts[u][l] = inp.value.trim();
+  });
+}
+function renderAltList(){
+  const wrap = document.getElementById('pAltList'); if (!wrap) return;
+  syncAltsFromInputs();
+  const imgs = projectImages();
+  wrap.innerHTML = imgs.length ? imgs.map(u=>{ const a = currentAlts[u]||{}; const e=v=>String(v||'').replace(/"/g,'&quot;');
+    return `<div class="alt-row"><img src="${e(u)}" alt=""><input data-alt-url="${e(u)}" data-alt-lang="uz" value="${e(a.uz)}" placeholder="Alt-matn (UZ)"><input data-alt-url="${e(u)}" data-alt-lang="ru" value="${e(a.ru)}" placeholder="Alt-matn (RU)"></div>`; }).join('')
+    : '<span class="hint">Avval rasm yuklang.</span>';
+}
+// Rasmni brauzerda kichraytirib (640px JPEG) base64 ko'rinishga keltiradi — AI'ga yuborish uchun.
+function imageToB64(url, maxDim){
+  maxDim = maxDim || 640;
+  return new Promise((resolve, reject)=>{
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = ()=>{ try {
+      const sc = Math.min(1, maxDim/Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth*sc); c.height = Math.round(img.naturalHeight*sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    } catch(e){ reject(e); } };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+function aiErr(e){
+  const code=(e&&e.data&&e.data.error)||'';
+  return code==='ai_not_configured' ? "AI sozlanmagan: Cloudflare'da Workers AI (AI) bog'lamasini qo'shing" : "AI javob bermadi — birozdan so'ng qayta urinib ko'ring";
+}
+async function aiDescribeProject(){
+  const imgs = projectImages().slice(0,3);
+  if (!imgs.length){ toast('Avval asosiy rasmni yuklang', true); return; }
+  const du = document.getElementById('pDescUz'), dr = document.getElementById('pDescRu');
+  if ((du.value.trim() || dr.value.trim()) && !confirm("Tavsif maydonlarida matn bor. AI qoralamasi bilan almashtirilsinmi?")) return;
+  const btn = document.getElementById('pAiDescBtn'), old = btn.textContent; btn.disabled = true; btn.textContent = 'AI rasmlarni ko\'rib chiqmoqda... (30–60 soniya)';
+  try {
+    const images = await Promise.all(imgs.map(u=>imageToB64(u)));
+    const v = id=>document.getElementById(id).value;
+    const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'desc', images, context:{title_uz:v('pTitleUz'), title_ru:v('pTitleRu'), type_uz:v('pTypeUz'), type_ru:v('pTypeRu'), style_uz:v('pStyleUz'), style_ru:v('pStyleRu'), status:v('pStatus')}})});
+    if (r.desc_uz) du.value = r.desc_uz; if (r.desc_ru) dr.value = r.desc_ru;
+    updateSeoScore(); toast('Qoralama tayyor — o\'qib chiqing, joy/maydon kabi faktlarni qo\'shing');
+  } catch(e){ toast(aiErr(e), true); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
+async function aiAltProject(){
+  syncAltsFromInputs();
+  const todo = projectImages().filter(u=>!(currentAlts[u] && currentAlts[u].uz && currentAlts[u].ru)).slice(0,12);
+  if (!todo.length){ toast("Barcha rasmlarda alt-matn bor. Qayta yozish uchun maydonni tozalang.", true); return; }
+  const btn = document.getElementById('pAiAltBtn'), old = btn.textContent; btn.disabled = true; btn.textContent = `AI ${todo.length} ta rasmni ko'rib chiqmoqda...`;
+  try {
+    const images = await Promise.all(todo.map(u=>imageToB64(u)));
+    const r = await apiFetch('/admin/describe', {method:'POST', body:JSON.stringify({mode:'alt', images})});
+    (r.alts||[]).forEach((a,i)=>{ const u = todo[i]; currentAlts[u] = currentAlts[u]||{uz:'',ru:''};
+      if (!currentAlts[u].uz && a.uz) currentAlts[u].uz = a.uz; if (!currentAlts[u].ru && a.ru) currentAlts[u].ru = a.ru; });
+    document.getElementById('pAltList').innerHTML=''; renderAltList(); toast('Alt-matnlar yozildi — tekshirib, Saqlash bosing');
+  } catch(e){ toast(aiErr(e), true); }
+  finally { btn.disabled = false; btn.textContent = old; }
+}
 function renderGalleryList(){
+  setTimeout(renderAltList, 0);
   setTimeout(()=>{ if(typeof updateSeoScore==='function' && document.getElementById('pSeoPct')) updateSeoScore(); },0);
   const wrap = document.getElementById('pGalleryList');
   wrap.innerHTML = currentGalleryUrls.map((u,i)=>`
@@ -522,6 +601,8 @@ function openProjectForm(id){
   document.getElementById('pThumbUrl').value = p ? p.thumb_url : '';
   document.getElementById('pThumbPreview').src = p ? p.thumb_url : '';
   currentGalleryUrls = p ? JSON.parse(p.gallery_urls || '[]') : [];
+  try { currentAlts = p ? (JSON.parse(p.alts_json || '{}') || {}) : {}; } catch(e){ currentAlts = {}; }
+  document.getElementById('pAltList').innerHTML='';
   renderGalleryList();
   updateSeoScore();
   document.getElementById('projectModal').classList.add('active');
@@ -593,6 +674,7 @@ async function saveProject(){
     duration_ru: document.getElementById('pDurRu').value,
     task_uz: document.getElementById('pTaskUz').value,
     task_ru: document.getElementById('pTaskRu').value,
+    alts: (()=>{ syncAltsFromInputs(); const o={}; projectImages().forEach(u=>{ if(currentAlts[u] && (currentAlts[u].uz||currentAlts[u].ru)) o[u]=currentAlts[u]; }); return o; })(),
   };
   if (!body.title_uz || !body.title_ru || !body.thumb_url){
     toast("Nomi va rasm majburiy", true); return;

@@ -1266,7 +1266,7 @@ function renderProjects(filter){
     return `
     <a href="${href}" class="proj-card reveal-scale" data-id="${p.id}" aria-label="${p.title[lang]} — ${cta}">
       <div class="proj-card-img">
-        <img src="${p.thumb}" alt="${p.title[lang]}" loading="lazy" onerror="this.src='${FALLBACKS[i%FALLBACKS.length]}'">
+        <img src="${p.thumb}" alt="${(p.alts&&p.alts[p.hero]&&(p.alts[p.hero][lang]||p.alts[p.hero].uz))||p.title[lang]}" loading="lazy" onerror="this.src='${FALLBACKS[i%FALLBACKS.length]}'">
         <span class="proj-card-badge">${BADGE_TXT[p.status][lang]}</span>
         <div class="proj-card-info">
           <h3>${p.title[lang]}</h3>
@@ -1339,7 +1339,9 @@ function _openProjectModalReal(p,lang){
   const L=lang==='uz'?{t:'Turi',s:'Uslub',a:'Maydon',l:'Joylashuv',y:'Yil'}:{t:'Тип',s:'Стиль',a:'Площадь',l:'Расположение',y:'Год'};
   const rows=[[L.t,p.type[lang]],[L.s,p.style&&p.style[lang]],[L.a,p.area?p.area+' m²':''],[L.l,p.location&&p.location[lang]],[L.y,p.year]].filter(r=>r[1]);
   document.getElementById('pmMeta').innerHTML=rows.map(r=>`<div class="pmeta-item"><span class="pmeta-l">${r[0]}</span><span class="pmeta-v">${r[1]}</span></div>`).join('');
-  document.getElementById('pmGallery').innerHTML=p.gallery.map((g,i)=>`<img src="${g}" alt="${p.title[lang]} — ${i+1}" loading="lazy" onerror="this.src='${FALLBACKS[(i+1)%FALLBACKS.length]}'">`).join('');
+  const altOf=(u,f)=>(p.alts&&p.alts[u]&&(p.alts[u][lang]||p.alts[u].uz))||f;
+  document.getElementById('pmHeroImg').alt=altOf(p.hero,p.title[lang]);
+  document.getElementById('pmGallery').innerHTML=p.gallery.map((g,i)=>`<img src="${g}" alt="${altOf(g,p.title[lang]+' — '+(i+1))}" loading="lazy" onerror="this.src='${FALLBACKS[(i+1)%FALLBACKS.length]}'">`).join('');
   document.getElementById('pModal').classList.add('active');
   document.body.style.overflow='hidden';
   window.scrollTo(0,0);

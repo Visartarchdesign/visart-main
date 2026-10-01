@@ -4,6 +4,8 @@ export const TEXT_FIELDS = [
   'thumb_url', 'hero_url', 'location_uz', 'location_ru', 'duration_uz', 'duration_ru',
   'style_uz', 'style_ru', 'task_uz', 'task_ru',
 ];
+// alts_json: {"rasm-url": {"uz": "...", "ru": "..."}} — har bir rasm uchun alt-matn
+
 export const INT_FIELDS = ['sort_order', 'area_m2', 'year'];
 
 function toInt(v) {
@@ -23,6 +25,12 @@ export function buildValues(body, existing = {}) {
     out[f] = body[f] !== undefined ? toInt(body[f]) : (existing[f] ?? null);
   }
   if (out.sort_order === null) out.sort_order = 0;
+  // alts_json ustuni faqat migratsiya qilingan bazada bor — shuning uchun faqat kerak bo'lganda yozamiz.
+  if (body.alts !== undefined || existing.alts_json !== undefined) {
+    let a = body.alts;
+    if (a === undefined) { try { a = JSON.parse(existing.alts_json || '{}'); } catch (e) { a = {}; } }
+    out.alts_json = JSON.stringify(a && typeof a === 'object' && !Array.isArray(a) ? a : {});
+  }
   const g = body.gallery_urls !== undefined ? body.gallery_urls : JSON.parse(existing.gallery_urls || '[]');
   out.gallery_urls = JSON.stringify(Array.isArray(g) ? g : []);
   return out;

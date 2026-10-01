@@ -56,6 +56,8 @@ export function renderProjectPage({ row, lang, related = [], baseUrl = 'https://
   const badge = BADGE[row.status] ? BADGE[row.status][lang] : '';
   const catTag = CAT[row.category] ? CAT[row.category].tag[lang] : '';
   const gallery = (() => { try { return JSON.parse(row.gallery_urls || '[]'); } catch (e) { return []; } })();
+  const alts = (() => { try { return JSON.parse(row.alts_json || '{}') || {}; } catch (e) { return {}; } })();
+  const altFor = (url, fallback) => { const x = alts[url]; return (x && (x[lang] || x.uz || x.ru)) || fallback; };
 
   const selfUrl = projectUrl(row, lang, baseUrl);
   const uzUrl = projectUrl(row, 'uz', baseUrl);
@@ -114,7 +116,7 @@ export function renderProjectPage({ row, lang, related = [], baseUrl = 'https://
   ].filter(Boolean).join('\n');
 
   const galleryHtml = gallery
-    .map((g, i) => `<figure><img src="${esc(abs(g, baseUrl))}" alt="${esc(alt)} — ${i + 2}" loading="lazy" decoding="async"></figure>`)
+    .map((g, i) => `<figure><img src="${esc(abs(g, baseUrl))}" alt="${esc(altFor(g, `${alt} — ${i + 2}`))}" loading="lazy" decoding="async"></figure>`)
     .join('\n');
 
   const relatedHtml = related
@@ -218,7 +220,7 @@ footer a:hover{color:var(--gold-l)}
 </div></header>
 <main>
   <section class="hero">
-    <img src="${esc(heroAbs)}" alt="${esc(alt)}" fetchpriority="high">
+    <img src="${esc(heroAbs)}" alt="${esc(altFor(row.hero_url, alt))}" fetchpriority="high">
     <div class="hero-cap"><div class="wrap">
       <nav class="crumbs" aria-label="breadcrumb"><a href="${baseUrl}/">${esc(t.home)}</a> / <a href="${baseUrl}/#projects">${esc(t.projects)}</a> / ${esc(title)}</nav>
       ${badge ? `<span class="badge">${esc(badge)}</span>` : ''}

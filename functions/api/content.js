@@ -31,6 +31,7 @@ export async function onRequestGet({ env }) {
       location: { uz: p.location_uz || '', ru: p.location_ru || '' },
       style: { uz: p.style_uz || '', ru: p.style_ru || '' },
       duration: { uz: p.duration_uz || '', ru: p.duration_ru || '' },
+      alts: (() => { try { return JSON.parse(p.alts_json || '{}') || {}; } catch (e) { return {}; } })(),
     }));
 
     const testimonials = testimonialsRes.results.map((t) => ({
