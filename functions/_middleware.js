@@ -10,13 +10,14 @@ export async function onRequest(context) {
   if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api/')) return response;
   const ct = response.headers.get('content-type') || '';
   if (!ct.includes('text/html')) return response;
-  const isHome = url.pathname === '/' || url.pathname === '/index.html';
+  const isRu = url.pathname === '/ru/' || url.pathname === '/ru';
+  const isHome = isRu || url.pathname === '/' || url.pathname === '/index.html';
   try {
     const row = await env.DB.prepare("SELECT value FROM settings WHERE key = 'site_json'").first();
     if (!row || !row.value) return response;
     const site = JSON.parse(row.value);
     if (!site || typeof site !== 'object') return response;
-    return isHome ? applySite(response, site) : applyAnalytics(response, site);
+    return isHome ? applySite(response, site, isRu ? 'ru' : 'uz') : applyAnalytics(response, site);
   } catch (e) {
     return response; // xatolik bo'lsa, sayt standart holatda ochilaveradi
   }
