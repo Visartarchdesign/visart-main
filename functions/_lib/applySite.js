@@ -40,7 +40,7 @@ export function buildHeadExtras(seo = {}) {
       `<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga}');</script>`;
   }
   if (ym) {
-    out += `<script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");ym(${ym},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});</script>`;
+    out += `<script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");ym(${ym},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});</script>`;
   }
   return out;
 }
@@ -60,6 +60,13 @@ export function buildFaqLd(faq) {
     mainEntity: items.map((f) => ({ '@type': 'Question', name: f.q.uz, acceptedAnswer: { '@type': 'Answer', text: f.a.uz } })),
   };
   return JSON.stringify(ld).replace(/</g, '\\u003c');
+}
+
+// Bosh sahifadan boshqa ochiq sahifalar (loyihalar, maxfiylik, 404) uchun faqat analitika kodlari.
+export function applyAnalytics(response, site) {
+  const extras = buildHeadExtras((site && site.seo) || {});
+  if (!extras) return response;
+  return new HTMLRewriter().on('head', HeadAppender(extras)).transform(response);
 }
 
 export function applySite(response, site) {
