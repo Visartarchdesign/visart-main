@@ -45,19 +45,25 @@ export function buildHeadExtras(seo = {}) {
   return out;
 }
 
-export function buildFaqHtml(faq) {
+export function buildFaqHtml(faq, lang = 'uz') {
+  const uzA = lang === 'ru' ? '' : ' class="lang-active"';
+  const ruA = lang === 'ru' ? ' class="lang-active"' : '';
   return faq
     .filter((f) => f && f.q && f.a && has(f.q.uz) && has(f.a.uz))
-    .map((f) => `<details><summary><span data-lang="uz" class="lang-active">${esc(f.q.uz)}</span><span data-lang="ru">${esc(f.q.ru || f.q.uz)}</span></summary><div class="faq-a"><span data-lang="uz" class="lang-active">${esc(f.a.uz)}</span><span data-lang="ru">${esc(f.a.ru || f.a.uz)}</span></div></details>`)
+    .map((f) => `<details><summary><span data-lang="uz"${uzA}>${esc(f.q.uz)}</span><span data-lang="ru"${ruA}>${esc(f.q.ru || f.q.uz)}</span></summary><div class="faq-a"><span data-lang="uz"${uzA}>${esc(f.a.uz)}</span><span data-lang="ru"${ruA}>${esc(f.a.ru || f.a.uz)}</span></div></details>`)
     .join('\n');
 }
 
-export function buildFaqLd(faq) {
+export function buildFaqLd(faq, lang = 'uz') {
   const items = faq.filter((f) => f && f.q && f.a && has(f.q.uz) && has(f.a.uz));
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: items.map((f) => ({ '@type': 'Question', name: f.q.uz, acceptedAnswer: { '@type': 'Answer', text: f.a.uz } })),
+    mainEntity: items.map((f) => {
+      const q = lang === 'ru' && has(f.q.ru) ? f.q.ru : f.q.uz;
+      const a = lang === 'ru' && has(f.a.ru) ? f.a.ru : f.a.uz;
+      return { '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } };
+    }),
   };
   return JSON.stringify(ld).replace(/</g, '\\u003c');
 }
@@ -69,17 +75,20 @@ export function applyAnalytics(response, site) {
   return new HTMLRewriter().on('head', HeadAppender(extras)).transform(response);
 }
 
-export function applySite(response, site) {
+export function applySite(response, site, lang = 'uz') {
   let rw = new HTMLRewriter();
   const seo = site.seo || {};
-  if (has(seo.title)) {
-    const t = seo.title.trim();
+  const ru = lang === 'ru';
+  const title = ru ? seo.title_ru : seo.title;
+  const description = ru ? seo.description_ru : seo.description;
+  if (has(title)) {
+    const t = title.trim();
     rw = rw.on('title', TextSetter(t))
       .on('meta[property="og:title"]', AttrSetter('content', t))
       .on('meta[name="twitter:title"]', AttrSetter('content', t));
   }
-  if (has(seo.description)) {
-    const d = seo.description.trim();
+  if (has(description)) {
+    const d = description.trim();
     rw = rw.on('meta[name="description"]', AttrSetter('content', d))
       .on('meta[property="og:description"]', AttrSetter('content', d))
       .on('meta[name="twitter:description"]', AttrSetter('content', d));
@@ -107,9 +116,9 @@ export function applySite(response, site) {
   }
 
   if (Array.isArray(site.faq) && site.faq.length) {
-    const faqHtml = buildFaqHtml(site.faq);
+    const faqHtml = buildFaqHtml(site.faq, lang);
     if (faqHtml) {
-      rw = rw.on('#faqList', HtmlSetter(faqHtml)).on('#faqLd', HtmlSetter(buildFaqLd(site.faq)));
+      rw = rw.on('#faqList', HtmlSetter(faqHtml)).on('#faqLd', HtmlSetter(buildFaqLd(site.faq, lang)));
     }
   }
   return rw.transform(response);
