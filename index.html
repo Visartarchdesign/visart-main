@@ -538,6 +538,9 @@ span[data-lang].lang-active{display:inline}
 h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(--t1);font-weight:500;margin:0}
 .svc-link{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:12.5px;font-weight:600;color:var(--gold);border-bottom:0.5px solid transparent;transition:border-color .2s}
 .svc-link:hover{border-color:var(--gold)}
+a.svc-link[data-lang].lang-active{display:inline-flex}
+.svc-more{margin-left:18px}
+.svc-link[data-lang]:not(.lang-active),.footer-col a[data-lang]:not(.lang-active){display:none}
 .projects-sec{background:var(--paper);padding-bottom:10px}
 .projects-more{padding:70px 0 90px;background:var(--paper);text-align:center;border-bottom:0.5px solid var(--line-dark)}
 .projects-more p{font-family:var(--serif);font-size:clamp(20px,2.4vw,26px);color:var(--t1);margin-bottom:22px}
@@ -729,25 +732,25 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
       <div class="svc-num">01</div>
       <h3 class="svc-title"><span data-lang="uz" class="lang-active">Arxitektura loyihalash</span><span data-lang="ru">Архитектурное проектирование</span></h3>
       <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      <div class="svc-desc"><span data-lang="uz" class="lang-active">Har qanday binoni — uy, noturar bino — loyihasidan boshlab 3D dizayn va ishchi chizmalargacha qilib beramiz.</span><span data-lang="ru">Любое здание — жилое, нежилое — от проекта до 3D-дизайна и рабочих чертежей.</span><br><a class="svc-link" href="#pricing" data-calc="arch"><span data-lang="uz" class="lang-active">Narxini hisoblash</span><span data-lang="ru">Рассчитать стоимость</span> →</a></div>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Har qanday binoni — uy, noturar bino — loyihasidan boshlab 3D dizayn va ishchi chizmalargacha qilib beramiz.</span><span data-lang="ru">Любое здание — жилое, нежилое — от проекта до 3D-дизайна и рабочих чертежей.</span><br><a class="svc-link" href="#pricing" data-calc="arch"><span data-lang="uz" class="lang-active">Narxini hisoblash</span><span data-lang="ru">Рассчитать стоимость</span> →</a><a class="svc-link svc-more lang-active" data-lang="uz" href="/xizmatlar/arxitektura-loyihalash">Batafsil →</a><a class="svc-link svc-more" data-lang="ru" href="/ru/uslugi/arhitekturnoe-proektirovanie">Подробнее →</a></div>
     </div>
     <div class="svc-row reveal" id="svc-interyer">
       <div class="svc-num">02</div>
       <h3 class="svc-title"><span data-lang="uz" class="lang-active">Interyer dizayn</span><span data-lang="ru">Дизайн интерьера</span></h3>
       <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      <div class="svc-desc"><span data-lang="uz" class="lang-active">Uyingizning ichki dizaynini siz xohlagan uslubda — 3D ko'rinishidan tortib ustalar uchun ishchi chizmalargacha (elektrika, devor, shift, mebel joylashuvi) to'liq tayyorlab beramiz.</span><span data-lang="ru">Дизайн интерьера в выбранном стиле — от 3D-визуализации до полного комплекта рабочих чертежей для мастеров (электрика, перегородки, потолки, расстановка мебели).</span><br><a class="svc-link" href="#pricing" data-calc="interior"><span data-lang="uz" class="lang-active">Narxini hisoblash</span><span data-lang="ru">Рассчитать стоимость</span> →</a></div>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Uyingizning ichki dizaynini siz xohlagan uslubda — 3D ko'rinishidan tortib ustalar uchun ishchi chizmalargacha (elektrika, devor, shift, mebel joylashuvi) to'liq tayyorlab beramiz.</span><span data-lang="ru">Дизайн интерьера в выбранном стиле — от 3D-визуализации до полного комплекта рабочих чертежей для мастеров (электрика, перегородки, потолки, расстановка мебели).</span><br><a class="svc-link" href="#pricing" data-calc="interior"><span data-lang="uz" class="lang-active">Narxini hisoblash</span><span data-lang="ru">Рассчитать стоимость</span> →</a><a class="svc-link svc-more lang-active" data-lang="uz" href="/xizmatlar/interyer-dizayn">Batafsil →</a><a class="svc-link svc-more" data-lang="ru" href="/ru/uslugi/dizajn-interera">Подробнее →</a></div>
     </div>
     <div class="svc-row reveal" id="svc-hujjat">
       <div class="svc-num">03</div>
       <h3 class="svc-title"><span data-lang="uz" class="lang-active">Hujjat va nazorat</span><span data-lang="ru">Документация и надзор</span></h3>
       <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      <div class="svc-desc"><span data-lang="uz" class="lang-active">Kadastr, mygov.uz orqali olinadigan ruxsatnomalar va boshqa hujjatlarni — qurilishdan oldin kerak bo'ladigan barcha rasmiy hujjatlarni tayyorlab beramiz.</span><span data-lang="ru">Кадастр, разрешения через mygov.uz и другие документы — оформляем всю официальную документацию, необходимую перед началом строительства.</span><br><a class="svc-link" href="#contact"><span data-lang="uz" class="lang-active">Maslahat olish</span><span data-lang="ru">Получить консультацию</span> →</a></div>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Kadastr, mygov.uz orqali olinadigan ruxsatnomalar va boshqa hujjatlarni — qurilishdan oldin kerak bo'ladigan barcha rasmiy hujjatlarni tayyorlab beramiz.</span><span data-lang="ru">Кадастр, разрешения через mygov.uz и другие документы — оформляем всю официальную документацию, необходимую перед началом строительства.</span><br><a class="svc-link" href="#contact"><span data-lang="uz" class="lang-active">Maslahat olish</span><span data-lang="ru">Получить консультацию</span> →</a><a class="svc-link svc-more lang-active" data-lang="uz" href="/xizmatlar/loyiha-hujjatlari">Batafsil →</a><a class="svc-link svc-more" data-lang="ru" href="/ru/uslugi/proektnaya-dokumentaciya">Подробнее →</a></div>
     </div>
     <div class="svc-row reveal" id="svc-qurilish">
       <div class="svc-num">04</div>
       <h3 class="svc-title"><span data-lang="uz" class="lang-active">Qurilish va mualliflik nazorati</span><span data-lang="ru">Строительство и авторский надзор</span></h3>
       <svg class="svc-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      <div class="svc-desc"><span data-lang="uz" class="lang-active">Eksteryer va interyer dizaynini kalit ostida — ta'mirlash va qurilish ishlarini professional tarzda amalga oshirib beramiz.</span><span data-lang="ru">Экстерьер и интерьер под ключ — ремонт и строительство на профессиональном уровне.</span><br><a class="svc-link" href="#pricing" data-calc="turnkey"><span data-lang="uz" class="lang-active">Narxini hisoblash</span><span data-lang="ru">Рассчитать стоимость</span> →</a></div>
+      <div class="svc-desc"><span data-lang="uz" class="lang-active">Eksteryer va interyer dizaynini kalit ostida — ta'mirlash va qurilish ishlarini professional tarzda amalga oshirib beramiz.</span><span data-lang="ru">Экстерьер и интерьер под ключ — ремонт и строительство на профессиональном уровне.</span><br><a class="svc-link" href="#pricing" data-calc="turnkey"><span data-lang="uz" class="lang-active">Narxini hisoblash</span><span data-lang="ru">Рассчитать стоимость</span> →</a><a class="svc-link svc-more lang-active" data-lang="uz" href="/xizmatlar/pod-klyuch">Batafsil →</a><a class="svc-link svc-more" data-lang="ru" href="/ru/uslugi/remont-pod-klyuch">Подробнее →</a></div>
     </div>
   </div>
 </section>
@@ -1049,9 +1052,11 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
     <div class="footer-cols">
       <div class="footer-col">
         <h5><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></h5>
-        <a href="#svc-arxitektura" onclick="scrollToSvc(event,'svc-arxitektura')"><span data-lang="uz" class="lang-active">Arxitektura</span><span data-lang="ru">Архитектура</span></a>
-        <a href="#svc-interyer" onclick="scrollToSvc(event,'svc-interyer')"><span data-lang="uz" class="lang-active">Interyer</span><span data-lang="ru">Интерьер</span></a>
-        <a href="#svc-qurilish" onclick="scrollToSvc(event,'svc-qurilish')"><span data-lang="uz" class="lang-active">Pod klyuch</span><span data-lang="ru">Под ключ</span></a>
+        <a class="lang-active" data-lang="uz" href="/xizmatlar/arxitektura-loyihalash">Arxitektura</a><a data-lang="ru" href="/ru/uslugi/arhitekturnoe-proektirovanie">Архитектура</a>
+        <a class="lang-active" data-lang="uz" href="/xizmatlar/interyer-dizayn">Interyer dizayn</a><a data-lang="ru" href="/ru/uslugi/dizajn-interera">Дизайн интерьера</a>
+        <a class="lang-active" data-lang="uz" href="/xizmatlar/pod-klyuch">Pod klyuch</a><a data-lang="ru" href="/ru/uslugi/remont-pod-klyuch">Под ключ</a>
+        <a class="lang-active" data-lang="uz" href="/xizmatlar/ishchi-chizmalar">Ishchi chizmalar</a><a data-lang="ru" href="/ru/uslugi/rabochie-chertezhi">Рабочие чертежи</a>
+        <a class="lang-active" data-lang="uz" href="/xizmatlar/loyiha-hujjatlari">Loyiha hujjatlari</a><a data-lang="ru" href="/ru/uslugi/proektnaya-dokumentaciya">Проектная документация</a>
       </div>
       <div class="footer-col">
         <h5><span data-lang="uz" class="lang-active">Kompaniya</span><span data-lang="ru">Компания</span></h5>
