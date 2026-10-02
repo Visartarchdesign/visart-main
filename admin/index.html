@@ -784,22 +784,22 @@ function defaultPricing(){
         plan2d:{uz:'2D chizma (asosiy reja)',ru:'2D-план (основная планировка)'},
         workDrawings:{uz:'Ishchi chizmalar',ru:'Рабочие чертежи'},
         render3d:{uz:'3D render / vizualizatsiya',ru:'3D-рендер/визуализация'},
-        furniture:{uz:'Mebelirovka',ru:'Расстановка мебели'},
+        furniture:{uz:'Mebel joylashuvi',ru:'Расстановка мебели'},
         estimate:{uz:"Smeta (material va ish narxlari ro'yxati)",ru:'Смета (список материалов и работ)'},
         electrical:{uz:'Elektrika joylashuvi',ru:'Электрика'},
         plumbing:{uz:'Santexnika/jihozlar joylashuvi',ru:'Сантехника/оборудование'},
-        replan:{uz:'Pereplanirovka',ru:'Перепланировка'},
+        replan:{uz:'Rejani o\'zgartirish (pereplanirovka)',ru:'Перепланировка'},
         materialHelp:{uz:'Material tanlash va xarid qilishda yordam',ru:'Помощь в подборе и закупке материалов'}
       },
       packages:[
-        {id:'drawings',uz:'Chizmalar',ru:'Чертежи',rate:55000,includes:['plan2d','workDrawings']},
-        {id:'full',uz:"To'liq",ru:'Полный',rate:135000,includes:['plan2d','workDrawings','render3d','furniture','estimate']},
-        {id:'vip',uz:'VIP',ru:'VIP',rate:185000,includes:['plan2d','workDrawings','render3d','furniture','estimate','electrical','plumbing','replan','materialHelp']}
+        {id:'drawings',uz:'Standart — chizmalar',ru:'Стандарт — чертежи',rate:55000,includes:['plan2d','workDrawings']},
+        {id:'full',uz:"Premium — to'liq loyiha",ru:'Премиум — полный проект',rate:135000,includes:['plan2d','workDrawings','render3d','furniture','estimate']},
+        {id:'vip',uz:'Lyuks — VIP',ru:'Люкс — VIP',rate:185000,includes:['plan2d','workDrawings','render3d','furniture','estimate','electrical','plumbing','replan','materialHelp']}
       ]
     },
     turnkey:{
       components:[
-        {id:'labor',uz:'Usta xaqi',ru:'Оплата мастеров'},
+        {id:'labor',uz:'Usta haqi',ru:'Оплата мастеров'},
         {id:'material',uz:'Qurilish materiallari',ru:'Строительные материалы'},
         {id:'furniture',uz:'Mebel va jihozlar',ru:'Мебель и оборудование'}
       ],
@@ -836,6 +836,11 @@ function defaultPricing(){
         {uz:"Rasmiy hujjatlar bo'yicha davlat boj to'lovlari",ru:'Государственные пошлины по официальным документам'}
       ]
     },
+    designPaymentStages:[
+      {pct:40,uz:'Shartnoma imzolanganda (oldindan)',ru:'При подписании договора (предоплата)'},
+      {pct:30,uz:'Dizayn konsepsiyasi tasdiqlanganda',ru:'После утверждения дизайн-концепции'},
+      {pct:30,uz:'Loyiha to\'liq topshirilganda',ru:'После сдачи готового проекта'}
+    ],
     paymentStages:[
       {pct:30,uz:'Shartnoma imzolanganda',ru:'При подписании договора'},
       {pct:30,uz:'Qurilish ishlari yakunlanganda',ru:'По завершении строительных работ'},
@@ -860,6 +865,7 @@ function mergePricing(loaded, def){
   if(!p.timelines) p.timelines = def.timelines;
   if(!p.turnkeyScope) p.turnkeyScope = def.turnkeyScope;
   if(!Array.isArray(p.paymentStages) || !p.paymentStages.length) p.paymentStages = def.paymentStages;
+  if(!Array.isArray(p.designPaymentStages) || !p.designPaymentStages.length) p.designPaymentStages = def.designPaymentStages;
   return p;
 }
 async function loadPricing(){
@@ -960,7 +966,15 @@ function renderPricingForm(){
         <td><input type="text" data-scope-out-ru="${i}" value="${it.ru}" ${wideInp('')}></td></tr>`).join('')}
     </tbody></table>
 
-    <h3 style="font-size:14px;margin-bottom:14px">To'lov bosqichlari</h3>
+    <h3 style="font-size:14px;margin-bottom:14px">To'lov tartibi — dizayn (interyer va arxitektura)</h3>
+    <table class="data-table" style="margin-bottom:26px"><thead><tr><th>Foiz (%)</th><th>Izoh (UZ)</th><th>Izoh (RU)</th></tr></thead><tbody>
+      ${p.designPaymentStages.map((st,i)=>`<tr>
+        <td><input type="number" data-dpay-pct="${i}" value="${st.pct}" ${inp('')}></td>
+        <td><input type="text" data-dpay-uz="${i}" value="${st.uz}" ${wideInp('')}></td>
+        <td><input type="text" data-dpay-ru="${i}" value="${st.ru}" ${wideInp('')}></td></tr>`).join('')}
+    </tbody></table>
+
+    <h3 style="font-size:14px;margin-bottom:14px">To'lov bosqichlari — pod klyuch (qurilish)</h3>
     <table class="data-table" style="margin-bottom:26px"><thead><tr><th>Foiz (%)</th><th>Izoh (UZ)</th><th>Izoh (RU)</th></tr></thead><tbody>
       ${p.paymentStages.map((st,i)=>`<tr>
         <td><input type="number" data-pay-pct="${i}" value="${st.pct}" ${inp('')}></td>
@@ -1040,6 +1054,9 @@ async function savePricing(){
   document.querySelectorAll('[data-scope-out-uz]').forEach(el=>{ p.turnkeyScope.excluded[+el.dataset.scopeOutUz].uz = el.value; });
   document.querySelectorAll('[data-scope-out-ru]').forEach(el=>{ p.turnkeyScope.excluded[+el.dataset.scopeOutRu].ru = el.value; });
 
+  document.querySelectorAll('[data-dpay-pct]').forEach(el=>{ p.designPaymentStages[+el.dataset.dpayPct].pct = Number(el.value)||0; });
+  document.querySelectorAll('[data-dpay-uz]').forEach(el=>{ p.designPaymentStages[+el.dataset.dpayUz].uz = el.value; });
+  document.querySelectorAll('[data-dpay-ru]').forEach(el=>{ p.designPaymentStages[+el.dataset.dpayRu].ru = el.value; });
   document.querySelectorAll('[data-pay-pct]').forEach(el=>{ p.paymentStages[+el.dataset.payPct].pct = Number(el.value)||0; });
   document.querySelectorAll('[data-pay-uz]').forEach(el=>{ p.paymentStages[+el.dataset.payUz].uz = el.value; });
   document.querySelectorAll('[data-pay-ru]').forEach(el=>{ p.paymentStages[+el.dataset.payRu].ru = el.value; });

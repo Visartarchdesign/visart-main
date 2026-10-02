@@ -904,6 +904,10 @@ h3.svc-title{font-family:var(--sans);letter-spacing:0;font-size:20px;color:var(-
         </div>
       </div>
 
+      <div class="calc-payment-stages" id="calcDesignPayWrap">
+        <div class="calc-scope-title"><span data-lang="uz" class="lang-active">To'lov tartibi</span><span data-lang="ru">Порядок оплаты</span></div>
+        <div id="calcDesignPayment"></div>
+      </div>
       <div class="calc-tier-note" id="calcTimelineNote"></div>
 
       <div class="calc-result">
@@ -1430,22 +1434,22 @@ const PRICING={
       plan2d:{uz:'2D chizma (asosiy reja)',ru:'2D-план (основная планировка)'},
       workDrawings:{uz:'Ishchi chizmalar',ru:'Рабочие чертежи'},
       render3d:{uz:'3D render / vizualizatsiya',ru:'3D-рендер/визуализация'},
-      furniture:{uz:'Mebelirovka',ru:'Расстановка мебели'},
+      furniture:{uz:'Mebel joylashuvi',ru:'Расстановка мебели'},
       estimate:{uz:"Smeta (material va ish narxlari ro'yxati)",ru:'Смета (список материалов и работ)'},
       electrical:{uz:'Elektrika joylashuvi',ru:'Электрика'},
       plumbing:{uz:'Santexnika/jihozlar joylashuvi',ru:'Сантехника/оборудование'},
-      replan:{uz:'Pereplanirovka',ru:'Перепланировка'},
+      replan:{uz:'Rejani o\'zgartirish (pereplanirovka)',ru:'Перепланировка'},
       materialHelp:{uz:'Material tanlash va xarid qilishda yordam',ru:'Помощь в подборе и закупке материалов'}
     },
     packages:[
-      {id:'drawings',uz:'Chizmalar',ru:'Чертежи',rate:55000,includes:['plan2d','workDrawings']},
-      {id:'full',uz:"To'liq",ru:'Полный',rate:135000,includes:['plan2d','workDrawings','render3d','furniture','estimate']},
-      {id:'vip',uz:'VIP',ru:'VIP',rate:185000,includes:['plan2d','workDrawings','render3d','furniture','estimate','electrical','plumbing','replan','materialHelp']}
+      {id:'drawings',uz:'Standart — chizmalar',ru:'Стандарт — чертежи',rate:55000,includes:['plan2d','workDrawings']},
+      {id:'full',uz:"Premium — to'liq loyiha",ru:'Премиум — полный проект',rate:135000,includes:['plan2d','workDrawings','render3d','furniture','estimate']},
+      {id:'vip',uz:'Lyuks — VIP',ru:'Люкс — VIP',rate:185000,includes:['plan2d','workDrawings','render3d','furniture','estimate','electrical','plumbing','replan','materialHelp']}
     ]
   },
   turnkey:{
     components:[
-      {id:'labor',uz:'Usta xaqi',ru:'Оплата мастеров'},
+      {id:'labor',uz:'Usta haqi',ru:'Оплата мастеров'},
       {id:'material',uz:'Qurilish materiallari',ru:'Строительные материалы'},
       {id:'furniture',uz:'Mebel va jihozlar',ru:'Мебель и оборудование'}
     ],
@@ -1482,6 +1486,11 @@ const PRICING={
       {uz:"Rasmiy hujjatlar bo'yicha davlat boj to'lovlari",ru:'Государственные пошлины по официальным документам'}
     ]
   },
+  designPaymentStages:[
+    {pct:40,uz:'Shartnoma imzolanganda (oldindan)',ru:'При подписании договора (предоплата)'},
+    {pct:30,uz:'Dizayn konsepsiyasi tasdiqlanganda',ru:'После утверждения дизайн-концепции'},
+    {pct:30,uz:'Loyiha to\'liq topshirilganda',ru:'После сдачи готового проекта'}
+  ],
   paymentStages:[
     {pct:30,uz:'Shartnoma imzolanganda',ru:'При подписании договора'},
     {pct:30,uz:'Qurilish ishlari yakunlanganda',ru:'По завершении строительных работ'},
@@ -1607,6 +1616,11 @@ function renderCalc(){
   if(scopeIn)scopeIn.innerHTML=(PRICING.turnkeyScope.included||[]).map(x=>`<li>${x[lang]}</li>`).join('');
   const scopeOut=document.getElementById('calcScopeExcluded');
   if(scopeOut)scopeOut.innerHTML=(PRICING.turnkeyScope.excluded||[]).map(x=>`<li>${x[lang]}</li>`).join('');
+  const dPayWrap=document.getElementById('calcDesignPayWrap');
+  if(dPayWrap){
+    dPayWrap.style.display=(calcState.service==='turnkey')?'none':'block';
+    document.getElementById('calcDesignPayment').innerHTML=(PRICING.designPaymentStages||[]).map(s=>`<div class="calc-pay-row"><span class="calc-pay-pct">${s.pct}%</span><span>${s[lang]}</span></div>`).join('');
+  }
   const payWrap=document.getElementById('calcPaymentStages');
   if(payWrap)payWrap.innerHTML=(PRICING.paymentStages||[]).map(s=>`<div class="calc-pay-row"><span class="calc-pay-pct">${s.pct}%</span><span>${s[lang]}</span></div>`).join('');
 
@@ -1841,6 +1855,7 @@ async function loadDynamicContent(){
       if(p.timelines)PRICING.timelines=p.timelines;
       if(p.turnkeyScope)PRICING.turnkeyScope=p.turnkeyScope;
       if(Array.isArray(p.paymentStages)&&p.paymentStages.length)PRICING.paymentStages=p.paymentStages;
+      if(Array.isArray(p.designPaymentStages)&&p.designPaymentStages.length)PRICING.designPaymentStages=p.designPaymentStages;
       if(calcState.interiorPackage&&!PRICING.interior.packages.find(pk=>pk.id===calcState.interiorPackage)){
         calcState.interiorPackage=PRICING.interior.packages[0]?.id||'full';
       }
