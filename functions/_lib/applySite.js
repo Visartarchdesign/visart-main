@@ -42,6 +42,12 @@ export function buildHeadExtras(seo = {}) {
   if (ym) {
     out += `<script>(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");ym(${ym},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true});</script>`;
   }
+  if (ym || ga) {
+    // Konversiya hodisalari: telefon, Telegram, WhatsApp, Instagram, email, forma yuborish, kalkulyator.
+    out += `<script>(function(){var Y=${ym ? Number(ym) : 0};function g(n,p){try{if(Y&&window.ym)ym(Y,'reachGoal',n,p||{});}catch(e){}try{if(window.gtag)gtag('event',n,p||{});}catch(e){}}` +
+      `document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href],button[data-goal]');if(!a)return;var d=a.getAttribute('data-goal');if(d){g(d);return;}var h=(a.getAttribute('href')||'').toLowerCase();var n=h.indexOf('tel:')===0?'phone_click':/(^|\\/\\/)(t\\.me|telegram\\.me)\\//.test(h)||h.indexOf('t.me/')>-1?'telegram_click':/wa\\.me|whatsapp/.test(h)?'whatsapp_click':h.indexOf('instagram.com')>-1?'instagram_click':h.indexOf('mailto:')===0?'email_click':'';if(n)g(n,{url:h.slice(0,80)});},true);` +
+      `document.addEventListener('submit',function(e){var f=e.target;if(f&&f.tagName==='FORM')g('form_submit',{id:f.id||''});},true);})();</script>`;
+  }
   return out;
 }
 
