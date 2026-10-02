@@ -250,7 +250,7 @@ footer a:hover{color:var(--gold-l)}
   </section>
   ${relatedHtml ? `<section class="wrap related"><h2>${esc(t.related)}</h2><div class="rel-grid">${relatedHtml}</div></section>` : ''}
 </main>
-<footer><div class="wrap"><span>© ${new Date().getFullYear()} VISART ARCHDESIGN · ${lang === 'uz' ? "Toshkent, Uchtepa tumani, Fozilxo'ja ko'chasi" : 'Ташкент, Учтепинский р-н, ул. Фозилхужа'}</span><span><a href="tel:+998974021515">+998 97 402 15 15</a> · <a href="${baseUrl}/maxfiylik/">${lang === 'uz' ? 'Maxfiylik siyosati' : 'Конфиденциальность'}</a></span></div></footer>
+<footer><div class="wrap"><span>© ${new Date().getFullYear()} VISART ARCHDESIGN · ${lang === 'uz' ? "Toshkent, Uchtepa tumani, Foziltepa ko'chasi" : 'Ташкент, Учтепинский р-н, ул. Фозилтепа'}</span><span><a href="tel:+998974021515">+998 97 402 15 15</a> · <a href="${baseUrl}/maxfiylik/">${lang === 'uz' ? 'Maxfiylik siyosati' : 'Конфиденциальность'}</a></span></div></footer>
 </body>
 </html>`;
 }
