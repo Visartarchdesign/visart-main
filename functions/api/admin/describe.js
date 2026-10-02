@@ -126,8 +126,21 @@ async function uzThenProof(env, system, user, maxTokens) {
   if (!draft) return '';
   try {
     const fixed = await write(env, UZ_MODELS, PROOF_UZ, draft, maxTokens, 0.2);
-    return fixed && fixed.length > draft.length * 0.6 ? fixed : draft;
+    return fixed && fixed.length >= draft.length * 0.9 ? fixed : draft;
   } catch (e) { return draft; }
+}
+
+// Matn juda qisqa bo'lsa (minChars dan kam) — model bilan 2 martagacha kengaytiradi.
+const MIN_DESC = 420;
+async function ensureLen(env, models, text, minChars, systemExpand) {
+  let out = text || '';
+  for (let i = 0; i < 2 && out && out.length < minChars; i++) {
+    try {
+      const more = await write(env, models, systemExpand, out, 900, 0.4);
+      if (more && more.length > out.length) out = more;
+    } catch (e) { break; }
+  }
+  return out;
 }
 
 export async function onRequestPost({ request, env }) {
@@ -175,12 +188,16 @@ export async function onRequestPost({ request, env }) {
 
     // ── Rasmlar bo'yicha tavsif ──
     if (mode === 'desc') {
-      const uz = await uzThenProof(env,
-        `${UZ_STYLE}\nVazifa: rasmlar tahlili asosida loyiha tavsifini yozing — 2 xatboshi, 120–180 so'z.\n1-xatboshi: makon, uslub, ranglar va materiallar.\n2-xatboshi: zonalashtirish, saqlash, yoritish va bu yechimlar kundalik hayotda qanday qulaylik yaratishi (dizayn yechimlarining maqsadi sifatida yozing, mijoz gaplari sifatida emas).\n${SEO_HINT(ctx)}\nFaqat tayyor matnni qaytaring, sarlavhasiz.`,
+      let uz = await uzThenProof(env,
+        `${UZ_STYLE}\nVazifa: rasmlar tahlili asosida loyiha tavsifini yozing — 2 xatboshi, 150–200 so'z (kamida 900 belgi). Matn qisqa bo'lib qolmasin.\n1-xatboshi: makon, uslub, ranglar va materiallar.\n2-xatboshi: zonalashtirish, saqlash, yoritish va bu yechimlar kundalik hayotda qanday qulaylik yaratishi (dizayn yechimlarining maqsadi sifatida yozing, mijoz gaplari sifatida emas).\n${SEO_HINT(ctx)}\nFaqat tayyor matnni qaytaring, sarlavhasiz.`,
         user, 900);
-      const ru = await write(env, RU_MODELS,
-        `${RU_STYLE}\nНапишите описание проекта по анализу изображений: 2 абзаца, 120–180 слов. 1-й абзац — пространство, стиль, цвета и материалы. 2-й — зонирование, хранение, освещение и какую пользу эти решения дают в повседневной жизни (как цель дизайнерских решений, а не слова клиента).\n${SEO_HINT_RU(ctx)}\nТолько готовый текст, без заголовков.`,
+      let ru = await write(env, RU_MODELS,
+        `${RU_STYLE}\nНапишите описание проекта по анализу изображений: 2 абзаца, 150–200 слов (не менее 900 знаков), не сокращайте. 1-й абзац — пространство, стиль, цвета и материалы. 2-й — зонирование, хранение, освещение и какую пользу эти решения дают в повседневной жизни (как цель дизайнерских решений, а не слова клиента).\n${SEO_HINT_RU(ctx)}\nТолько готовый текст, без заголовков.`,
         user, 900);
+      uz = await ensureLen(env, UZ_MODELS, uz, MIN_DESC,
+        `${UZ_STYLE}\nQuyidagi tavsif juda qisqa. Uni 2 xatboshi, 150–200 so'zgacha kengaytiring: zonalashtirish, materiallar, yoritish va dizayn yechimlarining maqsadini batafsilroq yozing. Yangi fakt (maydon, joy, narx, muddat) qo'shmang. Faqat tayyor matnni qaytaring.`);
+      ru = await ensureLen(env, RU_MODELS, ru, MIN_DESC,
+        `${RU_STYLE}\nОписание ниже слишком короткое. Расширьте его до 2 абзацев, 150–200 слов: подробнее о зонировании, материалах, освещении и назначении решений. Не добавляйте новых фактов (площадь, адрес, цена, сроки). Только готовый текст.`);
       if (!uz && !ru) return json({ ok: false, error: 'generation_failed', message: "Model bo'sh javob qaytardi" }, 502);
       return json({ ok: true, desc_uz: uz, desc_ru: ru });
     }
