@@ -67,7 +67,7 @@ export function renderProjectPage({ row, lang, related = [], baseUrl = 'https://
   const place = location || t.city;
 
   // Sarlavha: "Nomi — Xizmat, Joy | VISART" (60 belgigacha maqsad)
-  const pageTitle = `${title} — ${type}, ${place} | VISART ARCHDESIGN`;
+  const pageTitle = `${title} — ${type}, ${place} | Visart Design`;
   // Meta tavsif: dalillar + tavsif boshi, 155 belgigacha
   const factBits = [style && `${style}`, area, location, year].filter(Boolean).join(', ');
   let metaDesc = `${title}: ${type.toLowerCase()}${factBits ? ` (${factBits})` : ''}. ${desc}`;
@@ -76,7 +76,7 @@ export function renderProjectPage({ row, lang, related = [], baseUrl = 'https://
   const imgAltRu = `${title} — ${type}${style ? `, стиль ${style.toLowerCase()}` : ''}, ${place}`;
   const alt = lang === 'uz' ? imgAlt : imgAltRu;
 
-  const tags = [catTag, style, place, 'VISART ARCHDESIGN'].filter(Boolean);
+  const tags = [catTag, style, place, 'Visart Design'].filter(Boolean);
   const facts = [
     [t.facts.type, type], [t.facts.style, style], [t.facts.area, area], [t.facts.location, location],
     [t.facts.year, year], [t.facts.duration, duration], [t.facts.status, badge],
@@ -96,8 +96,8 @@ export function renderProjectPage({ row, lang, related = [], baseUrl = 'https://
     keywords: tags.join(', '),
     ...(year ? { dateCreated: year } : {}),
     ...(location ? { locationCreated: { '@type': 'Place', name: `${location}, ${t.city}` } } : {}),
-    creator: { '@type': 'Organization', name: 'VISART ARCHDESIGN', url: `${baseUrl}/` },
-    publisher: { '@type': 'Organization', name: 'VISART ARCHDESIGN', logo: { '@type': 'ImageObject', url: `${baseUrl}/assets/logo-full.png` } },
+    creator: { '@type': 'Organization', name: 'Visart Design', url: `${baseUrl}/` },
+    publisher: { '@type': 'Organization', name: 'Visart Design', logo: { '@type': 'ImageObject', url: `${baseUrl}/assets/logo-full.png` } },
   };
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -137,7 +137,7 @@ export function renderProjectPage({ row, lang, related = [], baseUrl = 'https://
 <meta name="description" content="${esc(metaDesc)}">
 <link rel="canonical" href="${selfUrl}">
 ${hreflang}
-<meta property="og:site_name" content="VISART ARCHDESIGN">
+<meta property="og:site_name" content="Visart Design">
 <meta property="og:type" content="article">
 <meta property="og:title" content="${esc(title)} — ${esc(type)}">
 <meta property="og:description" content="${esc(metaDesc)}">
@@ -250,7 +250,7 @@ footer a:hover{color:var(--gold-l)}
   </section>
   ${relatedHtml ? `<section class="wrap related"><h2>${esc(t.related)}</h2><div class="rel-grid">${relatedHtml}</div></section>` : ''}
 </main>
-<footer><div class="wrap"><span>© ${new Date().getFullYear()} VISART ARCHDESIGN · ${lang === 'uz' ? "Toshkent, Uchtepa tumani, Foziltepa ko'chasi" : 'Ташкент, Учтепинский р-н, ул. Фозилтепа'}</span><span><a href="tel:+998974021515">+998 97 402 15 15</a> · <a href="${baseUrl}/maxfiylik/">${lang === 'uz' ? 'Maxfiylik siyosati' : 'Конфиденциальность'}</a></span></div></footer>
+<footer><div class="wrap"><span>© ${new Date().getFullYear()} Visart Design · ${lang === 'uz' ? "Toshkent, Uchtepa tumani, Foziltepa ko'chasi" : 'Ташкент, Учтепинский р-н, ул. Фозилтепа'}</span><span><a href="tel:+998974021515">+998 97 402 15 15</a> · <a href="${baseUrl}/maxfiylik/">${lang === 'uz' ? 'Maxfiylik siyosati' : 'Конфиденциальность'}</a></span></div></footer>
 </body>
 </html>`;
 }
