@@ -3,6 +3,8 @@
 // DIQQAT: repo root'dagi statik sitemap.xml fayli o'chirilishi kerak, aks holda
 // Cloudflare Pages statik faylni bu funksiyadan ustun qo'yadi.
 
+import { SERVICES, serviceUrl } from './_lib/services.js';
+
 function esc(s) {
   return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -23,6 +25,12 @@ export async function onRequestGet({ env }) {
   const homeAlt = `\n    <xhtml:link rel="alternate" hreflang="uz" href="${base}/"/>\n    <xhtml:link rel="alternate" hreflang="ru" href="${base}/ru/"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${base}/"/>`;
   entries.push(`  <url>\n    <loc>${base}/</loc>${homeAlt}\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>`);
   entries.push(`  <url>\n    <loc>${base}/ru/</loc>${homeAlt}\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>`);
+  for (const sv of SERVICES) {
+    const u = serviceUrl(sv, 'uz'), r = serviceUrl(sv, 'ru');
+    const alt = `\n    <xhtml:link rel="alternate" hreflang="uz" href="${u}"/>\n    <xhtml:link rel="alternate" hreflang="ru" href="${r}"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${u}"/>`;
+    entries.push(`  <url>\n    <loc>${u}</loc>${alt}\n    <changefreq>monthly</changefreq>\n    <priority>0.9</priority>\n  </url>`);
+    entries.push(`  <url>\n    <loc>${r}</loc>${alt}\n    <changefreq>monthly</changefreq>\n    <priority>0.9</priority>\n  </url>`);
+  }
   entries.push(`  <url>\n    <loc>${base}/maxfiylik/</loc>\n    <changefreq>yearly</changefreq>\n    <priority>0.2</priority>\n  </url>`);
 
   for (const r of rows) {
