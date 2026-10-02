@@ -20,7 +20,9 @@ export async function onRequestGet({ env }) {
   }
 
   const entries = [];
-  entries.push(`  <url>\n    <loc>${base}/</loc>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>`);
+  const homeAlt = `\n    <xhtml:link rel="alternate" hreflang="uz" href="${base}/"/>\n    <xhtml:link rel="alternate" hreflang="ru" href="${base}/ru/"/>\n    <xhtml:link rel="alternate" hreflang="x-default" href="${base}/"/>`;
+  entries.push(`  <url>\n    <loc>${base}/</loc>${homeAlt}\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>`);
+  entries.push(`  <url>\n    <loc>${base}/ru/</loc>${homeAlt}\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>`);
   entries.push(`  <url>\n    <loc>${base}/maxfiylik/</loc>\n    <changefreq>yearly</changefreq>\n    <priority>0.2</priority>\n  </url>`);
 
   for (const r of rows) {
