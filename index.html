@@ -100,8 +100,9 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 
 /* ═══ LANG ═══ */
 .lang-toggle{position:fixed;top:30px;right:44px;z-index:200;display:flex;gap:2px;background:rgba(21,20,18,.4);backdrop-filter:blur(6px);border-radius:3px;padding:2px}
-.lang-btn{padding:5px 10px;font-size:11px;font-weight:500;color:#A39D8C;cursor:pointer;letter-spacing:.3px}
+.lang-btn{background:none;border:0;font-family:inherit;line-height:1.2;padding:5px 10px;font-size:11px;font-weight:500;color:#A39D8C;cursor:pointer;letter-spacing:.3px}
 .lang-btn.active{color:#fff}
+.lang-btn:focus-visible,.nav-burger:focus-visible,.mobile-menu-close:focus-visible,.call-fab:focus-visible,.tg-fab:focus-visible,.nav-phone:focus-visible{outline:2px solid var(--gold-l);outline-offset:3px}
 
 /* ═══ NAV ═══ */
 .nav{position:fixed;top:0;left:0;right:0;z-index:150;padding:30px 0;transition:padding .4s var(--ease),background .4s var(--ease);background:linear-gradient(180deg,rgba(21,20,18,.5) 0%,rgba(21,20,18,0) 100%)}
@@ -146,7 +147,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 .call-fab svg{width:23px;height:23px}
 .call-fab:hover{transform:scale(1.08)}
 .tg-fab svg{width:24px;height:24px;color:var(--ink)}
-.nav-burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:8px;z-index:210;position:relative}
+.nav-burger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:8px;background:none;border:0;z-index:210;position:relative}
 .nav-burger span{width:20px;height:1.5px;background:#fff;transition:transform .3s var(--ease),opacity .3s var(--ease)}
 .nav-burger.active span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
 .nav-burger.active span:nth-child(2){opacity:0}
@@ -155,6 +156,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 /* ═══ MOBILE MENU OVERLAY ═══ */
 .mobile-menu{position:fixed;inset:0;background:var(--ink);z-index:180;display:flex;flex-direction:column;justify-content:center;padding:0 44px;opacity:0;visibility:hidden;transition:opacity .4s var(--ease),visibility .4s}
 .mobile-menu.active{opacity:1;visibility:visible}
+.mobile-menu-close{position:absolute;top:16px;right:18px;width:46px;height:46px;border:1px solid rgba(255,255,255,.25);border-radius:50%;background:none;color:#fff;font-size:28px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .mobile-menu ul{list-style:none;display:flex;flex-direction:column;gap:6px}
 .mobile-menu a{font-family:var(--serif);font-size:clamp(28px,8vw,40px);color:#fff;font-weight:500;padding:14px 0;border-bottom:0.5px solid var(--line);opacity:0;transform:translateY(16px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
 .mobile-menu.active a{opacity:1;transform:translateY(0)}
@@ -245,6 +247,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 
 /* ═══ PORTFOLIO GRID — aniq, tushunarli kartochkalar (eski to'liq-ekran formati o'rniga) ═══ */
 .projects-hint{margin-top:18px;font-size:13px;color:var(--t3)}
+.proj-card-seo{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .proj-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;max-width:1240px;margin:70px auto 0;padding:0 44px}
 .proj-card{display:block;position:relative;border-radius:4px;overflow:hidden;cursor:pointer;background:#111}
 .proj-card-img{position:relative;height:340px;overflow:hidden}
@@ -343,7 +346,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 .footer-logo svg{width:19px;height:17px;color:var(--gold)}
 .footer-brand p{font-size:12.5px;color:#8C8676;line-height:1.7}
 .footer-cols{display:flex;gap:70px;flex-wrap:wrap}
-.footer-col h5{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#8C8676;margin-bottom:16px}
+.footer-col h5,.footer-col .footer-h{font-size:11px;letter-spacing:.4px;text-transform:uppercase;color:#8C8676;margin-bottom:16px}
 .footer-col a{display:block;font-size:13px;color:#B8B2A0;margin-bottom:11px;transition:color .2s}
 .footer-col a:hover{color:var(--gold-l)}
 .footer-social{display:flex;gap:12px}
@@ -608,14 +611,14 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
   <div class="fly-overlay-label"></div>
 </div>
 
-<div class="lang-toggle">
-  <div class="lang-btn active" data-setlang="uz">UZ</div>
-  <div class="lang-btn" data-setlang="ru">RU</div>
+<div class="lang-toggle" role="group" aria-label="Til / Язык">
+  <button type="button" class="lang-btn active" data-setlang="uz" lang="uz" aria-label="O'zbekcha" aria-pressed="true">UZ</button>
+  <button type="button" class="lang-btn" data-setlang="ru" lang="ru" aria-label="Русский" aria-pressed="false">RU</button>
 </div>
 
 <nav class="nav" id="mainNav">
   <div class="wrap nav-inner">
-    <a href="#" class="nav-logo">
+    <a href="#" class="nav-logo" aria-label="Visart Design">
       <img src="/assets/logo-mark.png" alt="" width="32" height="28" class="nav-logo-mark">
       <span class="nav-logo-text">VISART</span>
     </a>
@@ -638,7 +641,7 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
     </ul>
     <div class="nav-actions">
       <a id="navPhone" href="tel:+998974021515" class="nav-phone" aria-label="Qo'ng'iroq qilish / Позвонить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.8 19.8 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg><span>+998 97 402 15 15</span></a>
-      <a href="https://app.visartdesign.uz" class="nav-portal" target="_blank" rel="noopener">
+      <a href="https://app.visartdesign.uz" class="nav-portal" target="_blank" rel="noopener" aria-label="Mijoz kabineti / Кабинет клиента">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
         <span><span data-lang="uz" class="lang-active">Mijoz kabineti</span><span data-lang="ru">Кабинет клиента</span></span>
       </a>
@@ -648,11 +651,12 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
         <a id="navTelegram" href="https://t.me/visartdesign" class="js-tg-channel" target="_blank" rel="noopener" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16L2.28 10.5c-1.2.47-1.2 1.13-.22 1.42l4.8 1.5 1.85 5.68c.22.6.11.85.75.85.5 0 .72-.23 1-.5l2.4-2.32 4.98 3.68c.92.5 1.58.24 1.8-.85l3.27-15.4c.32-1.35-.5-1.96-1.86-1.4zM8.02 13.5l10.4-6.55c.5-.3.94-.14.58.2L9.9 15.1l-.35 3.8-1.53-5.4z"/></svg></a>
       </div>
     </div>
-    <div class="nav-burger" id="navBurger" onclick="toggleMobileMenu()"><span></span><span></span><span></span></div>
+    <button type="button" class="nav-burger" id="navBurger" aria-label="Menyu / Меню" aria-expanded="false" aria-controls="mobileMenu" onclick="toggleMobileMenu()"><span></span><span></span><span></span></button>
   </div>
 </nav>
 
-<div class="mobile-menu" id="mobileMenu">
+<div class="mobile-menu" id="mobileMenu" role="dialog" aria-modal="true" aria-label="Menyu / Меню">
+  <button type="button" class="mobile-menu-close" aria-label="Yopish / Закрыть" onclick="toggleMobileMenu()">&times;</button>
   <ul>
     <li><a href="#services" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></a></li>
     <li><a href="#process" onclick="toggleMobileMenu()"><span data-lang="uz" class="lang-active">Jarayon</span><span data-lang="ru">Процесс</span></a></li>
@@ -947,8 +951,8 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
       <h2 class="split-target"><span data-lang="uz" class="lang-active">Loyihani qilgan insonlar bilan quruvchilar bir tilda gaplasha oladi</span><span data-lang="ru">Те, кто создал проект, говорят со строителями на одном языке</span></h2>
       <p class="about-text"><span data-lang="uz" class="lang-active">Visart Design — arxitektura va interyer firmasi. O'zbekiston va MDH bo'ylab birinchi suhbatdan to uyni topshirishgacha siz bilan bitta jamoa ishlaydi.</span><span data-lang="ru">Visart Design — архитектурно-дизайнерская фирма. По Узбекистану и странам СНГ с вами работает одна команда — от первой встречи до сдачи дома.</span></p>
       <div class="about-stats">
-        <div><div class="astat-n" id="statYears">10+</div><div class="astat-l"><span data-lang="uz" class="lang-active">yillik tajriba</span><span data-lang="ru">лет опыта</span></div></div>
-        <div><div class="astat-n" id="statProjects">200+</div><div class="astat-l"><span data-lang="uz" class="lang-active">loyiha</span><span data-lang="ru">проектов</span></div></div>
+        <div><div class="astat-n" id="statYears">—</div><div class="astat-l"><span data-lang="uz" class="lang-active">yillik tajriba</span><span data-lang="ru">лет опыта</span></div></div>
+        <div><div class="astat-n" id="statProjects">—</div><div class="astat-l"><span data-lang="uz" class="lang-active">loyiha</span><span data-lang="ru">проектов</span></div></div>
       </div>
     </div>
   </div>
@@ -1062,7 +1066,7 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
     </div>
     <div class="footer-cols">
       <div class="footer-col">
-        <h5><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></h5>
+        <h3 class="footer-h"><span data-lang="uz" class="lang-active">Xizmat</span><span data-lang="ru">Услуги</span></h3>
         <a class="lang-active" data-lang="uz" href="/xizmatlar/arxitektura-loyihalash">Arxitektura</a><a data-lang="ru" href="/ru/uslugi/arhitekturnoe-proektirovanie">Архитектура</a>
         <a class="lang-active" data-lang="uz" href="/xizmatlar/interyer-dizayn">Interyer dizayn</a><a data-lang="ru" href="/ru/uslugi/dizajn-interera">Дизайн интерьера</a>
         <a class="lang-active" data-lang="uz" href="/xizmatlar/pod-klyuch">Pod klyuch</a><a data-lang="ru" href="/ru/uslugi/remont-pod-klyuch">Под ключ</a>
@@ -1070,14 +1074,14 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
         <a class="lang-active" data-lang="uz" href="/xizmatlar/loyiha-hujjatlari">Loyiha hujjatlari</a><a data-lang="ru" href="/ru/uslugi/proektnaya-dokumentaciya">Проектная документация</a>
       </div>
       <div class="footer-col">
-        <h5><span data-lang="uz" class="lang-active">Kompaniya</span><span data-lang="ru">Компания</span></h5>
+        <h3 class="footer-h"><span data-lang="uz" class="lang-active">Kompaniya</span><span data-lang="ru">Компания</span></h3>
         <a href="#projects"><span data-lang="uz" class="lang-active">Loyihalar</span><span data-lang="ru">Проекты</span></a>
         <a href="#about"><span data-lang="uz" class="lang-active">Biz haqimizda</span><span data-lang="ru">О нас</span></a>
         <a href="#contact"><span data-lang="uz" class="lang-active">Bog'lanish</span><span data-lang="ru">Контакты</span></a>
         <a href="https://app.visartdesign.uz" target="_blank" rel="noopener"><span data-lang="uz" class="lang-active">Mijoz kabineti</span><span data-lang="ru">Кабинет клиента</span></a>
       </div>
       <div class="footer-col footer-contact">
-        <h5><span data-lang="uz" class="lang-active">Aloqa</span><span data-lang="ru">Контакты</span></h5>
+        <h3 class="footer-h"><span data-lang="uz" class="lang-active">Aloqa</span><span data-lang="ru">Контакты</span></h3>
         <a href="tel:+998974021515">+998 97 402 15 15</a>
         <a href="mailto:visartarchdesign@gmail.com">visartarchdesign@gmail.com</a>
         <span><span data-lang="uz" class="lang-active">Toshkent sh., Uchtepa tumani,<br>Foziltepa ko'chasi</span><span data-lang="ru">г. Ташкент, Учтепинский р-н,<br>ул. Фозилтепа</span></span>
@@ -1125,7 +1129,12 @@ function scrollToSvc(e,id){
 }
 
 function setLang(lang){
-  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.setlang===lang));
+  document.querySelectorAll('.lang-btn').forEach(b=>{const on=b.dataset.setlang===lang;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false');});
+  document.querySelectorAll('[aria-label*=" / "]').forEach(el=>{
+    if(!el.dataset.ariaBi)el.dataset.ariaBi=el.getAttribute('aria-label');
+    const parts=el.dataset.ariaBi.split(' / ');
+    if(parts.length===2)el.setAttribute('aria-label',(lang==='ru'?parts[1]:parts[0]).trim());
+  });
   document.querySelectorAll('[data-lang]').forEach(el=>el.classList.toggle('lang-active',el.dataset.lang===lang));
   localStorage.setItem('visart_lang',lang);
   renderProjects();
@@ -1515,6 +1524,7 @@ const PRICING={
     {pct:10,uz:'Obyekt topshirilganda',ru:'При сдаче объекта'}
   ]
 };
+let pricingState='loading'; // 'loading' | 'ready' | 'failed' — narx faqat serverdan kelgach ko'rsatiladi
 let calcState={
   service:'arch',
   style:'standard',
@@ -1527,6 +1537,16 @@ let calcState={
   turnkeyComponents:['labor','material','furniture']
 };
 
+// Xizmat sahifalaridan chuqur havola: /?calc=interior&pkg=full&style=premium#pricing
+(function(){
+  try{
+    const q=new URLSearchParams(location.search);
+    const sv=q.get('calc'),pk=q.get('pkg'),st=q.get('style');
+    if(['arch','interior','turnkey'].includes(sv))calcState.service=sv;
+    if(['drawings','full','vip'].includes(pk))calcState.interiorPackage=pk;
+    if(['standard','premium','lux'].includes(st))calcState.style=st;
+  }catch(e){}
+})();
 function fmtUZS(n){return new Intl.NumberFormat('uz-UZ').format(Math.round(n/10000)*10000)+" so'm";}
 function fmtRUB(n){return new Intl.NumberFormat('ru-RU').format(Math.round(n/10000)*10000)+" сум";}
 function fmtUSD(n){return "$"+new Intl.NumberFormat('en-US').format(Math.round(n));}
@@ -1591,7 +1611,7 @@ function renderCalc(){
   if(interiorAreaVal)interiorAreaVal.textContent=calcState.area;
   const pkgWrap=document.getElementById('calcInteriorPackages');
   if(pkgWrap){
-    const PKG_LABEL={uz:s=>`${new Intl.NumberFormat('uz-UZ').format(s.rate)} so'm/m²`,ru:s=>`${new Intl.NumberFormat('ru-RU').format(s.rate)} сум/м²`};
+    const PKG_LABEL={uz:s=>pricingState!=='ready'?'—':`${new Intl.NumberFormat('uz-UZ').format(s.rate)} so'm/m²`,ru:s=>pricingState!=='ready'?'—':`${new Intl.NumberFormat('ru-RU').format(s.rate)} сум/м²`};
     pkgWrap.innerHTML=PRICING.interior.packages.map(pk=>`
       <button type="button" class="calc-pkg-card ${pk.id===calcState.interiorPackage?'active':''}" data-pkg="${pk.id}">
         ${pk.id==='full'?`<span class="calc-pkg-badge">${lang==='uz'?'Tavsiya':'Рекомендуем'}</span>`:''}
@@ -1662,6 +1682,13 @@ function calcCompute(){
   const style=PRICING.styles.find(s=>s.id===calcState.style)||PRICING.styles[0];
   const valEl=document.getElementById('calcResultVal');
   if(!valEl)return;
+  if(pricingState!=='ready'){
+    calcState.total=0;
+    valEl.textContent=pricingState==='failed'
+      ?(lang==='uz'?"Narxni aniqlash uchun murojaat qiling":'Для расчёта стоимости свяжитесь с нами')
+      :(lang==='uz'?'Narxlar yuklanmoqda…':'Загрузка цен…');
+    return;
+  }
   let total=0;
 
   if(calcState.service==='arch'){
@@ -1694,6 +1721,7 @@ function calcCompute(){
   PRICING.turnkey.components.forEach(c=>{
     const rateEl=document.getElementById('tkRate-'+c.id);
     if(!rateEl)return;
+    if(pricingState!=='ready'){rateEl.textContent='—';return;}
     const comp=areaTier[c.id];
     const minAdj=comp.min*style.mult, maxAdj=comp.max*style.mult;
     rateEl.textContent="$"+Math.round(minAdj)+" – $"+Math.round(maxAdj)+"/m²";
@@ -1748,7 +1776,7 @@ function sendCalcToContact(){
   const lang=currentLang();
   document.getElementById('contact')?.scrollIntoView({behavior:'smooth'});
   const msgEl=document.getElementById('cMessage');
-  const resultTxt=document.getElementById('calcResultVal')?.textContent||'';
+  const resultTxt=pricingState==='ready'?(document.getElementById('calcResultVal')?.textContent||''):'';
   const SERVICE_LABEL={
     arch:{uz:'Arxitektura loyihalash',ru:'Архитектурное проектирование'},
     interior:{uz:'Interyer dizayn',ru:'Дизайн интерьера'},
@@ -1818,6 +1846,8 @@ function toggleMobileMenu(){
   const opening=!menu.classList.contains('active');
   menu.classList.toggle('active',opening);
   burger.classList.toggle('active',opening);
+  burger.setAttribute('aria-expanded',opening?'true':'false');
+  if(opening){const c=menu.querySelector('.mobile-menu-close');if(c)setTimeout(()=>c.focus(),60);}else{burger.focus();}
   document.body.style.overflow=opening?'hidden':'';
 }
 
@@ -1835,9 +1865,9 @@ updateBpRail();
 async function loadDynamicContent(){
   try{
     const res=await fetch('/api/content');
-    if(!res.ok)return;
+    if(!res.ok){pricingFail();return;}
     const data=await res.json();
-    if(!data||!data.ok)return;
+    if(!data||!data.ok){pricingFail();return;}
 
     if(Array.isArray(data.projects)&&data.projects.length){
       PROJECTS.length=0;
@@ -1851,6 +1881,7 @@ async function loadDynamicContent(){
     }
     if(data.pricing&&typeof data.pricing==='object'&&data.pricing.architecture){
       const p=data.pricing;
+      pricingState='ready';
       if(typeof p.usdRate==='number')PRICING.usdRate=p.usdRate;
       if(Array.isArray(p.styles)&&p.styles.length)PRICING.styles=p.styles;
       if(p.architecture){
@@ -1919,9 +1950,15 @@ async function loadDynamicContent(){
       if(s.address){ set('cdAddrUz',s.address.uz); set('cdAddrRu',s.address.ru); }
       if(s.stats){ set('statYears',s.stats.years); set('statProjects',s.stats.projects); }
     }
+    if(pricingState!=='ready')pricingFail();
   }catch(e){
-    // Jim tarzda e'tiborsiz qoldiramiz — sayt standart ma'lumotlar bilan ishlashda davom etadi.
+    pricingFail();
   }
+}
+function pricingFail(){
+  if(pricingState==='ready')return;
+  pricingState='failed';
+  try{renderCalc();}catch(e){}
 }
 document.querySelectorAll('.svc-link[data-calc]').forEach(a=>a.addEventListener('click',()=>{
   if(typeof calcState==='undefined')return;
@@ -1929,6 +1966,8 @@ document.querySelectorAll('.svc-link[data-calc]').forEach(a=>a.addEventListener(
   renderCalc();
 }));
 loadDynamicContent();
+// Webvisor: forma maydonlaridagi matn yozuvlari yozib olinmaydi
+document.querySelectorAll('form input,form textarea,form select').forEach(el=>el.classList.add('ym-disable-keys'));
 
 window.addEventListener('load',()=>{
   if(location.hash){
@@ -1936,6 +1975,7 @@ window.addEventListener('load',()=>{
     if(target)setTimeout(()=>target.scrollIntoView({behavior:'auto',block:'start'}),60);
   }
 });
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('mobileMenu').classList.contains('active'))toggleMobileMenu();});
 window.matchMedia('(min-width:901px)').addEventListener('change',e=>{
   if(e.matches){
     document.getElementById('mobileMenu').classList.remove('active');
