@@ -81,8 +81,22 @@ export function applyAnalytics(response, site) {
   return new HTMLRewriter().on('head', HeadAppender(extras)).transform(response);
 }
 
-export function applySite(response, site, lang = 'uz') {
+// Qidiruv robotlari uchun: JS ishga tushmasdan oldin ham loyiha sahifalariga oddiy havolalar (JS ularni keyin almashtiradi).
+export function buildProjectLinks(projects, lang = 'uz') {
+  const ru = lang === 'ru';
+  return (projects || []).map((p) => {
+    const slug = ru ? (p.slug_ru || '') : (p.slug || '');
+    const title = ru ? (p.title_ru || p.title_uz) : p.title_uz;
+    if (!slug || !title) return '';
+    const href = (ru ? '/ru/proekty/' : '/loyihalar/') + encodeURIComponent(slug);
+    return `<a href="${esc(href)}" class="proj-card-seo">${esc(title)}</a>`;
+  }).filter(Boolean).join('\n');
+}
+
+export function applySite(response, site, lang = 'uz', projects = []) {
   let rw = new HTMLRewriter();
+  const projLinks = buildProjectLinks(projects, lang);
+  if (projLinks) rw = rw.on('#projScroll', HtmlSetter(projLinks));
   const seo = site.seo || {};
   const ru = lang === 'ru';
   const title = ru ? seo.title_ru : seo.title;
