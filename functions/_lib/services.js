@@ -89,7 +89,7 @@ export const SERVICES = [
       lead: "Xususiy uy, kottej yoki tijorat binosi loyihasi — yer uchastkasi tahlilidan tortib qurilish uchun chizmalargacha.",
       intro: [
         "Uy loyihasi yer uchastkasi, quyosh tomoni, kirish yo'li va oilaning turmush tarziga qarab tuziladi. Biz xonalar joylashuvini mantiqiy qilib, qurilish va keyingi foydalanish xarajatlarini oldindan hisobga olamiz.",
-        "Premium va Lyuks paketlarida fasad uslubi — zamonaviy yoki klassik — 3D vizualizatsiyada ko'rsatiladi. Barcha paketlarga asosiy chizmalar (fasad, plan, kesim) kiradi. Ustalar uchun batafsil ishchi chizmalar va ruxsatnoma hujjatlari alohida buyurtma qilinadi.",
+        "Premium va Lyuks paketlarida fasad uslubi — zamonaviy yoki klassik — 3D vizualizatsiyada ko'rsatiladi. Barcha paketlarga asosiy va ustalar uchun ishchi chizmalar (fasad, plan, kesim) kiradi. Faqat ruxsatnoma hujjatlari alohida buyurtma qilinadi.",
       ],
       includes: [
         "Yer uchastkasi va talablarni tahlil qilish",
@@ -97,8 +97,9 @@ export const SERVICES = [
         'Fasad dizayni (zamonaviy yoki klassik)',
         "Tashqi ko'rinish 3D vizualizatsiyasi (Premium va Lyuks paketlarida)",
         "Asosiy chizmalar: fasadlar, rejalar, kesimlar (barcha paketlarda)",
-        'Ustalar uchun ishchi chizmalar va ruxsatnoma hujjatlari (alohida buyurtma qilinadi)',
-        "Kerak bo'lsa — landshaft konsepsiyasi",
+        'Ustalar uchun ishchi chizmalar (barcha paketlarda)',
+        "Landshaft dizayn konsepsiyasi (Lyuks paketida)",
+        'Ruxsatnoma hujjatlari (alohida buyurtma qilinadi)',
       ],
       steps: [
         ["Tanishuv", "Uchastka, xonalar soni, qavatlar va byudjetni aniqlaymiz."],
@@ -122,7 +123,7 @@ export const SERVICES = [
       lead: 'Проект частного дома, коттеджа или коммерческого здания — от анализа участка до чертежей для строительства.',
       intro: [
         'Проект дома создаётся с учётом участка, сторон света, подъезда и образа жизни семьи. Мы продумываем логичную планировку и заранее учитываем затраты на строительство и эксплуатацию.',
-        'В пакетах «Премиум» и «Люкс» стиль фасада — современный или классический — показываем в 3D-визуализации. Во все пакеты входят основные чертежи (фасад, план, разрез). Подробные рабочие чертежи для мастеров и документация для разрешения заказываются отдельно.',
+        'В пакетах «Премиум» и «Люкс» стиль фасада — современный или классический — показываем в 3D-визуализации. Во все пакеты входят основные и рабочие чертежи для мастеров (фасад, план, разрез). Отдельно заказывается только документация для разрешения.',
       ],
       includes: [
         'Анализ участка и требований',
@@ -130,8 +131,9 @@ export const SERVICES = [
         'Дизайн фасада (современный или классический)',
         '3D-визуализация экстерьера (в пакетах «Премиум» и «Люкс»)',
         'Основные чертежи: фасады, планы, разрезы (во всех пакетах)',
-        'Рабочие чертежи для мастеров и документация для разрешения (заказываются отдельно)',
-        'При необходимости — ландшафтная концепция',
+        'Рабочие чертежи для мастеров (во всех пакетах)',
+        'Концепция ландшафтного дизайна (в пакете «Люкс»)',
+        'Документация для разрешения (заказывается отдельно)',
       ],
       steps: [
         ['Знакомство', 'Определяем участок, количество комнат, этажность и бюджет.'],
