@@ -24,3 +24,10 @@
   Strict-Transport-Security: max-age=15552000
   Referrer-Policy: strict-origin-when-cross-origin
   Cache-Control: public, max-age=0, must-revalidate
+
+/admin/sw.js
+  Cache-Control: no-cache
+
+/admin/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=3600

@@ -6,6 +6,13 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Visart Admin — Boshqaruv paneli</title>
 <link rel="icon" href="../assets/favicon-32.png">
+<link rel="manifest" href="/admin/manifest.webmanifest">
+<meta name="theme-color" content="#151412">
+<link rel="apple-touch-icon" href="/admin/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Visart Admin">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -44,6 +51,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .topbar .brand{display:flex;align-items:center;gap:10px}
 .topbar .brand img{width:24px}
 .logout-btn{background:none;border:0.5px solid rgba(255,255,255,.4);color:#fff;padding:8px 16px;border-radius:3px;font-size:12px}
+.logout-btn[hidden]{display:none}
 .logout-btn:hover{border-color:var(--gold-l);color:var(--gold-l)}
 .tabs{display:flex;gap:4px;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
 .tab-btn{padding:16px 18px;background:none;border:none;font-size:13px;color:var(--t3);font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
@@ -166,7 +174,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 <div id="dashboard">
   <div class="topbar">
     <div class="brand"><h1>VISART · Admin</h1></div>
-    <button class="logout-btn" onclick="doLogout()">Chiqish</button>
+    <div style="display:flex;gap:10px;align-items:center"><button class="logout-btn" id="installBtn" onclick="installApp()" hidden>Ilova sifatida o'rnatish</button><button class="logout-btn" onclick="doLogout()">Chiqish</button></div>
   </div>
   <div class="tabs">
     <button class="tab-btn active" data-tab="leads" onclick="switchTab('leads')">Murojaatlar <span class="tab-badge" id="leadsBadge" hidden></span></button>
@@ -496,6 +504,13 @@ async function loadStats(){
     <p class="hint">Ma'lumotlar sayt ichki hisoblagichidan olinadi (cookie va IP saqlanmaydi). Bu qurilmadan (admin) kirishlar hisobga olinmaydi. Google qidiruv so'zlari uchun Search Console ishlating.</p>`;
 }
 
+
+// ═══ ILOVA SIFATIDA O'RNATISH (PWA) ═══
+let deferredInstall=null;
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('/admin/sw.js',{scope:'/admin/'}).catch(()=>{})); }
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredInstall=e; const b=document.getElementById('installBtn'); if(b) b.hidden=false; });
+window.addEventListener('appinstalled',()=>{ deferredInstall=null; const b=document.getElementById('installBtn'); if(b) b.hidden=true; });
+async function installApp(){ if(!deferredInstall) return; deferredInstall.prompt(); try{ await deferredInstall.userChoice; }catch(e){} deferredInstall=null; const b=document.getElementById('installBtn'); if(b) b.hidden=true; }
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
 // ═══ UPLOAD ═══
