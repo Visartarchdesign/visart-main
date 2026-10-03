@@ -17,21 +17,21 @@ export const SERVICES = [
       lead: "Kvartira, xususiy uy yoki ofis uchun to'liq dizayn-loyiha: qulay planirovkadan tortib ustalar uchun aniq ishchi chizmalargacha.",
       intro: [
         "Yaxshi interyer chiroyli ko'rinish bilangina cheklanmaydi. U har kuni qulay yashash, yetarli saqlash joyi va to'g'ri yoritish demakdir. Biz avval oilangiz yoki jamoangiz qanday yashashi va ishlashini o'rganamiz, so'ng makonni shu ehtiyojlarga moslab loyihalaymiz.",
-        "Loyiha 3D vizualizatsiya bilan tayyorlanadi, shuning uchun natijani ta'mir boshlanishidan oldin ko'rasiz. Ishchi chizmalar esa ustalar uchun tushunarli bo'ladi: elektrika, santexnika, shift, devorlar va mebel joylashuvi bir-biriga mos holda chiziladi.",
+        "Premium va Lyuks paketlarida loyiha 3D vizualizatsiya bilan tayyorlanadi, shuning uchun natijani ta'mir boshlanishidan oldin ko'rasiz. Standart paket chizmalar (planirovka, ishchi chizmalar, elektrika va santexnika) bilan cheklanadi. Ishchi chizmalar ustalar uchun tushunarli bo'ladi: elektrika, santexnika va rejalar bir-biriga mos holda chiziladi.",
       ],
       includes: [
         "Obyektni o'lchash va texnik topshiriqni tuzish",
         'Planirovka va zonalashtirish variantlari',
         "Uslub konsepsiyasi, ranglar va materiallar tanlovi",
-        'Har bir xona uchun 3D vizualizatsiya',
-        'Ishchi chizmalar: elektrika, santexnika, shift, devor yoyilmalari',
-        'Mebel joylashuvi va saqlash tizimlari',
-        "Kerak bo'lsa — smeta va materiallar xaridida yordam",
+        'Ishchi chizmalar: elektrika, santexnika, rejani o\'zgartirish (barcha paketlarda)',
+        'Har bir xona uchun 3D vizualizatsiya (Premium va Lyuks paketlarida)',
+        'Mebel joylashuvi va saqlash tizimlari (Premium va Lyuks paketlarida)',
+        "Smeta va materiallar xaridida yordam (Lyuks paketida)",
       ],
       steps: [
         ["Tanishuv va o'lchov", "Obyektni ko'ramiz, ehtiyoj va byudjetni aniqlaymiz."],
         ['Planirovka', "Zonalar va mebel joylashuvining 1–2 variantini taklif qilamiz."],
-        ['Konsepsiya va 3D', "Uslub, ranglar va materiallarni 3D ko'rinishda tasdiqlaymiz."],
+        ['Konsepsiya va 3D', "Premium va Lyuksda uslub, ranglar va materiallarni 3D ko'rinishda tasdiqlaymiz."],
         ['Ishchi chizmalar', "Ustalar uchun to'liq chizmalar to'plamini tayyorlaymiz."],
         ['Topshirish', "Loyihani topshiramiz va savollarga javob beramiz."],
       ],
@@ -50,21 +50,21 @@ export const SERVICES = [
       lead: 'Полный дизайн-проект квартиры, частного дома или офиса — от удобной планировки до точных рабочих чертежей для мастеров.',
       intro: [
         'Хороший интерьер — это не только красота, но и удобство каждый день: достаточно мест хранения, продуманный свет и логичное зонирование. Сначала мы изучаем, как живёт ваша семья или работает команда, а затем проектируем пространство под эти задачи.',
-        'Проект сопровождается 3D-визуализацией, поэтому вы видите результат ещё до начала ремонта. Рабочие чертежи понятны строителям: электрика, сантехника, потолки, развёртки стен и расстановка мебели согласованы между собой.',
+        'В пакетах «Премиум» и «Люкс» проект сопровождается 3D-визуализацией, поэтому вы видите результат ещё до начала ремонта. Пакет «Стандарт» включает чертежи: планировку, рабочие чертежи, электрику и сантехнику. Рабочие чертежи понятны строителям: электрика, сантехника и планы согласованы между собой.',
       ],
       includes: [
         'Обмер объекта и составление технического задания',
         'Варианты планировки и зонирования',
         'Стилевая концепция, подбор цветов и материалов',
-        '3D-визуализация каждого помещения',
-        'Рабочие чертежи: электрика, сантехника, потолки, развёртки стен',
-        'Расстановка мебели и системы хранения',
-        'При необходимости — смета и помощь в закупке материалов',
+        'Рабочие чертежи: электрика, сантехника, перепланировка (во всех пакетах)',
+        '3D-визуализация каждого помещения (в пакетах «Премиум» и «Люкс»)',
+        'Расстановка мебели и системы хранения (в пакетах «Премиум» и «Люкс»)',
+        'Смета и помощь в закупке материалов (в пакете «Люкс»)',
       ],
       steps: [
         ['Знакомство и обмер', 'Осматриваем объект, определяем задачи и бюджет.'],
         ['Планировка', 'Предлагаем 1–2 варианта зонирования и расстановки мебели.'],
-        ['Концепция и 3D', 'Утверждаем стиль, цвета и материалы в 3D.'],
+        ['Концепция и 3D', 'В «Премиум» и «Люкс» утверждаем стиль, цвета и материалы в 3D.'],
         ['Рабочие чертежи', 'Готовим полный комплект чертежей для мастеров.'],
         ['Сдача проекта', 'Передаём проект и отвечаем на вопросы.'],
       ],
@@ -89,15 +89,15 @@ export const SERVICES = [
       lead: "Xususiy uy, kottej yoki tijorat binosi loyihasi — yer uchastkasi tahlilidan tortib qurilish uchun chizmalargacha.",
       intro: [
         "Uy loyihasi yer uchastkasi, quyosh tomoni, kirish yo'li va oilaning turmush tarziga qarab tuziladi. Biz xonalar joylashuvini mantiqiy qilib, qurilish va keyingi foydalanish xarajatlarini oldindan hisobga olamiz.",
-        "Fasad uslubi — zamonaviy yoki klassik — 3D vizualizatsiyada ko'rsatiladi. Loyiha quruvchilar uchun tushunarli chizmalar bilan topshiriladi, kerak bo'lsa ruxsatnoma hujjatlari ham tayyorlanadi.",
+        "Premium va Lyuks paketlarida fasad uslubi — zamonaviy yoki klassik — 3D vizualizatsiyada ko'rsatiladi. Barcha paketlarga asosiy chizmalar (fasad, plan, kesim) kiradi. Ustalar uchun batafsil ishchi chizmalar va ruxsatnoma hujjatlari alohida buyurtma qilinadi.",
       ],
       includes: [
         "Yer uchastkasi va talablarni tahlil qilish",
         "Eskiz va planirovka variantlari",
         'Fasad dizayni (zamonaviy yoki klassik)',
-        "Tashqi ko'rinish 3D vizualizatsiyasi",
-        "Asosiy chizmalar: fasadlar, rejalar, kesimlar",
-        'Kerak bo\'lsa — ishchi chizmalar va ruxsatnoma hujjatlari',
+        "Tashqi ko'rinish 3D vizualizatsiyasi (Premium va Lyuks paketlarida)",
+        "Asosiy chizmalar: fasadlar, rejalar, kesimlar (barcha paketlarda)",
+        'Ustalar uchun ishchi chizmalar va ruxsatnoma hujjatlari (alohida buyurtma qilinadi)',
         "Kerak bo'lsa — landshaft konsepsiyasi",
       ],
       steps: [
@@ -122,15 +122,15 @@ export const SERVICES = [
       lead: 'Проект частного дома, коттеджа или коммерческого здания — от анализа участка до чертежей для строительства.',
       intro: [
         'Проект дома создаётся с учётом участка, сторон света, подъезда и образа жизни семьи. Мы продумываем логичную планировку и заранее учитываем затраты на строительство и эксплуатацию.',
-        'Стиль фасада — современный или классический — показываем в 3D-визуализации. Проект передаётся с понятными для строителей чертежами, при необходимости готовим и разрешительную документацию.',
+        'В пакетах «Премиум» и «Люкс» стиль фасада — современный или классический — показываем в 3D-визуализации. Во все пакеты входят основные чертежи (фасад, план, разрез). Подробные рабочие чертежи для мастеров и документация для разрешения заказываются отдельно.',
       ],
       includes: [
         'Анализ участка и требований',
         'Эскиз и варианты планировки',
         'Дизайн фасада (современный или классический)',
-        '3D-визуализация экстерьера',
-        'Основные чертежи: фасады, планы, разрезы',
-        'При необходимости — рабочие чертежи и документация для разрешения',
+        '3D-визуализация экстерьера (в пакетах «Премиум» и «Люкс»)',
+        'Основные чертежи: фасады, планы, разрезы (во всех пакетах)',
+        'Рабочие чертежи для мастеров и документация для разрешения (заказываются отдельно)',
         'При необходимости — ландшафтная концепция',
       ],
       steps: [
@@ -412,7 +412,7 @@ function priceBlock(s, lang, P) {
       const feats = P.interior.features || {};
       for (const pk of P.interior.packages || []) {
         const inc = (pk.includes || []).map((k) => (feats[k] ? feats[k][lang] : '')).filter(Boolean);
-        cards.push({ name: pk[lang], price: `${money(pk.rate)} ${t.perM2}`, list: inc });
+        cards.push({ name: pk[lang], price: `${money(pk.rate)} ${t.perM2}`, list: inc, qs: `calc=interior&pkg=${pk.id}` });
       }
       const rates = (P.interior.packages || []).map((p) => p.rate).filter(Boolean);
       if (rates.length) fromPrice = fromP(lang, `${money(Math.min(...rates))} ${t.perM2}`);
@@ -422,7 +422,7 @@ function priceBlock(s, lang, P) {
       const base = P.architecture.ratePerSotix || 0;
       const feats = P.architecture.styleFeatures || {};
       for (const st of P.styles || []) {
-        cards.push({ name: st[lang], price: `${money(base * (st.mult || 1))} ${t.perSotix}`, list: (feats[st.id] || []).map((f) => f[lang]) });
+        cards.push({ name: st[lang], price: `${money(base * (st.mult || 1))} ${t.perSotix}`, list: (feats[st.id] || []).map((f) => f[lang]), qs: `calc=arch&style=${st.id}` });
       }
       if (base) fromPrice = fromP(lang, `${money(base)} ${t.perSotix}`);
       timeline = P.timelines && P.timelines.architecture ? P.timelines.architecture[lang] : '';
@@ -433,7 +433,7 @@ function priceBlock(s, lang, P) {
       const pk = (P.interior.packages || []).find((p) => p.id === 'drawings');
       if (pk) {
         const feats = P.interior.features || {};
-        cards.push({ name: pk[lang], price: `${money(pk.rate)} ${t.perM2}`, list: (pk.includes || []).map((k) => (feats[k] ? feats[k][lang] : '')).filter(Boolean) });
+        cards.push({ name: pk[lang], price: `${money(pk.rate)} ${t.perM2}`, list: (pk.includes || []).map((k) => (feats[k] ? feats[k][lang] : '')).filter(Boolean), qs: 'calc=interior&pkg=drawings' });
         fromPrice = fromP(lang, `${money(pk.rate)} ${t.perM2}`);
       }
       const wd = (P.architecture && P.architecture.addons || []).find((a) => a.id === 'workDrawings');
@@ -459,6 +459,8 @@ export function renderServicePage({ s, lang, pricing = {}, related = [], phone =
   const { cards, timeline, fromPrice } = priceBlock(s, lang, pricing || {});
   const pay = s.id === 'turnkey' ? (pricing.paymentStages || []) : ((pricing.designPaymentStages && pricing.designPaymentStages.length) ? pricing.designPaymentStages : DEFAULT_DESIGN_PAY);
   const tel = String(phone || '').replace(/[^\d+]/g, '');
+  const calcSvc = { interior: 'interior', drawings: 'interior', arch: 'arch', docs: 'arch', turnkey: 'turnkey' }[s.id] || 'arch';
+  const calcHref = (qs) => `${homeUrl}?${(qs || `calc=${calcSvc}`).replace(/&/g, '&amp;')}#pricing`;
 
   const serviceLd = {
     '@context': 'https://schema.org', '@type': 'Service', name: c.name, serviceType: c.name, description: c.desc,
@@ -542,6 +544,7 @@ h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,4.4vw,52px);lin
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
 .card{border:0.5px solid var(--line);border-radius:4px;padding:22px;background:#fff}
 .card h3{font-size:15px;font-weight:600;margin-bottom:6px}.card .pr{font-family:var(--serif);font-size:20px;color:var(--gold);margin-bottom:12px}
+.card-calc{display:inline-block;margin-top:14px;font-size:13px;color:var(--gold);border-bottom:1px solid currentColor;padding-bottom:1px}.card-calc:hover{color:var(--ink)}
 .card ul{list-style:none;display:grid;gap:6px}.card li{font-size:13.5px;color:var(--t2);padding-left:14px;position:relative}.card li::before{content:'·';position:absolute;left:2px;color:var(--gold)}
 .note{font-size:13px;color:var(--t3);margin-top:12px}
 .pay div{display:flex;gap:16px;align-items:baseline;padding:12px 0;border-bottom:0.5px solid var(--line);font-size:15px;color:var(--t2)}
@@ -579,7 +582,7 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   <a href="${homeUrl}" class="brand"><img src="${BASE}/assets/logo-mark.png" alt="">VISART</a>
   <nav class="hnav">
     <a class="hide-m" href="${homeUrl}#projects">${esc(t.projects)}</a>
-    <a class="hide-m" href="${homeUrl}#pricing">${esc(t.calc)}</a>
+    <a class="hide-m" href="${calcHref()}">${esc(t.calc)}</a>
     <a class="lang" href="${otherUrl}" hreflang="${other}">${t.otherLang}</a>
   </nav>
 </div></header>
@@ -599,7 +602,7 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
       <ul class="checks">${c.includes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
       <h2>${esc(t.steps)}</h2>
       <ol class="steps">${c.steps.map(([a, b]) => `<li><div><b>${esc(a)}</b><span>${esc(b)}</span></div></li>`).join('')}</ol>
-      ${cards.length ? `<h2>${esc(t.prices)}</h2><div class="cards">${cards.map((k) => `<div class="card"><h3>${esc(k.name)}</h3><div class="pr">${esc(k.price)}</div>${k.list.length ? `<ul>${k.list.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`).join('')}</div><p class="note">${esc(t.calcNote)}</p>` : ''}
+      ${cards.length ? `<h2>${esc(t.prices)}</h2><div class="cards">${cards.map((k) => `<div class="card"><h3>${esc(k.name)}</h3><div class="pr">${esc(k.price)}</div>${k.list.length ? `<ul>${k.list.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${k.qs ? `<a class="card-calc" href="${calcHref(k.qs)}">${esc(t.calcLink)} →</a>` : ''}</div>`).join('')}</div><p class="note">${esc(t.calcNote)}</p>` : ''}
       ${pay.length ? `<h2>${esc(t.pay)}</h2><div class="pay">${pay.map((p) => `<div><b>${esc(p.pct)}%</b><span>${esc(p[lang])}</span></div>`).join('')}</div>` : ''}
       <h2>${esc(t.faq)}</h2>
       ${c.faq.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}
@@ -612,7 +615,7 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
       </dl>
       <div class="side-cta">
         <a class="btn btn-gold" href="${homeUrl}#contact">${esc(t.cta)}</a>
-        <a class="btn btn-line" href="${homeUrl}#pricing">${esc(t.calcLink)}</a>
+        <a class="btn btn-line" href="${calcHref()}">${esc(t.calcLink)}</a>
         ${tel ? `<a class="btn btn-line" href="tel:${esc(tel)}">${esc(t.call)}</a>` : ''}
       </div>
       <div class="others"><h4>${esc(t.other)}</h4>${otherHtml}</div>
@@ -622,7 +625,7 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
   <section class="cta">
     <h2>${esc(t.ctaTitle)}</h2>
     <p>${esc(t.ctaText)}</p>
-    <div class="row"><a class="btn btn-gold" href="${homeUrl}#contact">${esc(t.cta)}</a><a class="btn btn-line" href="${homeUrl}#pricing">${esc(t.calc)}</a></div>
+    <div class="row"><a class="btn btn-gold" href="${homeUrl}#contact">${esc(t.cta)}</a><a class="btn btn-line" href="${calcHref()}">${esc(t.calc)}</a></div>
   </section>
 </main>
 <footer><div class="wrap"><span>© ${new Date().getFullYear()} Visart Design · ${lang === 'uz' ? "Toshkent, Uchtepa tumani, Foziltepa ko'chasi" : 'Ташкент, Учтепинский район, ул. Фозилтепа'}</span><a href="${BASE}/maxfiylik/">${lang === 'uz' ? 'Maxfiylik siyosati' : 'Конфиденциальность'}</a></div></footer>
