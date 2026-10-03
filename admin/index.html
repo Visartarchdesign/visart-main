@@ -98,6 +98,30 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .tabs{flex-wrap:wrap}
 .tab-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:9px;background:#B5483B;color:#fff;font-size:10.5px;font-weight:700;line-height:16px;text-align:center}
 .tab-badge[hidden]{display:none}
+.st-live{display:inline-block;margin-left:10px;padding:3px 10px;border-radius:12px;background:#E5F2E8;color:#2F6B3F;font-size:12px;font-weight:600;vertical-align:middle}
+.st-live[hidden]{display:none}
+.st-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.st-kpi{background:#fff;border-radius:4px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.st-kpi b{display:block;font-size:26px;font-weight:600;line-height:1.1;margin-bottom:4px}
+.st-kpi span{font-size:11.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.3px}
+.st-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.st-card{background:#fff;border-radius:4px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);min-width:0}
+.st-card h3{font-size:13px;margin-bottom:12px;letter-spacing:.2px}
+.st-card .sub{font-size:11.5px;color:var(--t3);margin:-6px 0 12px}
+.st-row{display:grid;grid-template-columns:minmax(80px,1.3fr) 2fr 54px;gap:10px;align-items:center;font-size:12.5px;padding:5px 0}
+.st-row .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-bar{height:8px;background:#EFEBE2;border-radius:4px;overflow:hidden}
+.st-bar i{display:block;height:100%;background:var(--gold,#A9895A);border-radius:4px}
+.st-row .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--t2,#444)}
+.st-note{background:#F6F3EE;border:1px solid var(--line);border-radius:4px;padding:12px 14px;font-size:13px;margin-bottom:18px;line-height:1.55}
+.st-note b{color:var(--t1)}
+.st-ptbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.st-ptbl th{text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--t3);padding:6px 8px;border-bottom:1px solid var(--line);letter-spacing:.3px}
+.st-ptbl td{padding:7px 8px;border-bottom:1px solid var(--line)}
+.st-ptbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+.st-hot{color:#B5483B;font-weight:600}
+@media(max-width:800px){.st-grid{grid-template-columns:1fr}}
+
 .mini-select{padding:9px 10px;border:1px solid var(--line);border-radius:3px;font-size:13px;background:#fff}
 .panel-hint{font-size:12.5px;color:var(--t3);margin:-6px 0 18px;max-width:760px;line-height:1.6}
 .lead-status{padding:6px 8px;border:1px solid var(--line);border-radius:3px;font-size:12.5px}
@@ -151,6 +175,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
     <button class="tab-btn" data-tab="content" onclick="switchTab('content')">FAQ va xizmatlar</button>
     <button class="tab-btn" data-tab="pricing" onclick="switchTab('pricing')">Narxlar</button>
     <button class="tab-btn" data-tab="testimonials" onclick="switchTab('testimonials')">Sharhlar</button>
+    <button class="tab-btn" data-tab="stats" onclick="switchTab('stats')">Statistika</button>
     <button class="tab-btn" data-tab="seo" onclick="switchTab('seo')">SEO va analitika</button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">Sozlamalar</button>
   </div>
@@ -168,6 +193,20 @@ input,select,textarea{font-family:inherit;font-size:14px}
       </div>
     </div>
     <div id="leadsWrap"></div>
+  </section>
+
+  <!-- STATS -->
+  <section class="tab-panel" id="tab-stats">
+    <div class="panel-head">
+      <h2>Statistika <span id="stLive" class="st-live" hidden></span></h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="stDays" class="mini-select" onchange="loadStats()">
+          <option value="1">Bugun</option><option value="7" selected>So'nggi 7 kun</option><option value="30">So'nggi 30 kun</option><option value="90">So'nggi 90 kun</option>
+        </select>
+        <button class="btn-secondary" onclick="loadStats()">Yangilash</button>
+      </div>
+    </div>
+    <div id="statsWrap"><p class="hint">Yuklanmoqda…</p></div>
   </section>
 
   <!-- APPEARANCE -->
@@ -359,6 +398,7 @@ async function checkAuth(){
   }
 }
 function showDashboard(){
+  try{localStorage.setItem('visart_notrack','1');}catch(e){}
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('dashboard').style.display='block';
   loadProjects(); loadPricing(); loadTestimonials(); loadSettings(); loadLeads(); loadSite();
@@ -368,7 +408,94 @@ function showDashboard(){
 function switchTab(name){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
+  if(name==='stats') loadStats();
 }
+
+// ═══ STATISTIKA ═══
+const ST_SRC={direct:"To'g'ridan-to'g'ri",google:'Google',yandex:'Yandex',instagram:'Instagram',telegram:'Telegram',facebook:'Facebook',youtube:'YouTube',bing:'Bing'};
+const ST_CLICK={phone:"📞 Telefon bosildi",telegram:'✈️ Telegram bosildi',whatsapp:'WhatsApp bosildi',instagram:'Instagram bosildi',email:'Email bosildi',form_submit:'📝 Forma yuborildi',calc_use:'🧮 Kalkulyator ishlatildi',to_calc:"Kalkulyatorga o'tdi",to_contact:"Bog'lanishga o'tdi"};
+const ST_SEC={services:'Xizmatlar',process:'Jarayon',projects:'Loyihalar',pricing:'Narxlar',about:'Biz haqimizda',faq:'Savol-javob',contact:"Bog'lanish"};
+const ST_DEV={m:'Telefon',t:'Planshet',d:'Kompyuter'};
+function stFmtT(s){ s=+s||0; return s<60? s+' son' : Math.floor(s/60)+' daq '+(s%60)+' son'; }
+function stBars(rows, nameFn, total){
+  if(!rows.length) return '<p class="hint">Hozircha ma\'lumot yo\'q</p>';
+  const max=Math.max(...rows.map(r=>r.n))||1; total=total||rows.reduce((a,r)=>a+r.n,0)||1;
+  return rows.map(r=>`<div class="st-row"><span class="nm" title="${escA(nameFn(r))}">${escA(nameFn(r))}</span><div class="st-bar"><i style="width:${Math.max(3,r.n/max*100)}%"></i></div><span class="v">${r.n} · ${Math.round(r.n/total*100)}%</span></div>`).join('');
+}
+function stChart(daily, days){
+  const map={}; (daily||[]).forEach(d=>map[d.day]=d);
+  const out=[]; const now=Date.now()+5*3600*1000;
+  for(let i=days-1;i>=0;i--){ const k=new Date(now-i*86400000).toISOString().slice(0,10); out.push({day:k,pv:(map[k]||{}).pv||0,s:(map[k]||{}).sessions||0}); }
+  if(out.length<2) return '<p class="hint">Grafik uchun kamida 2 kunlik davr tanlang</p>';
+  const W=640,H=170,pad=26, max=Math.max(1,...out.map(d=>d.pv));
+  const x=i=>pad+i*(W-2*pad)/(out.length-1), y=v=>H-pad-(v/max)*(H-2*pad);
+  const line=k=>out.map((d,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(d[k]).toFixed(1)).join(' ');
+  const step=Math.ceil(out.length/7);
+  const lbl=out.map((d,i)=>i%step===0?`<text x="${x(i)}" y="${H-6}" font-size="10" fill="#8a8678" text-anchor="middle">${d.day.slice(5)}</text>`:'').join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto"><line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#E7E3D9"/><text x="${pad}" y="14" font-size="10" fill="#8a8678">max ${max}</text><path d="${line('pv')}" fill="none" stroke="#A9895A" stroke-width="2"/><path d="${line('s')}" fill="none" stroke="#2F2D28" stroke-width="1.5" stroke-dasharray="4 3"/>${lbl}</svg><p class="hint" style="margin-top:6px"><span style="color:#A9895A">━</span> Ko'rishlar &nbsp; <span>┅</span> Tashriflar (sessiya)</p>`;
+}
+async function loadStats(){
+  const wrap=document.getElementById('statsWrap'); if(!wrap) return;
+  const days=+document.getElementById('stDays').value||7;
+  wrap.innerHTML='<p class="hint">Yuklanmoqda…</p>';
+  let d;
+  try{ d=await apiFetch('/admin/stats?days='+days); }catch(e){ wrap.innerHTML='<p class="hint">Statistikani yuklab bo\'lmadi</p>'; return; }
+  if(!d||d.empty||!d.totals||(!d.totals.pv&&!d.totals.sessions)){
+    wrap.innerHTML='<div class="st-note"><b>Hozircha ma\'lumot yo\'q.</b> Statistika sayt yangilangandan keyin yig\'ila boshlaydi. Birinchi tashrif 1–2 daqiqada shu yerda ko\'rinadi. Bu qurilmadan (admin) kirishlar hisobga olinmaydi.</div>';
+    return;
+  }
+  const t=d.totals;
+  const live=document.getElementById('stLive'); if(live){ live.hidden=!t.live; live.textContent='● Hozir saytda: '+t.live; }
+  const pages=d.pages||[];
+  const nm=p=>p==='/'?'Bosh sahifa (UZ)':p==='/ru'?'Bosh sahifa (RU)':p;
+  // Tushunarli xulosalar
+  const notes=[];
+  const worst=pages.filter(p=>p.pv>=5).sort((a,b)=>b.exit-a.exit)[0];
+  if(worst&&worst.exit>=60) notes.push(`<b>Eng ko'p chiqib ketadigan sahifa:</b> ${escA(nm(worst.path))} (${worst.exit}% shu yerda tugatadi).`);
+  const best=pages.filter(p=>p.pv>=5).sort((a,b)=>b.time-a.time)[0];
+  if(best) notes.push(`<b>Eng uzoq o'qiladigan sahifa:</b> ${escA(nm(best.path))} (o'rtacha ${stFmtT(best.time)}).`);
+  if(t.sessions>=10) notes.push(`<b>Tashrif buyuruvchilarning ${t.acted}%</b> biror harakat qildi (bosish, forma). ${t.bounce>=60?'Tez chiqib ketish yuqori — bosh ekranni tekshirish kerak.':'Tez chiqib ketish me\'yorida.'}`);
+  const hs=d.homeSessions||0, sec={}; (d.sections||[]).forEach(r=>sec[r.label]=r.s);
+  const secRows=['services','process','projects','pricing','about','faq','contact'].map(k=>({k,n:sec[k]||0}));
+  const drop=hs>=10?secRows.filter(r=>r.n>0).find((r,i,a)=>i>0&&r.n<a[i-1].n*0.5):null;
+  if(drop) notes.push(`<b>Bosh sahifada katta tushish:</b> «${ST_SEC[drop.k]}» bo'limiga yetib borish keskin kamayadi.`);
+  const clickMap={}; (d.clicks||[]).forEach(c=>clickMap[c.label]=c);
+  const actRows=Object.keys(ST_CLICK).map(k=>({k,n:(clickMap[k]||{}).c||0})).filter(r=>r.n>0);
+  const projRows=(d.clicks||[]).filter(c=>c.label.startsWith('project:')).map(c=>({k:c.label.slice(8),n:c.c}));
+  const svcRows=(d.clicks||[]).filter(c=>c.label.startsWith('service:')).map(c=>({k:c.label.slice(8),n:c.c}));
+  const hourArr=Array.from({length:24},(_,h)=>({h,s:((d.hours||[]).find(x=>x.h===h)||{}).s||0}));
+  const hMax=Math.max(1,...hourArr.map(x=>x.s));
+  const hoursHtml='<div style="display:flex;align-items:flex-end;gap:3px;height:90px">'+hourArr.map(x=>`<div title="${x.h}:00 — ${x.s}" style="flex:1;background:${x.s?'#A9895A':'#EFEBE2'};height:${Math.max(4,x.s/hMax*100)}%;border-radius:2px"></div>`).join('')+'</div><div style="display:flex;justify-content:space-between;font-size:10px;color:#8a8678;margin-top:4px"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>';
+  wrap.innerHTML=`
+    ${notes.length?`<div class="st-note">${notes.map(n=>'• '+n).join('<br>')}</div>`:''}
+    <div class="st-kpis">
+      <div class="st-kpi"><b>${t.visitors}</b><span>Mehmonlar</span></div>
+      <div class="st-kpi"><b>${t.sessions}</b><span>Tashriflar</span></div>
+      <div class="st-kpi"><b>${t.pv}</b><span>Sahifa ko'rishlar</span></div>
+      <div class="st-kpi"><b>${stFmtT(t.avgTime)}</b><span>O'rtacha vaqt</span></div>
+      <div class="st-kpi"><b>${t.bounce}%</b><span>Tez chiqib ketdi</span></div>
+      <div class="st-kpi"><b>${t.acted}%</b><span>Harakat qildi</span></div>
+      <div class="st-kpi"><b>${t.returning}</b><span>Qaytib kelganlar</span></div>
+    </div>
+    <div class="st-card" style="margin-bottom:18px"><h3>Kunlar bo'yicha</h3>${stChart(d.daily,d.days)}</div>
+    <div class="st-card" style="margin-bottom:18px"><h3>Sahifalar: qayerga kirishadi va qayerda chiqib ketadi</h3>
+      <p class="sub">Chiqish % — shu sahifada tashrifni tugatganlar ulushi. Aylantirish % — sahifaning qancha qismi ko'rilgani.</p>
+      <div style="overflow-x:auto"><table class="st-ptbl"><thead><tr><th>Sahifa</th><th class="n">Ko'rish</th><th class="n">Mehmon</th><th class="n">Vaqt</th><th class="n">Aylantirish</th><th class="n">Chiqish</th></tr></thead><tbody>
+      ${pages.map(p=>`<tr><td>${escA(nm(p.path))}</td><td class="n">${p.pv}</td><td class="n">${p.uv}</td><td class="n">${stFmtT(p.time)}</td><td class="n">${p.scroll}%</td><td class="n ${p.exit>=70&&p.pv>=5?'st-hot':''}">${p.exit}%</td></tr>`).join('')}
+      </tbody></table></div></div>
+    <div class="st-grid">
+      <div class="st-card"><h3>Qayerdan keladi</h3>${stBars(d.sources,r=>ST_SRC[r.k]||r.k)}</div>
+      <div class="st-card"><h3>Nima qilishadi</h3>${stBars(actRows,r=>ST_CLICK[r.k])}</div>
+      <div class="st-card"><h3>Bosh sahifa: qaysi bo'limgacha yetadi</h3><p class="sub">Bosh sahifaga kirgan ${hs} ta tashrifdan</p>${stBars(secRows,r=>ST_SEC[r.k],hs||1)}</div>
+      <div class="st-card"><h3>Qaysi loyiha va xizmatlar bosiladi</h3>${stBars(projRows.concat(svcRows),r=>r.k)}</div>
+      <div class="st-card"><h3>Qurilma</h3>${stBars(d.devices,r=>ST_DEV[r.k]||r.k)}</div>
+      <div class="st-card"><h3>Til</h3>${stBars(d.langs,r=>r.k==='ru'?'Ruscha':'Oʻzbekcha')}</div>
+      <div class="st-card"><h3>Davlat</h3>${stBars(d.countries,r=>r.k)}</div>
+      <div class="st-card"><h3>Qaysi soatda kirishadi (Toshkent)</h3>${hoursHtml}</div>
+    </div>
+    <p class="hint">Ma'lumotlar sayt ichki hisoblagichidan olinadi (cookie va IP saqlanmaydi). Bu qurilmadan (admin) kirishlar hisobga olinmaydi. Google qidiruv so'zlari uchun Search Console ishlating.</p>`;
+}
+
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
 // ═══ UPLOAD ═══

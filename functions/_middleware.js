@@ -1,6 +1,7 @@
 // Bosh sahifaga admin paneldagi "Sayt ko'rinishi / SEO / FAQ" sozlamalarini qo'llaydi.
 // Boshqa ochiq HTML sahifalarga (loyihalar, maxfiylik, 404) faqat analitika kodlari qo'shiladi.
 import { applySite, applyAnalytics } from './_lib/applySite.js';
+import { TRACKER_SCRIPT } from './_lib/tracker.js';
 
 // Barcha javoblarga asosiy xavfsizlik sarlavhalari (Functions javoblariga _headers qo'llanmaydi).
 function secure(res) {
@@ -17,8 +18,23 @@ function secure(res) {
   } catch (e) { return res; }
 }
 
+// Ichki statistika skriptini barcha ochiq HTML sahifalarga qo'shadi.
+function withTracker(res) {
+  try {
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('text/html') || res.status >= 400 && res.status !== 404) return res;
+    return new HTMLRewriter()
+      .on('head', { element(el) { el.append('<script>' + TRACKER_SCRIPT + '</script>', { html: true }); } })
+      .transform(res);
+  } catch (e) { return res; }
+}
+
 export async function onRequest(context) {
-  return secure(await handle(context));
+  const res = await handle(context);
+  const u = new URL(context.request.url);
+  const track = context.request.method === 'GET' && context.env.DB &&
+    !u.pathname.startsWith('/admin') && !u.pathname.startsWith('/api/');
+  return secure(track ? withTracker(res) : res);
 }
 
 async function handle(context) {
