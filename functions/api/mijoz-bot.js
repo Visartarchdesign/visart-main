@@ -133,7 +133,8 @@ async function handleObyektBuyrugi(env, msg) {
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Bu guruh obyekt №${obyektId}ga bog'landi.`);
   } catch (e) {
-    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚠️ Bog'lashda xato yuz berdi, qayta urinib ko'ring.");
+    // VAQTINCHA (diagnostika): aniq xato matnini ko'rsatamiz, keyin olib tashlanadi.
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ Bog'lashda xato: ${String(e.message || e).slice(0, 300)}`);
   }
 }
 
