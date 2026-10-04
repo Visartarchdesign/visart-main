@@ -95,7 +95,8 @@ async function sbFetch(env, path, init = {}) {
     const txt = await res.text().catch(() => '');
     throw new Error(`Supabase ${path} -> ${res.status}: ${txt.slice(0, 300)}`);
   }
-  return res.status === 204 ? null : res.json();
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
 }
 
 function isAdmin(env, userId) {
@@ -133,8 +134,7 @@ async function handleObyektBuyrugi(env, msg) {
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Bu guruh obyekt №${obyektId}ga bog'landi.`);
   } catch (e) {
-    // VAQTINCHA (diagnostika): aniq xato matnini ko'rsatamiz, keyin olib tashlanadi.
-    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ Bog'lashda xato: ${String(e.message || e).slice(0, 300)}`);
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚠️ Bog'lashda xato yuz berdi, qayta urinib ko'ring.");
   }
 }
 
