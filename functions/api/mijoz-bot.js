@@ -310,6 +310,11 @@ export async function onRequestPost({ request, env }) {
     if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
       if (msg.text.startsWith('/obyekt')) {
         await handleObyektBuyrugi(env, msg);
+      } else if (msg.text.startsWith('/chatid')) {
+        // Yordamchi buyruq: shu guruhning Telegram chat ID'sini ko'rsatadi
+        // (masalan MOLIYA_GROUP_CHAT_ID'ni sozlash uchun). Hamma ishlata oladi,
+        // maxfiy ma'lumot ochmaydi.
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `Shu guruhning chat ID'si: <code>${msg.chat.id}</code>`);
       }
       return json({ ok: true });
     }
