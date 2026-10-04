@@ -55,7 +55,8 @@ async function sbFetch(env, path, init = {}) {
     const txt = await res.text().catch(() => '');
     throw new Error(`Supabase ${path} -> ${res.status}: ${txt.slice(0, 300)}`);
   }
-  return res.status === 204 ? null : res.json();
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
 }
 
 async function findGuruhChatId(env, obyektId) {
