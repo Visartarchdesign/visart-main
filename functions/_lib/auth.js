@@ -30,8 +30,8 @@ function b64urlDecode(str) {
 const COOKIE_NAME = 'visart_admin_session';
 const DEFAULT_TTL = 60 * 60 * 24 * 7; // 7 kun
 
-export async function signSession(env, username, ttlSeconds = DEFAULT_TTL) {
-  const payload = JSON.stringify({ u: username, exp: Date.now() + ttlSeconds * 1000 });
+export async function signSession(env, username, ttlSeconds = DEFAULT_TTL, epoch = 0) {
+  const payload = JSON.stringify({ u: username, exp: Date.now() + ttlSeconds * 1000, e: epoch });
   const payloadB64 = b64url(new TextEncoder().encode(payload));
   const key = await hmacKey(env.SESSION_SECRET);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadB64));
@@ -58,6 +58,14 @@ export async function verifySession(request, env) {
     if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(b64urlDecode(payloadB64)));
     if (!payload.exp || payload.exp < Date.now()) return null;
+    // Parol almashtirilgan/tiklangan bo'lsa, eski sessiyalar bekor bo'ladi.
+    if (env.DB) {
+      try {
+        const r = await env.DB.prepare("SELECT value FROM admin_auth WHERE key = 'session_epoch'").first();
+        const cur = r ? Number(r.value) || 0 : 0;
+        if ((payload.e || 0) !== cur) return null;
+      } catch (e) { /* jadval hali yo'q — epoch 0 */ if ((payload.e || 0) !== 0) return null; }
+    }
     return payload;
   } catch (e) {
     return null;

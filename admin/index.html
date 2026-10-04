@@ -42,6 +42,9 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .btn-primary:hover{background:var(--gold)}
 .btn-primary:disabled{opacity:.6;cursor:wait}
 .btn-full{width:100%}
+.remember{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);margin:2px 0 16px;cursor:pointer}
+.forgot{display:block;margin-top:16px;font-size:12.5px;color:var(--gold);text-align:center}
+.rs-hint{font-size:12.5px;color:var(--t3);margin-bottom:16px}
 .err-msg{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:16px}
 
 /* ═══ DASHBOARD ═══ */
@@ -163,11 +166,33 @@ input,select,textarea{font-family:inherit;font-size:14px}
 <div id="loginScreen">
   <div class="login-box">
     <h1>Visart Admin</h1>
-    <p>Boshqaruv paneliga kirish</p>
-    <div class="field"><label>Login</label><input type="text" id="loginUser" autocomplete="username"></div>
-    <div class="field"><label>Parol</label><input type="password" id="loginPass" autocomplete="current-password"></div>
-    <button class="btn btn-primary btn-full" id="loginBtn" onclick="doLogin()">Kirish</button>
-    <div class="err-msg" id="loginErr"></div>
+    <!-- Kirish -->
+    <form id="loginForm" method="post" action="#" onsubmit="event.preventDefault();doLogin();">
+      <p>Boshqaruv paneliga kirish</p>
+      <div class="field"><label for="loginUser">Login</label><input type="text" id="loginUser" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+      <div class="field"><label for="loginPass">Parol</label><input type="password" id="loginPass" name="password" autocomplete="current-password" required></div>
+      <label class="remember"><input type="checkbox" id="loginRemember" checked> Meni eslab qol (30 kun)</label>
+      <button class="btn btn-primary btn-full" id="loginBtn" type="submit">Kirish</button>
+      <div class="err-msg" id="loginErr"></div>
+      <a href="#" class="forgot" onclick="showReset();return false;">Parolni unutdingizmi?</a>
+    </form>
+    <!-- Parolni tiklash -->
+    <form id="resetForm" method="post" action="#" style="display:none" onsubmit="event.preventDefault();doResetConfirm();">
+      <p>Parolni tiklash</p>
+      <div id="resetStep1">
+        <p class="rs-hint">Tasdiqlash kodi kompaniyaning Telegram kanaliga yuboriladi.</p>
+        <button class="btn btn-primary btn-full" type="button" id="resetSendBtn" onclick="doResetRequest()">Kodni yuborish</button>
+      </div>
+      <div id="resetStep2" style="display:none">
+        <p class="rs-hint">Telegram'ga kelgan 8 xonali kodni va yangi parolni kiriting.</p>
+        <div class="field"><label for="resetCode">Kod</label><input type="text" id="resetCode" inputmode="numeric" maxlength="8" autocomplete="one-time-code"></div>
+        <input type="text" name="username" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true">
+        <div class="field"><label for="resetPass">Yangi parol (kamida 10 belgi, harf va raqam)</label><input type="password" id="resetPass" name="new-password" autocomplete="new-password"></div>
+        <button class="btn btn-primary btn-full" type="submit" id="resetConfirmBtn">Parolni o'rnatish</button>
+      </div>
+      <div class="err-msg" id="resetErr"></div>
+      <a href="#" class="forgot" onclick="showLogin();return false;">← Kirishga qaytish</a>
+    </form>
   </div>
 </div>
 
@@ -382,14 +407,69 @@ async function doLogin(){
   btn.disabled = true;
   try {
     await apiFetch('/admin-login', { method:'POST', body: JSON.stringify({
-      username: document.getElementById('loginUser').value,
-      password: document.getElementById('loginPass').value
+      username: document.getElementById('loginUser').value.trim(),
+      password: document.getElementById('loginPass').value,
+      remember: document.getElementById('loginRemember').checked
     })});
     showDashboard();
   } catch(e){
-    err.textContent = (e.data && e.data.error === 'invalid_credentials') ? "Login yoki parol noto'g'ri" : 'Xatolik yuz berdi';
+    const c = e.data && e.data.error;
+    err.textContent = c === 'invalid_credentials' ? "Login yoki parol noto'g'ri"
+      : c === 'too_many' ? `Juda ko'p urinish. ${Math.ceil((e.data.wait||900)/60)} daqiqadan keyin qayta urinib ko'ring`
+      : 'Xatolik yuz berdi';
   } finally {
     btn.disabled = false;
+  }
+}
+function showReset(){ document.getElementById('loginForm').style.display='none'; document.getElementById('resetForm').style.display='block'; document.getElementById('resetErr').textContent=''; }
+function showLogin(){ document.getElementById('resetForm').style.display='none'; document.getElementById('loginForm').style.display='block'; }
+async function doResetRequest(){
+  const err=document.getElementById('resetErr'), btn=document.getElementById('resetSendBtn');
+  err.textContent=''; btn.disabled=true;
+  try{
+    await apiFetch('/admin-reset-request',{method:'POST',body:'{}'});
+    document.getElementById('resetStep1').style.display='none';
+    document.getElementById('resetStep2').style.display='block';
+    document.getElementById('resetCode').focus();
+  }catch(e){
+    const c=e.data&&e.data.error;
+    err.textContent = c==='wait' ? `Biroz kuting (${e.data.wait} soniya) va qayta urinib ko'ring`
+      : c==='too_many' ? "Juda ko'p so'rov. Bir soatdan keyin urinib ko'ring"
+      : c==='not_available' ? "Tiklash hozir mavjud emas (Telegram sozlanmagan)"
+      : "Kodni yuborib bo'lmadi";
+  }finally{ btn.disabled=false; }
+}
+async function doResetConfirm(){
+  const err=document.getElementById('resetErr'), btn=document.getElementById('resetConfirmBtn');
+  err.textContent=''; btn.disabled=true;
+  try{
+    await apiFetch('/admin-reset-confirm',{method:'POST',body:JSON.stringify({code:document.getElementById('resetCode').value.trim(),password:document.getElementById('resetPass').value})});
+    showLogin();
+    document.getElementById('loginPass').value='';
+    document.getElementById('loginErr').style.color='#4B7A57';
+    document.getElementById('loginErr').textContent="Parol yangilandi. Yangi parol bilan kiring";
+    setTimeout(()=>{document.getElementById('loginErr').style.color='';},6000);
+    document.getElementById('resetStep1').style.display='block'; document.getElementById('resetStep2').style.display='none';
+    document.getElementById('resetCode').value=''; document.getElementById('resetPass').value='';
+  }catch(e){
+    const c=e.data&&e.data.error;
+    err.textContent = c==='weak_password' ? (e.data.message||'Parol yetarlicha kuchli emas')
+      : c==='expired' ? "Kod muddati tugadi. Yangi kod so'rang"
+      : c==='invalid_code' ? "Kod noto'g'ri" : 'Xatolik yuz berdi';
+    if(c==='expired'){ document.getElementById('resetStep1').style.display='block'; document.getElementById('resetStep2').style.display='none'; }
+  }finally{ btn.disabled=false; }
+}
+async function changePassword(){
+  const cur=document.getElementById('pwCur').value, nw=document.getElementById('pwNew').value, nw2=document.getElementById('pwNew2').value;
+  const msg=document.getElementById('pwMsg'); msg.style.color='#B14B4B'; msg.textContent='';
+  if(nw!==nw2){ msg.textContent='Yangi parollar bir xil emas'; return; }
+  try{
+    await apiFetch('/admin/password',{method:'POST',body:JSON.stringify({current:cur,password:nw})});
+    ['pwCur','pwNew','pwNew2'].forEach(i=>document.getElementById(i).value='');
+    msg.style.color='#4B7A57'; msg.textContent='Parol almashtirildi';
+  }catch(e){
+    const c=e.data&&e.data.error;
+    msg.textContent = c==='invalid_current' ? "Joriy parol noto'g'ri" : c==='weak_password' ? (e.data.message||'Parol kuchsiz') : 'Xatolik yuz berdi';
   }
 }
 async function doLogout(){
@@ -1309,6 +1389,15 @@ function renderSettingsForm(){
       <div class="field"><label>Loyihalar soni (masalan 200+)</label><input type="text" id="sProjects" value="${s.stats_projects||''}"></div>
     </div>
     <button class="btn btn-primary" style="margin-top:22px" onclick="saveSettings()">Sozlamalarni saqlash</button>
+    <h3 style="margin:38px 0 14px;font-size:15px">Parolni almashtirish</h3>
+    <form class="form-grid" style="max-width:640px" onsubmit="event.preventDefault();changePassword();">
+      <input type="text" name="username" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true">
+      <div class="field"><label>Joriy parol</label><input type="password" id="pwCur" autocomplete="current-password"></div>
+      <div class="field"></div>
+      <div class="field"><label>Yangi parol (kamida 10 belgi, harf va raqam)</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+      <div class="field"><label>Yangi parolni takrorlang</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
+      <div><button class="btn btn-primary" type="submit">Parolni almashtirish</button> <span id="pwMsg" style="margin-left:12px;font-size:13px"></span></div>
+    </form>
   `;
 }
 async function saveSettings(){
