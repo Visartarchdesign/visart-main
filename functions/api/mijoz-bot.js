@@ -90,6 +90,7 @@ async function sbFetch(env, path, init = {}) {
       Prefer: init.prefer || 'return=representation',
       ...(init.headers || {}),
     },
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
@@ -113,7 +114,7 @@ async function handleObyektBuyrugi(env, msg) {
     return;
   }
 
-  const obyektId = (msg.text || '').replace('/obyekt', '').trim();
+  const obyektId = (msg.text || '').replace(/^\/obyekt(@\S+)?/i, '').trim();
   if (!obyektId) {
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "Foydalanish: /obyekt <obyekt_id>");
     return;

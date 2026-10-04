@@ -50,6 +50,7 @@ async function sbFetch(env, path, init = {}) {
       Prefer: init.prefer || 'return=representation',
       ...(init.headers || {}),
     },
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
