@@ -218,6 +218,7 @@ async function handleMediaArxiv(env, msg) {
       izoh: msg.caption || null,
       asl_file_id: aslFileId,
       file_id: fileId,
+      media_group_id: msg.media_group_id || null,
     }]),
   });
 }
@@ -294,9 +295,36 @@ async function tgSendPhoto(token, chatId, pngBuffer, caption) {
   }).catch(() => {});
 }
 
-// Tasdiqlangan Senarist taklifi uchun 3 shablonda oblojka yasab, adminga
-// DM'da yuboradi. MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan bo'lsa -- jim
-// e'tiborsiz qoldiradi (hali ishga tushirilmagan bosqich).
+// Bir nechta rasmni BITTA karusel post (Telegram albom) sifatida yuboradi.
+// Faqat birinchi rasmga caption (sarlavha) qo'yiladi -- shu butun albomning
+// tagidagi matn sifatida ko'rinadi.
+async function tgSendMediaGroup(token, chatId, pngBuffers, caption) {
+  const form = new FormData();
+  form.append('chat_id', String(chatId));
+  const media = pngBuffers.map((buf, i) => {
+    const field = `foto${i}`;
+    form.append(field, new Blob([buf], { type: 'image/png' }), `${field}.png`);
+    return { type: 'photo', media: `attach://${field}`, ...(i === 0 && caption ? { caption } : {}) };
+  });
+  form.append('media', JSON.stringify(media));
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`Telegram sendMediaGroup xato: ${res.status} ${txt.slice(0, 200)}`);
+  }
+}
+
+// Tasdiqlangan Senarist taklifi uchun oblojka(lar) yasab, adminga DM'da
+// yuboradi. Agar taklif YAGONA rasmga tegishli bo'lsa -- 3 xil shablon
+// varianti (xilma-xillik uchun). Agar taklif KARUSEL (bir nechta rasm,
+// Telegram albomidan) bo'lsa -- har biriga BITTA izchil shablon qo'yilib,
+// hammasi BITTA Telegram albomi sifatida yuboriladi (faqat 1-rasmda katta
+// sarlavha bo'ladi). MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan bo'lsa -- jim
+// e'tiborsiz qoldiradi.
 async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
   if (!env.MEDIA_SERVER_URL || !env.MEDIA_SECRET) return;
   try {
@@ -304,24 +332,58 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     const taklif = taklifRows && taklifRows[0];
     if (!taklif) return;
 
-    const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${taklif.media_arxiv_id}&select=file_id`);
-    const fileId = arxivRows && arxivRows[0] ? arxivRows[0].file_id : null;
-    if (!fileId) return;
-
-    const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, fileId);
-    if (!filePath) return;
-    const base64 = await tgDownloadBase64(env.MIJOZ_BOT_TOKEN, filePath);
-    if (!base64) return;
-
+    const idlar = taklif.media_arxiv_idlar
+      ? taklif.media_arxiv_idlar.split(',').map((s) => s.trim()).filter(Boolean)
+      : [String(taklif.media_arxiv_id)];
     const title = (taklif.matn || '').split('\n\n')[0];
-    for (const shablon of [1, 2, 3]) {
+
+    if (idlar.length <= 1) {
+      const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${idlar[0]}&select=file_id`);
+      const fileId = arxivRows && arxivRows[0] ? arxivRows[0].file_id : null;
+      if (!fileId) return;
+
+      const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, fileId);
+      if (!filePath) return;
+      const base64 = await tgDownloadBase64(env.MIJOZ_BOT_TOKEN, filePath);
+      if (!base64) return;
+
+      for (const shablon of [1, 2, 3]) {
+        try {
+          const png = await oblojkaYasash(env, shablon, base64, title, null);
+          await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, png, `Oblojka -- ${shablon}-shablon`);
+        } catch (e) {
+          // bitta shablon xato bersa ham, qolganlariga davom
+        }
+      }
+      return;
+    }
+
+    // Karusel: ko'pi bilan 10 ta (Telegram albom chegarasi)
+    const tanlangan = idlar.slice(0, 10);
+    const arxivRows = await sbFetch(env, `media_arxiv?id=in.(${tanlangan.join(',')})&select=id,file_id`);
+    const fileById = {};
+    (arxivRows || []).forEach((r) => { fileById[String(r.id)] = r.file_id; });
+
+    const buffers = [];
+    for (let i = 0; i < tanlangan.length; i++) {
+      const fileId = fileById[String(tanlangan[i])];
+      if (!fileId) continue;
       try {
-        const png = await oblojkaYasash(env, shablon, base64, title, null);
-        await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, png, `Oblojka -- ${shablon}-shablon`);
+        const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, fileId);
+        if (!filePath) continue;
+        const base64 = await tgDownloadBase64(env.MIJOZ_BOT_TOKEN, filePath);
+        if (!base64) continue;
+        const png = i === 0
+          ? await oblojkaYasash(env, 1, base64, title, null)
+          : await oblojkaYasash(env, 'karusel', base64, null, null);
+        buffers.push(png);
       } catch (e) {
-        // bitta shablon xato bersa ham, qolganlariga davom
+        // bitta rasm xato bersa ham, qolganlariga davom
       }
     }
+    if (buffers.length < 2) return; // yetarli rasm yig'ilmadi
+
+    await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}`);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
   }

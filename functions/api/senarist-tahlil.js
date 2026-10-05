@@ -24,13 +24,15 @@
 //     izoh text,
 //     file_id text,
 //     asl_file_id text, -- video uchun to'liq fayl (Montajchi shundan foydalanadi)
+//     media_group_id text, -- Telegram albom ID (karusel aniqlash uchun)
 //     holat text not null default 'yangi',
 //     created_at timestamptz not null default now()
 //   );
 //   create table if not exists media_taklif (
 //     id bigint generated always as identity primary key,
 //     matn text not null,
-//     media_arxiv_id bigint,
+//     media_arxiv_id bigint, -- karuselda: birinchi (muqova) id
+//     media_arxiv_idlar text, -- karuselda: vergul bilan ajratilgan barcha idlar
 //     holat text not null default 'kutilmoqda',
 //     created_at timestamptz not null default now()
 //   );
@@ -92,15 +94,21 @@ async function claudeTahlil(env, items) {
   const content = [];
   for (const it of items) {
     content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: it.base64 } });
-    content.push({ type: 'text', text: `[#${it.id}] turi: ${it.turi}${it.izoh ? `, izoh: ${it.izoh}` : ''}` });
+    content.push({
+      type: 'text',
+      text: `[#${it.id}] turi: ${it.turi}${it.izoh ? `, izoh: ${it.izoh}` : ''}${it.media_group_id ? `, albom: ${it.media_group_id}` : ''}`,
+    });
   }
   content.push({
     type: 'text',
     text:
       "Yuqoridagi materiallar Visart Design arxitektura/dizayn studiyasining ijtimoiy tarmoq uchun xom video/rasm to'plami. " +
-      "Shulardan FAQAT 1 tasini Instagram Reels/Telegram posti uchun eng mos keladiganini tanlang. " +
+      "Bir xil \"albom\" qiymatiga ega elementlar BITTA Telegram xabarida (albom/media group) birga yuborilgan -- ular odatda bitta xonadon/obyektning turli burchaklari, shuning uchun ularni BITTA karusel post sifatida birga ko'rsatish mumkin.\n\n" +
+      "Vazifa: eng mos keladigan BITTA variantni tanlang:\n" +
+      "- Agar eng yaxshi tanlov bitta alohida (albomsiz) rasm/video bo'lsa -- \"turi\":\"single\" va \"tanlangan_idlar\" massivida FAQAT 1 ta ID.\n" +
+      "- Agar eng yaxshi tanlov bitta albomga tegishli bo'lsa -- \"turi\":\"karusel\", va \"tanlangan_idlar\"ga o'sha albomdagi ENG YAXSHI rasmlarni (kamida 2, ko'pi bilan 10 ta) Instagram karusel uchun eng mos TARTIBDA joylashtiring (birinchisi -- eng jozibali \"muqova\" rasm bo'lishi kerak). Sifatsiz/takroriy/xira rasmlarni albomdan chiqarib tashlang.\n\n" +
       'JAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n' +
-      '{"tanlangan_id": <raqam>, "sarlavha": "<qisqa, jozibali, o\'zbek tilida sarlavha>", "sabab": "<nega shu tanlandi, 1 jumla>"}',
+      '{"turi": "single" yoki "karusel", "tanlangan_idlar": [<raqam>, ...], "sarlavha": "<qisqa, jozibali, o\'zbek tilida sarlavha>", "sabab": "<nega shu tanlandi, 1 jumla>"}',
   });
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -152,7 +160,7 @@ async function handle({ request, env }) {
       if (!filePath) continue;
       const base64 = await tgDownloadBase64(env.MIJOZ_BOT_TOKEN, filePath);
       if (!base64) continue;
-      items.push({ id: row.id, turi: row.turi, izoh: row.izoh, base64 });
+      items.push({ id: row.id, turi: row.turi, izoh: row.izoh, media_group_id: row.media_group_id, base64 });
     } catch (e) {
       // bitta fayl xato bersa ham, qolganlariga davom
     }
@@ -169,6 +177,13 @@ async function handle({ request, env }) {
     return json({ ok: false, error: 'claude_xato' }, 500);
   }
 
+  const tanlanganIdlar = Array.isArray(natija.tanlangan_idlar) && natija.tanlangan_idlar.length
+    ? natija.tanlangan_idlar
+    : (natija.tanlangan_id ? [natija.tanlangan_id] : null); // eski format bilan orqaga moslik
+  if (!tanlanganIdlar || !tanlanganIdlar.length) {
+    return json({ ok: false, error: 'claude_tanlov_bermadi' }, 500);
+  }
+
   let taklifId = null;
   try {
     const inserted = await sbFetch(env, 'media_taklif', {
@@ -176,7 +191,8 @@ async function handle({ request, env }) {
       prefer: 'return=representation',
       body: JSON.stringify([{
         matn: `${natija.sarlavha}\n\n${natija.sabab || ''}`,
-        media_arxiv_id: natija.tanlangan_id,
+        media_arxiv_id: tanlanganIdlar[0],
+        media_arxiv_idlar: tanlanganIdlar.join(','),
         holat: 'kutilmoqda',
       }]),
     });
@@ -205,14 +221,14 @@ async function handle({ request, env }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: adminId,
-        text: `🎬 Senarist taklifi:\n\n📝 ${natija.sarlavha}\n\n💡 ${natija.sabab || ''}\n\n(manba: #${natija.tanlangan_id})`,
+        text: `🎬 Senarist taklifi${natija.turi === 'karusel' ? ` (${tanlanganIdlar.length} rasmli karusel)` : ''}:\n\n📝 ${natija.sarlavha}\n\n💡 ${natija.sabab || ''}\n\n(manba: #${tanlanganIdlar.join(', #')})`,
         reply_markup: kb,
       }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
   }
 
-  return json({ ok: true, taklif_id: taklifId, tanlangan: natija.tanlangan_id });
+  return json({ ok: true, taklif_id: taklifId, turi: natija.turi, tanlangan: tanlanganIdlar });
 }
 
 export async function onRequestGet(context) {
