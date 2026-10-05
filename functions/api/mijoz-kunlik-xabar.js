@@ -78,7 +78,10 @@ function sanaUz() {
 // usulda matn bo'yicha alohida qator sifatida ko'rsatiladi.
 function turiNomi(turi) {
   if (!turi) return 'Boshqa';
-  return turi.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  // "zakaz" so'zi mijozga tushunarliroq "buyurtma" bilan almashtiriladi
+  // (Moliya ilovasi `type` qanday nom yuborishidan qat'iy nazar).
+  const nomalangan = turi.replace(/zakaz/gi, 'buyurtma');
+  return nomalangan.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
 function digestMatni(sarlavha, items, mijozUchun) {
@@ -125,9 +128,9 @@ function qoldiqQatori(items) {
   for (let i = items.length - 1; i >= 0; i--) {
     const r = items[i];
     if (r.qoldiq != null) {
-      let s = `💳 Qoldiq: ${Number(r.qoldiq).toLocaleString('ru-RU')} so'm`;
+      let s = `💳 Buyurtma to'lov qoldiq: ${Number(r.qoldiq).toLocaleString('ru-RU')} so'm`;
       if (r.umumiy_summa != null) {
-        s = `💰 Umumiy summa: ${Number(r.umumiy_summa).toLocaleString('ru-RU')} so'm\n${s}`;
+        s = `💰 Buyurtma umumiy summa: ${Number(r.umumiy_summa).toLocaleString('ru-RU')} so'm\n${s}`;
       }
       return s;
     }
