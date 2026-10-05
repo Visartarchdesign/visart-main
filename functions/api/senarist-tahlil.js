@@ -132,6 +132,42 @@ async function claudeTahlil(env, items) {
   return JSON.parse(match[0]);
 }
 
+// Haqiqiy material yetarli bo'lmagan kunlarda, admin'ga tayyor Gemini
+// rasm-generatsiya prompti yuboradi (bepul -- Gemini ilovasida qo'lda
+// generatsiya qilinadi). Admin natijani "Visart Media" guruhiga ODDIY
+// rasm/video sifatida tashlaydi -- mavjud `handleMediaArxiv` oqimi buni
+// avtomatik qabul qiladi, hech qanday qo'shimcha kod kerak emas.
+const AI_PROMPT_SHABLONLAR = [
+  "Luxury minimalist living room interior, warm ambient lighting, large windows, neutral beige and walnut palette, modern architecture magazine style, photorealistic, 9:16 vertical",
+  "Modern minimalist villa exterior at golden hour, clean geometric facade, large glass panels, landscaped garden, architectural photography, photorealistic, 9:16 vertical",
+  "Premium modern kitchen interior, matte black and oak cabinetry, marble island, soft natural light, photorealistic, architectural digest style, 9:16 vertical",
+  "Elegant master bedroom interior, soft neutral tones, statement headboard, warm evening lighting, minimalist luxury, photorealistic, 9:16 vertical",
+  "Contemporary office/co-working interior, biophilic design with plants, wood and glass, natural daylight, photorealistic, 9:16 vertical",
+];
+
+async function aiTaklifYubor(env) {
+  try {
+    const admins = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    if (!admins.length) return;
+    const prompt = AI_PROMPT_SHABLONLAR[Math.floor(Math.random() * AI_PROMPT_SHABLONLAR.length)];
+    const matn =
+      "📸 Bugun real material yetarli emas. Postni uzmaslik uchun AI orqali rasm generatsiya qilsak bo'ladi:\n\n" +
+      "1) Quyidagi promptni Gemini ilovasiga (gemini.google.com yoki telefon ilovasi) nusxa ko'chiring:\n\n" +
+      `\`${prompt}\`\n\n` +
+      "2) Chiqqan natijani \"Visart Media\" guruhiga ODDIY rasm sifatida tashlang -- tizim uni avtomatik qabul qilib, davom ettiradi.";
+    for (const adminId of admins) {
+      await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: adminId, text: matn, parse_mode: 'Markdown' }),
+        signal: AbortSignal.timeout(10000),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    // jim e'tiborsiz -- bu ixtiyoriy qo'shimcha, asosiy oqimni to'xtatmaydi
+  }
+}
+
 async function handle({ request, env }) {
   const url = new URL(request.url);
   const secret = request.headers.get('X-Senarist-Secret') || url.searchParams.get('secret');
@@ -149,6 +185,7 @@ async function handle({ request, env }) {
     return json({ ok: false, error: 'supabase_xato' }, 500);
   }
   if (!rows || rows.length < KAM_MATERIAL_CHEGARA) {
+    await aiTaklifYubor(env);
     return json({ ok: true, holat: 'yetarli_material_yoq', mavjud: rows ? rows.length : 0 });
   }
 
