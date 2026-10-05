@@ -197,21 +197,17 @@ async function handleMediaArxiv(env, msg) {
   } else {
     return;
   }
-  try {
-    await sbFetch(env, 'media_arxiv', {
-      method: 'POST',
-      prefer: 'return=minimal',
-      body: JSON.stringify([{
-        telegram_chat_id: msg.chat.id,
-        telegram_message_id: msg.message_id,
-        turi,
-        izoh: msg.caption || null,
-        file_id: fileId,
-      }]),
-    });
-  } catch (e) {
-    // jim e'tiborsiz -- keyingi safar senarist baribir qolganlarini ko'radi
-  }
+  await sbFetch(env, 'media_arxiv', {
+    method: 'POST',
+    prefer: 'return=minimal',
+    body: JSON.stringify([{
+      telegram_chat_id: msg.chat.id,
+      telegram_message_id: msg.message_id,
+      turi,
+      izoh: msg.caption || null,
+      file_id: fileId,
+    }]),
+  });
 }
 
 // Senarist taklifini admin DM'da tasdiqlash/rad etish. data shakli:
@@ -746,8 +742,23 @@ export async function onRequestPost({ request, env }) {
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
     if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note)) {
+      // VAQTINCHALIK DEBUG -- muammo topilgach olib tashlanadi
+      if (env.ADMIN_TELEGRAM_IDS) {
+        const firstAdmin = env.ADMIN_TELEGRAM_IDS.split(',')[0].trim();
+        await tgSend(env.MIJOZ_BOT_TOKEN, firstAdmin,
+          `🐞 DEBUG: guruh media keldi. chat.id=${msg.chat.id} MEDIA_GROUP_CHAT_ID=${env.MEDIA_GROUP_CHAT_ID} mos=${String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID)}`).catch(() => {});
+      }
       if (env.MEDIA_GROUP_CHAT_ID && String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID)) {
-        await handleMediaArxiv(env, msg);
+        try {
+          await handleMediaArxiv(env, msg);
+          if (env.ADMIN_TELEGRAM_IDS) {
+            await tgSend(env.MIJOZ_BOT_TOKEN, env.ADMIN_TELEGRAM_IDS.split(',')[0].trim(), '🐞 DEBUG: handleMediaArxiv tugadi, xato yoq.').catch(() => {});
+          }
+        } catch (e) {
+          if (env.ADMIN_TELEGRAM_IDS) {
+            await tgSend(env.MIJOZ_BOT_TOKEN, env.ADMIN_TELEGRAM_IDS.split(',')[0].trim(), `🐞 DEBUG XATO: ${String(e && e.message || e)}`).catch(() => {});
+          }
+        }
       } else {
         await handleUstaMedia(env, msg);
       }
