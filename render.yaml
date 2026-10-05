@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: visart-media-server
+    runtime: docker
+    rootDir: media-server
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: MEDIA_SECRET
+        sync: false

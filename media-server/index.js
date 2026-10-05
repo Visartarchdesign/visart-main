@@ -1,0 +1,45 @@
+// Visart Media Server -- Render.com'da ishlaydigan alohida xizmat.
+// Cloudflare Pages Functions'da ishlay olmaydigan og'ir vazifalar shu yerda:
+// 1) Oblojka -- real fotosurat ustiga brend shablon qo'yib PNG chiqaradi
+// 2) Montajchi -- (keyingi bosqich) FFmpeg + Whisper orqali video montaj
+//
+// Kerakli Render Environment Variable:
+//   MEDIA_SECRET -- o'zingiz o'ylab topgan tasodifiy satr (bizning
+//                   Cloudflare bot shu secret bilan so'rov yuboradi)
+
+import express from 'express';
+import { yasaOblojka } from './oblojka.js';
+
+const app = express();
+app.use(express.json({ limit: '20mb' }));
+
+app.get('/health', (req, res) => res.json({ ok: true }));
+
+function tekshirSecret(req, res) {
+  const secret = req.headers['x-media-secret'];
+  if (!process.env.MEDIA_SECRET || secret !== process.env.MEDIA_SECRET) {
+    res.status(401).json({ ok: false, error: 'unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+// POST /oblojka
+// body: { shablon: 1|2|3, photoBase64, title, kategoriya? }
+app.post('/oblojka', async (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  try {
+    const { shablon, photoBase64, title, kategoriya } = req.body || {};
+    if (!photoBase64 || !title) {
+      return res.status(400).json({ ok: false, error: "photoBase64 va title kerak" });
+    }
+    const png = await yasaOblojka({ shablon: Number(shablon) || 1, photoBase64, title, kategoriya });
+    res.set('Content-Type', 'image/png');
+    res.send(png);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String((e && e.message) || e) });
+  }
+});
+
+const port = process.env.PORT || 10000;
+app.listen(port, () => console.log(`Visart media-server ${port}-portda ishga tushdi`));
