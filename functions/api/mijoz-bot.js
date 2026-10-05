@@ -176,6 +176,15 @@ async function handleUstalarBuyrugi(env, msg) {
   }
 }
 
+function adminIdlari(env) {
+  return (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+// Ustalar guruhidan video/foto kelsa -- GURUHGA HECH NARSA yozilmaydi
+// (ustalarga tugma ko'rsatilmaydi). Buning o'rniga xuddi shu media har bir
+// adminning SHAXSIY chatiga (DM) nusxalanadi, tasdiqlash tugmalari bilan --
+// faqat admin o'zi ko'radi va qaror qiladi (ustalar adashib boshqa
+// rasm/video yuborib qo'yishi mumkinligi uchun).
 async function handleUstaMedia(env, msg) {
   const chatId = msg.chat.id;
   let obyektId = null;
@@ -183,40 +192,56 @@ async function handleUstaMedia(env, msg) {
     const rows = await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${chatId}&select=obyekt_id`);
     obyektId = rows && rows[0] ? rows[0].obyekt_id : null;
   } catch (e) {
-    return; // Supabase xato -- e'tiborsiz qoldiramiz, keyingi safar qayta urinadi
+    return; // Supabase xato -- e'tiborsiz qoldiramiz
   }
   if (!obyektId) return; // bu guruh ustalar guruhi sifatida ro'yxatdan o'tmagan
 
-  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+  const admins = adminIdlari(env);
+  if (!admins.length) return; // ADMIN_TELEGRAM_IDS sozlanmagan -- yuboriladigan joy yo'q
+
+  const kb = {
+    inline_keyboard: [[
+      { text: '✅ Mijozga yuborish', callback_data: `uok:${chatId}:${msg.message_id}` },
+      { text: '❌ Rad etish', callback_data: `uno:${chatId}:${msg.message_id}` },
+    ]],
+  };
+
+  for (const adminId of admins) {
+    await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: adminId, text: `👷 Obyekt №${obyektId} ustalar guruhidan yangi video/foto:` }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {});
+    await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: adminId,
+        from_chat_id: chatId,
+        message_id: msg.message_id,
+        reply_markup: kb,
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {});
+  }
+}
+
+async function removeKb(env, cq) {
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      reply_to_message_id: msg.message_id,
-      text: "👷 Yangi video/foto keldi. Mijoz guruhiga yuborilsinmi?",
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '✅ Mijozga yuborish', callback_data: `uok:${msg.message_id}` },
-          { text: '❌ Rad etish', callback_data: `uno:${msg.message_id}` },
-        ]],
-      },
-    }),
+    body: JSON.stringify({ chat_id: cq.message.chat.id, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } }),
     signal: AbortSignal.timeout(10000),
   }).catch(() => {});
 }
 
-async function editCqText(env, cq, text) {
-  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageText`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: cq.message.chat.id, message_id: cq.message.message_id, text }),
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => {});
-}
-
+// data shakli: "uok:<ustalar_guruh_chat_id>:<asl_xabar_id>" yoki "uno:...".
+// Bu DM'da (admin'ning shaxsiy chatida) kelgan callback -- shuning uchun
+// guruh ID'si cq.message.chat.id'dan EMAS, data ichidan olinadi.
 async function handleUstaTasdiq(env, cq, data) {
-  const [amal, msgIdStr] = data.split(':');
-  const fromChatId = cq.message.chat.id;
+  const [amal, groupChatIdStr, msgIdStr] = data.split(':');
+  const groupChatId = groupChatIdStr;
   const origMsgId = Number(msgIdStr);
 
   if (!isAdmin(env, cq.from && cq.from.id)) {
@@ -228,11 +253,13 @@ async function handleUstaTasdiq(env, cq, data) {
     return;
   }
 
+  await removeKb(env, cq);
+
   if (amal === 'uno') {
-    await editCqText(env, cq, '❌ Rad etildi — mijozga yuborilmadi.');
+    await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '❌ Rad etildi — mijozga yuborilmadi.');
   } else {
     try {
-      const rows = await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${fromChatId}&select=obyekt_id`);
+      const rows = await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${groupChatId}&select=obyekt_id`);
       const obyektId = rows && rows[0] ? rows[0].obyekt_id : null;
       const clientRows = obyektId
         ? await sbFetch(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(obyektId)}&select=telegram_chat_id`)
@@ -240,18 +267,18 @@ async function handleUstaTasdiq(env, cq, data) {
       const clientChatId = clientRows && clientRows[0] ? clientRows[0].telegram_chat_id : null;
 
       if (!clientChatId) {
-        await editCqText(env, cq, "⚠️ Bu obyektning mijoz guruhi hali bog'lanmagan — yuborilmadi.");
+        await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, "⚠️ Bu obyektning mijoz guruhi hali bog'lanmagan — yuborilmadi.");
       } else {
         await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: clientChatId, from_chat_id: fromChatId, message_id: origMsgId }),
+          body: JSON.stringify({ chat_id: clientChatId, from_chat_id: groupChatId, message_id: origMsgId }),
           signal: AbortSignal.timeout(10000),
         });
-        await editCqText(env, cq, '✅ Mijoz guruhiga yuborildi.');
+        await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '✅ Mijoz guruhiga yuborildi.');
       }
     } catch (e) {
-      await editCqText(env, cq, '⚠️ Yuborishda xato yuz berdi.');
+      await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '⚠️ Yuborishda xato yuz berdi.');
     }
   }
 
