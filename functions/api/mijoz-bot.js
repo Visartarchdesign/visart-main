@@ -194,6 +194,14 @@ async function handleMediaArxiv(env, msg) {
   } else if (msg.video_note) {
     turi = 'video_note';
     fileId = (msg.video_note.thumbnail || msg.video_note.thumb || {}).file_id || null;
+  } else if (msg.document && (msg.document.mime_type || '').startsWith('image/')) {
+    // "Fayl" (siqilmagan, asl sifat) qilib yuborilgan rasm -- Telegram buni
+    // alohida `document` sifatida yuboradi, `photo` emas.
+    turi = 'photo';
+    fileId = msg.document.file_id;
+  } else if (msg.document && (msg.document.mime_type || '').startsWith('video/')) {
+    turi = 'video';
+    fileId = (msg.document.thumbnail || msg.document.thumb || {}).file_id || null;
   } else {
     return;
   }
@@ -741,7 +749,8 @@ export async function onRequestPost({ request, env }) {
     // Ustalar guruhidan video/foto kelsa -- matn kerak emas, darhol tasdiqlash
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
-    if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note)) {
+    const hujjatRasmYokiVideo = msg.document && /^(image|video)\//.test(msg.document.mime_type || '');
+    if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note || hujjatRasmYokiVideo)) {
       // VAQTINCHALIK DEBUG -- muammo topilgach olib tashlanadi
       if (env.ADMIN_TELEGRAM_IDS) {
         const firstAdmin = env.ADMIN_TELEGRAM_IDS.split(',')[0].trim();
