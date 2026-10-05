@@ -180,11 +180,51 @@ function adminIdlari(env) {
   return (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
-// Ustalar guruhidan video/foto kelsa -- GURUHGA HECH NARSA yozilmaydi
-// (ustalarga tugma ko'rsatilmaydi). Buning o'rniga xuddi shu media har bir
-// adminning SHAXSIY chatiga (DM) nusxalanadi, tasdiqlash tugmalari bilan --
-// faqat admin o'zi ko'radi va qaror qiladi (ustalar adashib boshqa
-// rasm/video yuborib qo'yishi mumkinligi uchun).
+const USTA_KASBLAR = [
+  ['malyarka', '🎨 Malyarka'],
+  ['elektrik', '⚡ Elektrik'],
+  ['santexnika', '🔧 Santexnika'],
+  ['gisht_beton', "🧱 G'isht/beton"],
+  ['yogoch', "🪵 Yog'och ishlari"],
+  ['boshqa', '🧰 Boshqa'],
+];
+
+function kasbNomi(code) {
+  const found = USTA_KASBLAR.find((k) => k[0] === code);
+  return found ? found[1] : (code || 'Ish');
+}
+
+function kasbKeyboard(chatId, msgId) {
+  const row = ([code, label]) => ({ text: label, callback_data: `ucat:${code}:${chatId}:${msgId}` });
+  return {
+    inline_keyboard: [
+      USTA_KASBLAR.slice(0, 3).map(row),
+      USTA_KASBLAR.slice(3).map(row),
+    ],
+  };
+}
+
+async function answerCq(env, cqId, extra) {
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ callback_query_id: cqId, ...(extra || {}) }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+async function removeKb(env, chatId, messageId) {
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+// 1-bosqich: Ustalar guruhidan video/foto kelsa -- GURUHNING O'ZIDA ("qaysi
+// ish turi?" tugmalari bilan) ishning turi so'raladi, hali adminga
+// yuborilmaydi. Bu faqat tasnif uchun, hamma ustalar bosa oladi.
 async function handleUstaMedia(env, msg) {
   const chatId = msg.chat.id;
   let obyektId = null;
@@ -196,13 +236,49 @@ async function handleUstaMedia(env, msg) {
   }
   if (!obyektId) return; // bu guruh ustalar guruhi sifatida ro'yxatdan o'tmagan
 
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      reply_to_message_id: msg.message_id,
+      text: 'Qaysi ish turi bo\'yicha hisobot? 👇',
+      reply_markup: kasbKeyboard(chatId, msg.message_id),
+    }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+// 2-bosqich: ish turi tanlandi -- GURUHDAGI tugma olib tashlanadi, va endi
+// xuddi shu media har bir adminning SHAXSIY chatiga (DM) nusxalanadi,
+// tasdiqlash tugmalari bilan -- faqat admin o'zi ko'radi va qaror qiladi
+// (ustalar adashib boshqa rasm/video yuborib qo'yishi mumkinligi uchun).
+async function handleUstaKategoriya(env, cq, data) {
+  const [, kasbCode, groupChatIdStr, msgIdStr] = data.split(':');
+  const groupChatId = groupChatIdStr;
+  const origMsgId = Number(msgIdStr);
+  const kasbLabel = kasbNomi(kasbCode);
+
+  await removeKb(env, cq.message.chat.id, cq.message.message_id);
+  await tgSend(env.MIJOZ_BOT_TOKEN, groupChatId, `Rahmat! Kategoriya: ${kasbLabel}. Admin tasdig'ini kutamiz.`);
+  await answerCq(env, cq.id);
+
+  let obyektId = null;
+  try {
+    const rows = await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${groupChatId}&select=obyekt_id`);
+    obyektId = rows && rows[0] ? rows[0].obyekt_id : null;
+  } catch (e) {
+    return;
+  }
+  if (!obyektId) return;
+
   const admins = adminIdlari(env);
   if (!admins.length) return; // ADMIN_TELEGRAM_IDS sozlanmagan -- yuboriladigan joy yo'q
 
   const kb = {
     inline_keyboard: [[
-      { text: '✅ Mijozga yuborish', callback_data: `uok:${chatId}:${msg.message_id}` },
-      { text: '❌ Rad etish', callback_data: `uno:${chatId}:${msg.message_id}` },
+      { text: '✅ Mijozga yuborish', callback_data: `uok:${kasbCode}:${groupChatId}:${origMsgId}` },
+      { text: '❌ Rad etish', callback_data: `uno:${kasbCode}:${groupChatId}:${origMsgId}` },
     ]],
   };
 
@@ -210,7 +286,7 @@ async function handleUstaMedia(env, msg) {
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: adminId, text: `👷 Obyekt №${obyektId} ustalar guruhidan yangi video/foto:` }),
+      body: JSON.stringify({ chat_id: adminId, text: `👷 Obyekt №${obyektId} — ${kasbLabel} ishi bo'yicha yangi video/foto:` }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
@@ -218,8 +294,8 @@ async function handleUstaMedia(env, msg) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: adminId,
-        from_chat_id: chatId,
-        message_id: msg.message_id,
+        from_chat_id: groupChatId,
+        message_id: origMsgId,
         reply_markup: kb,
       }),
       signal: AbortSignal.timeout(10000),
@@ -227,33 +303,22 @@ async function handleUstaMedia(env, msg) {
   }
 }
 
-async function removeKb(env, cq) {
-  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: cq.message.chat.id, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } }),
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => {});
-}
-
-// data shakli: "uok:<ustalar_guruh_chat_id>:<asl_xabar_id>" yoki "uno:...".
+// 3-bosqich: admin DM'da "✅/❌" bosadi. data shakli:
+// "uok:<kasb_kodi>:<ustalar_guruh_chat_id>:<asl_xabar_id>" yoki "uno:...".
 // Bu DM'da (admin'ning shaxsiy chatida) kelgan callback -- shuning uchun
 // guruh ID'si cq.message.chat.id'dan EMAS, data ichidan olinadi.
 async function handleUstaTasdiq(env, cq, data) {
-  const [amal, groupChatIdStr, msgIdStr] = data.split(':');
+  const [amal, kasbCode, groupChatIdStr, msgIdStr] = data.split(':');
   const groupChatId = groupChatIdStr;
   const origMsgId = Number(msgIdStr);
+  const kasbLabel = kasbNomi(kasbCode);
 
   if (!isAdmin(env, cq.from && cq.from.id)) {
-    await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ callback_query_id: cq.id, text: 'Faqat admin tasdiqlashi mumkin.', show_alert: true }),
-    }).catch(() => {});
+    await answerCq(env, cq.id, { text: 'Faqat admin tasdiqlashi mumkin.', show_alert: true });
     return;
   }
 
-  await removeKb(env, cq);
+  await removeKb(env, cq.message.chat.id, cq.message.message_id);
 
   if (amal === 'uno') {
     await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '❌ Rad etildi — mijozga yuborilmadi.');
@@ -269,6 +334,7 @@ async function handleUstaTasdiq(env, cq, data) {
       if (!clientChatId) {
         await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, "⚠️ Bu obyektning mijoz guruhi hali bog'lanmagan — yuborilmadi.");
       } else {
+        await tgSend(env.MIJOZ_BOT_TOKEN, clientChatId, `🎥 Bugungi ${kasbLabel} ustalar kunlik hisob videosi:`);
         await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -282,11 +348,7 @@ async function handleUstaTasdiq(env, cq, data) {
     }
   }
 
-  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ callback_query_id: cq.id }),
-  }).catch(() => {});
+  await answerCq(env, cq.id);
 }
 
 async function getDialog(env, chatId) {
@@ -448,6 +510,10 @@ export async function onRequestPost({ request, env }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ callback_query_id: cq.id }),
         }).catch(() => {});
+        return json({ ok: true });
+      }
+      if (data.startsWith('ucat:')) {
+        await handleUstaKategoriya(env, cq, data);
         return json({ ok: true });
       }
       if (data.startsWith('uok:') || data.startsWith('uno:')) {
