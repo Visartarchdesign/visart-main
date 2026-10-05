@@ -198,13 +198,20 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
   const outputPath = path.join(tmpDir, 'output.mp4');
+  const bosqich = async (matn) => {
+    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⏳ ${matn}`);
+  };
   try {
+    await bosqich('Montajchi boshladi: video yuklab olinmoqda...');
     const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, aslFileId);
     await tgDownloadToFile(env.MIJOZ_BOT_TOKEN, filePath, inputPath);
 
+    await bosqich("Gemini'ga yuklanmoqda...");
     const mimeType = 'video/mp4';
     const uploaded = await geminiFileUpload(env.GEMINI_API_KEY, inputPath, mimeType);
     const active = await geminiFileWaitActive(env.GEMINI_API_KEY, uploaded.name);
+
+    await bosqich('Gemini video tahlil qilmoqda (kesish qarori)...');
     const qaror = await geminiKesishQarori(env.GEMINI_API_KEY, active.uri, mimeType);
 
     if (qaror.munosib === false) {
@@ -216,7 +223,10 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
       throw new Error('Gemini kesish uchun segment bermadi');
     }
 
+    await bosqich(`FFmpeg kesmoqda va birlashtirmoqda (${qaror.segmentlar.length} segment)...`);
     await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath, tmpDir);
+
+    await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}`);
   } catch (e) {
