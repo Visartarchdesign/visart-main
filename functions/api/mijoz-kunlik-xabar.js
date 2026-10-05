@@ -107,13 +107,32 @@ function digestMatni(sarlavha, items, mijozUchun) {
     }
     return g.matnlar.map((m) => `• ${m}`).join('\n');
   });
-  const tana = `${sarlavha} — ${sanaUz()}\n\n` + qatorlar.join('\n');
+  let tana = `${sarlavha} — ${sanaUz()}\n\n` + qatorlar.join('\n');
+  const qq = qoldiqQatori(items);
+  if (qq) tana += `\n\n${qq}`;
   if (!mijozUchun) return tana;
   return (
     "Assalomu alaykum, hurmatli mijozimiz! Xayrli kech! 🌆\n\n" +
     tana +
     "\n\nTo'liq ma'lumotlarni Visart ilovasidan ko'rishingiz mumkin. 📱"
   );
+}
+
+// Kun davomidagi oxirgi (eng so'nggi) umumiy_summa/qoldiq qiymatini topib,
+// hisobot oxiriga snapshot sifatida qo'shadi (Moliya ilovasi o'zi hisoblab
+// yuboradigan joriy holat -- biz faqat ko'rsatamiz, qayta hisoblamaymiz).
+function qoldiqQatori(items) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const r = items[i];
+    if (r.qoldiq != null) {
+      let s = `💳 Qoldiq: ${Number(r.qoldiq).toLocaleString('ru-RU')} so'm`;
+      if (r.umumiy_summa != null) {
+        s = `💰 Umumiy summa: ${Number(r.umumiy_summa).toLocaleString('ru-RU')} so'm\n${s}`;
+      }
+      return s;
+    }
+  }
+  return null;
 }
 
 async function belgilaYuborildi(env, ids, sana) {

@@ -144,16 +144,37 @@ function digestMatni(sarlavha, sana, items, mijozUchun) {
     }
     return g.matnlar.map((m) => `• ${m}`).join('\n');
   });
-  const tana = `${sarlavha} — ${sana}\n\n` + qatorlar.join('\n');
-  if (!mijozUchun) return tana;
-  return (
-    "Assalomu alaykum, hurmatli mijozimiz! Xayrli kech! 🌆\n\n" +
-    tana +
-    "\n\nTo'liq ma'lumotlarni Visart ilovasidan ko'rishingiz mumkin. 📱"
-  );
+  let tana = `${sarlavha} — ${sana}\n\n` + qatorlar.join('\n');
+  const qq = qoldiqQatori(items);
+  if (qq) tana += `\n\n${qq}`;
+  if (mijozUchun) {
+    return (
+      "Assalomu alaykum, hurmatli mijozimiz! Xayrli kech! 🌆\n\n" +
+      tana +
+      "\n\nTo'liq ma'lumotlarni Visart ilovasidan ko'rishingiz mumkin. 📱"
+    );
+  }
+  return tana;
 }
 
-async function navbatgaYoz(env, { type, obyekt_id, matn, group, summa }) {
+// Kun davomidagi oxirgi (eng so'nggi) umumiy_summa/qoldiq qiymatini topib,
+// hisobot oxiriga snapshot sifatida qo'shadi (har kuni qayta jamlanmaydi --
+// Moliya ilovasi o'zi hisoblab yuboradigan joriy holat).
+function qoldiqQatori(items) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const r = items[i];
+    if (r.qoldiq != null) {
+      let s = `💳 Qoldiq: ${Number(r.qoldiq).toLocaleString('ru-RU')} so'm`;
+      if (r.umumiy_summa != null) {
+        s = `💰 Umumiy summa: ${Number(r.umumiy_summa).toLocaleString('ru-RU')} so'm\n${s}`;
+      }
+      return s;
+    }
+  }
+  return null;
+}
+
+async function navbatgaYoz(env, { type, obyekt_id, matn, group, summa, umumiy_summa, qoldiq }) {
   const rows = await sbFetch(env, 'kunlik_hodisalar', {
     method: 'POST',
     prefer: 'return=representation',
@@ -163,18 +184,22 @@ async function navbatgaYoz(env, { type, obyekt_id, matn, group, summa }) {
       matn,
       guruh: group,
       summa: summa != null ? summa : null,
+      umumiy_summa: umumiy_summa != null ? umumiy_summa : null,
+      qoldiq: qoldiq != null ? qoldiq : null,
     }]),
   });
   return rows && rows[0] ? rows[0].id : null;
 }
 
-async function tuzatishniQollash(env, { tuzatish_hodisa_id, matn, summa }) {
+async function tuzatishniQollash(env, { tuzatish_hodisa_id, matn, summa, umumiy_summa, qoldiq }) {
   const rows = await sbFetch(env, `kunlik_hodisalar?id=eq.${tuzatish_hodisa_id}&select=*`);
   const hodisa = rows && rows[0];
   if (!hodisa) return json({ ok: false, error: 'hodisa_topilmadi' }, 404);
 
   const patch = { matn };
   if (summa !== undefined) patch.summa = summa;
+  if (umumiy_summa !== undefined) patch.umumiy_summa = umumiy_summa;
+  if (qoldiq !== undefined) patch.qoldiq = qoldiq;
 
   if (!hodisa.yuborildi) {
     // Hali Telegram'ga yuborilmagan -- navbatdagi matn/summani yangilash kifoya.
@@ -239,6 +264,8 @@ export async function onRequestPost({ request, env }) {
         tuzatish_hodisa_id: body.tuzatish_hodisa_id,
         matn: body.matn,
         summa: body.summa,
+        umumiy_summa: body.umumiy_summa,
+        qoldiq: body.qoldiq,
       });
     }
 
@@ -246,11 +273,11 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: false, error: 'bad_request' }, 400);
     }
 
-    const { type, obyekt_id, matn, group, urgent, summa } = body;
+    const { type, obyekt_id, matn, group, urgent, summa, umumiy_summa, qoldiq } = body;
     const prefiks = type ? `[${type}]\n` : '';
 
     if (urgent !== true) {
-      const hodisaId = await navbatgaYoz(env, { type, obyekt_id, matn, group, summa });
+      const hodisaId = await navbatgaYoz(env, { type, obyekt_id, matn, group, summa, umumiy_summa, qoldiq });
       return json({ ok: hodisaId !== null, navbatga_yozildi: true, hodisa_id: hodisaId });
     }
 
