@@ -81,7 +81,7 @@ function turiNomi(turi) {
   return turi.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
-function digestMatni(sarlavha, items) {
+function digestMatni(sarlavha, items, mijozUchun) {
   const guruhlar = {};
   const tartib = [];
   for (const r of items) {
@@ -107,7 +107,13 @@ function digestMatni(sarlavha, items) {
     }
     return g.matnlar.map((m) => `• ${m}`).join('\n');
   });
-  return `${sarlavha} — ${sanaUz()}\n\n` + qatorlar.join('\n');
+  const tana = `${sarlavha} — ${sanaUz()}\n\n` + qatorlar.join('\n');
+  if (!mijozUchun) return tana;
+  return (
+    "Assalomu alaykum, hurmatli mijozimiz! Xayrli kech! 🌆\n\n" +
+    tana +
+    "\n\nTo'liq ma'lumotlarni Visart ilovasidan ko'rishingiz mumkin. 📱"
+  );
 }
 
 async function belgilaYuborildi(env, ids, sana) {
@@ -172,7 +178,7 @@ async function handle({ request, env }) {
   for (const [obyektId, items] of Object.entries(obyektlar)) {
     const chatId = await findGuruhChatId(env, obyektId);
     if (!chatId) continue; // guruh hali ro'yxatdan o'tmagan -- yuborilmaydi, keyingi kunga qoladi
-    const natija = await tgSend(env.MIJOZ_BOT_TOKEN, chatId, digestMatni('📊 Kunlik hisobot', items));
+    const natija = await tgSend(env.MIJOZ_BOT_TOKEN, chatId, digestMatni('📊 Kunlik hisobot', items, true));
     if (natija) {
       await belgilaYuborildi(env, items.map((r) => r.id), sana);
       await jurnalgaYoz(env, { sana, guruh: 'obyekt', obyektKaliti: obyektId, chatId, messageId: natija.message_id });

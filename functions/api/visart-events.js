@@ -118,7 +118,7 @@ function turiNomi(turi) {
   return turi.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 }
 
-function digestMatni(sarlavha, sana, items) {
+function digestMatni(sarlavha, sana, items, mijozUchun) {
   const guruhlar = {};
   const tartib = [];
   for (const r of items) {
@@ -144,7 +144,13 @@ function digestMatni(sarlavha, sana, items) {
     }
     return g.matnlar.map((m) => `• ${m}`).join('\n');
   });
-  return `${sarlavha} — ${sana}\n\n` + qatorlar.join('\n');
+  const tana = `${sarlavha} — ${sana}\n\n` + qatorlar.join('\n');
+  if (!mijozUchun) return tana;
+  return (
+    "Assalomu alaykum, hurmatli mijozimiz! Xayrli kech! 🌆\n\n" +
+    tana +
+    "\n\nTo'liq ma'lumotlarni Visart ilovasidan ko'rishingiz mumkin. 📱"
+  );
 }
 
 async function navbatgaYoz(env, { type, obyekt_id, matn, group, summa }) {
@@ -209,8 +215,9 @@ async function tuzatishniQollash(env, { tuzatish_hodisa_id, matn, summa }) {
       : `yuborilgan_sana=eq.${hodisa.yuborilgan_sana}&guruh=eq.obyekt&obyekt_id=eq.${encodeURIComponent(hodisa.obyekt_id)}`;
   const kunHodisalari = await sbFetch(env, `kunlik_hodisalar?${filterQs}&select=*&order=created_at.asc`);
 
+  const mijozUchun = hodisa.guruh !== 'moliya';
   const sarlavha = hodisa.guruh === 'moliya' ? '📊 Kunlik moliya hisoboti' : '📊 Kunlik hisobot';
-  const yangiMatn = digestMatni(sarlavha, jurnal.sana, kunHodisalari || []);
+  const yangiMatn = digestMatni(sarlavha, jurnal.sana, kunHodisalari || [], mijozUchun);
   const tahrirlandi = await tgEdit(env.MIJOZ_BOT_TOKEN, jurnal.telegram_chat_id, jurnal.telegram_message_id, yangiMatn);
 
   return json({ ok: tahrirlandi, tahrir: tahrirlandi ? 'xabar_tahrirlandi' : 'tahrir_xato' });
