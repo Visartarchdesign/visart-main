@@ -107,32 +107,42 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType) {
     "JAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
     '{"segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa izoh, nima olib tashlandi>"}';
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { file_data: { mime_type: mimeType, file_uri: fileUri } },
-            { text: prompt },
-          ],
-        }],
-      }),
+  let oxirgiXato;
+  for (let urinish = 1; urinish <= 3; urinish++) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { file_data: { mime_type: mimeType, file_uri: fileUri } },
+              { text: prompt },
+            ],
+          }],
+        }),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
+        data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+        data.candidates[0].content.parts[0].text) || '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('Gemini javobi JSON emas: ' + text.slice(0, 200));
+      return JSON.parse(match[0]);
     }
-  );
-  if (!res.ok) {
     const txt = await res.text().catch(() => '');
-    throw new Error(`Gemini generateContent xato: ${res.status} ${txt.slice(0, 300)}`);
+    oxirgiXato = new Error(`Gemini generateContent xato: ${res.status} ${txt.slice(0, 300)}`);
+    // 503 (band) yoki 429 (limit) -- vaqtinchalik, biroz kutib qayta urinamiz
+    if ((res.status === 503 || res.status === 429) && urinish < 3) {
+      await new Promise((r) => setTimeout(r, urinish * 5000));
+      continue;
+    }
+    throw oxirgiXato;
   }
-  const data = await res.json();
-  const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
-    data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
-    data.candidates[0].content.parts[0].text) || '';
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Gemini javobi JSON emas: ' + text.slice(0, 200));
-  return JSON.parse(match[0]);
+  throw oxirgiXato;
 }
 
 // Xotira tejash uchun (Render bepul tarifi 512MB bilan cheklangan): bitta
