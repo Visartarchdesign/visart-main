@@ -140,7 +140,9 @@ function digestMatni(sarlavha, sana, items) {
     const g = guruhlar[kalit];
     if (g.hammasiSummali && g.soni > 0) {
       const label = kalit === '__boshqa__' ? 'Boshqa' : turiNomi(kalit);
-      return `• ${label}: ${g.jami.toLocaleString('ru-RU')} so'm (${g.soni} ta)`;
+      const sarlavhaQator = `• ${label}: ${g.jami.toLocaleString('ru-RU')} so'm (${g.soni} ta)`;
+      const tafsilot = g.matnlar.map((m) => `   – ${m}`).join('\n');
+      return `${sarlavhaQator}\n${tafsilot}`;
     }
     return g.matnlar.map((m) => `• ${m}`).join('\n');
   });
