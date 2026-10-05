@@ -215,6 +215,7 @@ async function handleMediaArxiv(env, msg) {
   // guruhdan so'nggi 3 daqiqa ichida kelgan materialga "sun'iy" umumiy
   // to'plam ID beramiz -- Senarist ularni ham bitta karusel sifatida
   // ko'ra olishi uchun.
+  const haqiqiyAlbom = Boolean(msg.media_group_id);
   let mediaGroupId = msg.media_group_id || null;
   if (!mediaGroupId) {
     try {
@@ -252,6 +253,21 @@ async function handleMediaArxiv(env, msg) {
       media_group_id: mediaGroupId,
     }]),
   });
+
+  // Haqiqiy Telegram albomi uchun (hammasi bir vaqtda, o'zi bog'langan)
+  // qo'shimcha xabar kerak emas. Faqat albomsiz (fayl, bittalab) holatda --
+  // odamga joriy to'plam holatini bildirib turamiz.
+  if (!haqiqiyAlbom && mediaGroupId) {
+    try {
+      const toplam = await sbFetch(env,
+        `media_arxiv?media_group_id=eq.${mediaGroupId}&holat=eq.yangi&select=id`);
+      const son = toplam ? toplam.length : 1;
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
+        `📥 Qabul qilindi (joriy to'plamda: ${son} ta). Ketma-ket yuborishda davom eting -- 3 daqiqa ichida yuborilgan hammasi BITTA to'plam bo'ladi. Yangi/boshqa obyekt boshlamoqchi bo'lsangiz, shunchaki 3 daqiqa kutib keyin yuboring.`);
+    } catch (e) {
+      // e'tiborsiz -- bu faqat qulaylik xabari
+    }
+  }
 }
 
 // Senarist taklifini admin DM'da tasdiqlash/rad etish. data shakli:
