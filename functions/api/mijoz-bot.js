@@ -234,10 +234,88 @@ async function handleSenaristTasdiq(env, cq, data) {
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id,
       amal === 'ok' ? "✅ Taklif tasdiqlandi — montaj navbatiga qo'yildi." : '❌ Taklif rad etildi.');
+
+    if (amal === 'ok') {
+      await oblojkaTayyorlaVaYubor(env, taklifId, cq.message.chat.id);
+    }
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '⚠️ Xato yuz berdi.');
   }
   await answerCq(env, cq.id);
+}
+
+// Oblojka agenti bilan bog'lanish (Render.com'dagi media-server).
+async function tgGetFilePath(token, fileId) {
+  const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`, { signal: AbortSignal.timeout(10000) });
+  const data = await res.json().catch(() => null);
+  return data && data.ok ? data.result.file_path : null;
+}
+
+async function tgDownloadBase64(token, filePath) {
+  const res = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) return null;
+  const buf = await res.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  return btoa(binary);
+}
+
+async function oblojkaYasash(env, shablon, photoBase64, title, kategoriya) {
+  const res = await fetch(`${env.MEDIA_SERVER_URL}/oblojka`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
+    body: JSON.stringify({ shablon, photoBase64, title, kategoriya }),
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!res.ok) throw new Error(`media-server -> ${res.status}`);
+  return res.arrayBuffer();
+}
+
+async function tgSendPhoto(token, chatId, pngBuffer, caption) {
+  const form = new FormData();
+  form.append('chat_id', String(chatId));
+  if (caption) form.append('caption', caption);
+  form.append('photo', new Blob([pngBuffer], { type: 'image/png' }), 'oblojka.png');
+  await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(25000),
+  }).catch(() => {});
+}
+
+// Tasdiqlangan Senarist taklifi uchun 3 shablonda oblojka yasab, adminga
+// DM'da yuboradi. MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan bo'lsa -- jim
+// e'tiborsiz qoldiradi (hali ishga tushirilmagan bosqich).
+async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
+  if (!env.MEDIA_SERVER_URL || !env.MEDIA_SECRET) return;
+  try {
+    const taklifRows = await sbFetch(env, `media_taklif?id=eq.${taklifId}&select=*`);
+    const taklif = taklifRows && taklifRows[0];
+    if (!taklif) return;
+
+    const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${taklif.media_arxiv_id}&select=file_id`);
+    const fileId = arxivRows && arxivRows[0] ? arxivRows[0].file_id : null;
+    if (!fileId) return;
+
+    const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, fileId);
+    if (!filePath) return;
+    const base64 = await tgDownloadBase64(env.MIJOZ_BOT_TOKEN, filePath);
+    if (!base64) return;
+
+    const title = (taklif.matn || '').split('\n\n')[0];
+    for (const shablon of [1, 2, 3]) {
+      try {
+        const png = await oblojkaYasash(env, shablon, base64, title, null);
+        await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, png, `Oblojka -- ${shablon}-shablon`);
+      } catch (e) {
+        // bitta shablon xato bersa ham, qolganlariga davom
+      }
+    }
+  } catch (e) {
+    // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
+  }
 }
 
 function adminIdlari(env) {
