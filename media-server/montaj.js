@@ -71,6 +71,7 @@ async function geminiFileUpload(apiKey, filePath, mimeType) {
   const uploadUrl = startRes.headers.get('x-goog-upload-url');
   if (!uploadUrl) throw new Error("Gemini upload URL qaytmadi");
 
+  const fileBuf = fs.readFileSync(filePath);
   const uploadRes = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
@@ -78,8 +79,7 @@ async function geminiFileUpload(apiKey, filePath, mimeType) {
       'X-Goog-Upload-Offset': '0',
       'X-Goog-Upload-Command': 'upload, finalize',
     },
-    body: fs.createReadStream(filePath),
-    duplex: 'half',
+    body: fileBuf,
   });
   if (!uploadRes.ok) throw new Error(`Gemini fayl yuklashda xato: ${uploadRes.status}`);
   const data = await uploadRes.json();
