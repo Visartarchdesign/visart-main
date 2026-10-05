@@ -394,14 +394,17 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
       const base64 = await tgDownloadBase64(env.MIJOZ_BOT_TOKEN, filePath);
       if (!base64) return;
 
+      let kanalgaPng = null;
       for (const shablon of [1, 2, 3]) {
         try {
           const png = await oblojkaYasash(env, shablon, base64, title, null);
           await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, png, `Oblojka -- ${shablon}-shablon`);
+          if (shablon === 1) kanalgaPng = png; // kanalga 1-shablon (sarlavhali) ketadi
         } catch (e) {
           // bitta shablon xato bersa ham, qolganlariga davom
         }
       }
+      if (kanalgaPng) await kanalgaPost(env, [kanalgaPng], title);
       return;
     }
 
@@ -431,8 +434,26 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     if (buffers.length < 2) return; // yetarli rasm yig'ilmadi
 
     await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}`);
+    await kanalgaPost(env, buffers, title);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
+  }
+}
+
+// Tayyor oblojka(lar)ni "Visart Media" kanaliga avtomat post qiladi.
+// TELEGRAM_CHANNEL_ID sozlanmagan bo'lsa -- jim e'tiborsiz qoldiradi (hali
+// kanal ulanmagan). Bot o'sha kanalda ADMIN (post qilish huquqi bilan)
+// bo'lishi SHART, aks holda Telegram xato qaytaradi (jim yutiladi).
+async function kanalgaPost(env, pngBuffers, title) {
+  if (!env.TELEGRAM_CHANNEL_ID || !pngBuffers || !pngBuffers.length) return;
+  try {
+    if (pngBuffers.length === 1) {
+      await tgSendPhoto(env.MIJOZ_BOT_TOKEN, env.TELEGRAM_CHANNEL_ID, pngBuffers[0], title);
+    } else {
+      await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, env.TELEGRAM_CHANNEL_ID, pngBuffers, title);
+    }
+  } catch (e) {
+    // kanalga post xato bersa ham, admin'ga ketgan asosiy oqimni buzmaydi
   }
 }
 
