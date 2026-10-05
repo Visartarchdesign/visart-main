@@ -71,7 +71,6 @@ async function geminiFileUpload(apiKey, filePath, mimeType) {
   const uploadUrl = startRes.headers.get('x-goog-upload-url');
   if (!uploadUrl) throw new Error("Gemini upload URL qaytmadi");
 
-  const fileBuf = fs.readFileSync(filePath);
   const uploadRes = await fetch(uploadUrl, {
     method: 'POST',
     headers: {
@@ -79,7 +78,8 @@ async function geminiFileUpload(apiKey, filePath, mimeType) {
       'X-Goog-Upload-Offset': '0',
       'X-Goog-Upload-Command': 'upload, finalize',
     },
-    body: fileBuf,
+    body: fs.createReadStream(filePath),
+    duplex: 'half',
   });
   if (!uploadRes.ok) throw new Error(`Gemini fayl yuklashda xato: ${uploadRes.status}`);
   const data = await uploadRes.json();
@@ -156,14 +156,18 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
     const seg = segmentlar[i];
     const segPath = path.join(tmpDir, `seg${i}.mp4`);
     await execFileAsync('ffmpeg', [
-      '-y', '-i', inputPath,
+      '-y',
       '-ss', String(seg.start), '-to', String(seg.end),
-      // Juda yuqori o'lchamli manba bo'lsa, 1920px'gacha kichraytiramiz
+      '-i', inputPath,
+      // Juda yuqori o'lchamli manba bo'lsa, 1280px'gacha kichraytiramiz
       // (xotira va chiqish hajmini nazorat qilish uchun) -- aks holda
       // asl o'lcham saqlanadi.
-      '-vf', "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '25', '-pix_fmt', 'yuv420p',
-      '-c:a', 'aac', '-b:a', '128k',
+      '-vf', "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-pix_fmt', 'yuv420p',
+      // Render'ning kichik konteynerida ffmpeg host CPU soniga qarab ko'p
+      // thread/buffer ajratib xotirani oshirib yubormasligi uchun cheklaymiz.
+      '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+      '-c:a', 'aac', '-b:a', '96k',
       '-avoid_negative_ts', 'make_zero',
       segPath,
     ], { maxBuffer: 1024 * 1024 * 20 });
