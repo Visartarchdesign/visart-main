@@ -135,23 +135,37 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType) {
   return JSON.parse(match[0]);
 }
 
-async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath) {
-  const parts = [];
-  segmentlar.forEach((seg, i) => {
-    parts.push(`[0:v]trim=start=${seg.start}:end=${seg.end},setpts=PTS-STARTPTS[v${i}]`);
-    parts.push(`[0:a]atrim=start=${seg.start}:end=${seg.end},asetpts=PTS-STARTPTS[a${i}]`);
-  });
-  const concatInputs = segmentlar.map((_, i) => `[v${i}][a${i}]`).join('');
-  parts.push(`${concatInputs}concat=n=${segmentlar.length}:v=1:a=1[outv][outa]`);
-  const filterComplex = parts.join(';');
+// Xotira tejash uchun (Render bepul tarifi 512MB bilan cheklangan): bitta
+// og'ir filter_complex grafigi o'rniga, har bir segmentni ALOHIDA-ALOHIDA
+// (ketma-ket, bitta-bittadan) qayta kodlaymiz, keyin ularni concat demuxer
+// bilan (qayta kodlamasdan, tez) birlashtiramiz. Shu yo'l bilan bir vaqtning
+// o'zida faqat BITTA segment xotirada bo'ladi.
+async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) {
+  const segFiles = [];
+  for (let i = 0; i < segmentlar.length; i++) {
+    const seg = segmentlar[i];
+    const segPath = path.join(tmpDir, `seg${i}.mp4`);
+    await execFileAsync('ffmpeg', [
+      '-y', '-i', inputPath,
+      '-ss', String(seg.start), '-to', String(seg.end),
+      // Juda yuqori o'lchamli manba bo'lsa, 1920px'gacha kichraytiramiz
+      // (xotira va chiqish hajmini nazorat qilish uchun) -- aks holda
+      // asl o'lcham saqlanadi.
+      '-vf', "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '25', '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac', '-b:a', '128k',
+      '-avoid_negative_ts', 'make_zero',
+      segPath,
+    ], { maxBuffer: 1024 * 1024 * 20 });
+    segFiles.push(segPath);
+  }
+
+  const listPath = path.join(tmpDir, 'list.txt');
+  fs.writeFileSync(listPath, segFiles.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n'));
 
   await execFileAsync('ffmpeg', [
-    '-y', '-i', inputPath,
-    '-filter_complex', filterComplex,
-    '-map', '[outv]', '-map', '[outa]',
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
-    '-c:a', 'aac', '-b:a', '128k',
-    '-movflags', '+faststart',
+    '-y', '-f', 'concat', '-safe', '0', '-i', listPath,
+    '-c', 'copy', '-movflags', '+faststart',
     outputPath,
   ], { maxBuffer: 1024 * 1024 * 20 });
 }
@@ -173,7 +187,7 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
       throw new Error('Gemini kesish uchun segment bermadi');
     }
 
-    await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath);
+    await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath, tmpDir);
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}`);
   } catch (e) {
