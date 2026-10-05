@@ -178,6 +178,68 @@ async function handleUstalarBuyrugi(env, msg) {
   }
 }
 
+// YANGI: "Visart Media" guruhi. Bu yerga tashlangan har qanday xom
+// video/rasm (aralash, tartibsiz) darhol javob qaytarmaydi -- shunchaki
+// `media_arxiv`ga ro'yxatga olinadi (file_id bilan). Senarist agenti
+// (/api/senarist-tahlil, alohida, cron orqali) keyinroq to'plangan
+// materialni ko'rib, mos keladiganini tanlab, admin DM'ga taklif yuboradi.
+async function handleMediaArxiv(env, msg) {
+  let turi, fileId;
+  if (msg.photo && msg.photo.length) {
+    turi = 'photo';
+    fileId = msg.photo[msg.photo.length - 1].file_id;
+  } else if (msg.video) {
+    turi = 'video';
+    fileId = (msg.video.thumbnail || msg.video.thumb || {}).file_id || null;
+  } else if (msg.video_note) {
+    turi = 'video_note';
+    fileId = (msg.video_note.thumbnail || msg.video_note.thumb || {}).file_id || null;
+  } else {
+    return;
+  }
+  try {
+    await sbFetch(env, 'media_arxiv', {
+      method: 'POST',
+      prefer: 'return=minimal',
+      body: JSON.stringify([{
+        telegram_chat_id: msg.chat.id,
+        telegram_message_id: msg.message_id,
+        turi,
+        izoh: msg.caption || null,
+        file_id: fileId,
+      }]),
+    });
+  } catch (e) {
+    // jim e'tiborsiz -- keyingi safar senarist baribir qolganlarini ko'radi
+  }
+}
+
+// Senarist taklifini admin DM'da tasdiqlash/rad etish. data shakli:
+// "stak:<taklif_id>:ok" yoki "stak:<taklif_id>:no".
+async function handleSenaristTasdiq(env, cq, data) {
+  const [, taklifId, amal] = data.split(':');
+
+  if (!isAdmin(env, cq.from && cq.from.id)) {
+    await answerCq(env, cq.id, { text: 'Faqat admin tasdiqlashi mumkin.', show_alert: true });
+    return;
+  }
+
+  await removeKb(env, cq.message.chat.id, cq.message.message_id);
+  const holat = amal === 'ok' ? 'tasdiqlangan' : 'rad_etilgan';
+  try {
+    await sbFetch(env, `media_taklif?id=eq.${taklifId}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({ holat }),
+    });
+    await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id,
+      amal === 'ok' ? "✅ Taklif tasdiqlandi — montaj navbatiga qo'yildi." : '❌ Taklif rad etildi.');
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '⚠️ Xato yuz berdi.');
+  }
+  await answerCq(env, cq.id);
+}
+
 function adminIdlari(env) {
   return (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
@@ -572,6 +634,10 @@ export async function onRequestPost({ request, env }) {
         await handleUstaTasdiq(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('stak:')) {
+        await handleSenaristTasdiq(env, cq, data);
+        return json({ ok: true });
+      }
       await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -602,7 +668,11 @@ export async function onRequestPost({ request, env }) {
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
     if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note)) {
-      await handleUstaMedia(env, msg);
+      if (env.MEDIA_GROUP_CHAT_ID && String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID)) {
+        await handleMediaArxiv(env, msg);
+      } else {
+        await handleUstaMedia(env, msg);
+      }
       return json({ ok: true });
     }
 
