@@ -170,7 +170,9 @@ async function handleUstalarBuyrugi(env, msg) {
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: chatId }]),
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-      `✅ Bu guruh obyekt №${obyektId} USTALAR guruhi sifatida bog'landi.\n\nEndi shu yerga tushgan video/foto uchun tasdiqlash tugmasi chiqadi — admin bossa, mijoz guruhiga yuboriladi.`);
+      `✅ Bu guruh obyekt №${obyektId} USTALAR guruhi sifatida bog'landi.\n\n` +
+      "Hurmatli ustalar! Har kungi mehnatingiz uchun oldindan rahmat — xalol ishingiz juda qadrlanadi. 🙏\n\n" +
+      "Bajargan ishingiz bo'yicha video yoki rasmni shu yerga tashlab turing, biz ko'rib, mijozga yetkazamiz. Charchamang! 💪");
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚠️ Bog'lashda xato yuz berdi, qayta urinib ko'ring.");
   }
@@ -322,6 +324,16 @@ async function handleUstaTasdiq(env, cq, data) {
 
   if (amal === 'uno') {
     await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '❌ Rad etildi — mijozga yuborilmadi.');
+    await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: groupChatId,
+        reply_to_message_id: origMsgId,
+        text: "Hurmatli ustalar, yuborgan foto/videongiz rad etildi — iltimos, tekshirib qaytadan yuboring. 🙏",
+      }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {});
   } else {
     try {
       const rows = await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${groupChatId}&select=obyekt_id`);
