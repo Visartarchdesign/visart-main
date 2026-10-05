@@ -23,6 +23,7 @@
 //     turi text not null,
 //     izoh text,
 //     file_id text,
+//     asl_file_id text, -- video uchun to'liq fayl (Montajchi shundan foydalanadi)
 //     holat text not null default 'yangi',
 //     created_at timestamptz not null default now()
 //   );

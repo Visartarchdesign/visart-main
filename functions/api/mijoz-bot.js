@@ -184,16 +184,18 @@ async function handleUstalarBuyrugi(env, msg) {
 // (/api/senarist-tahlil, alohida, cron orqali) keyinroq to'plangan
 // materialni ko'rib, mos keladiganini tanlab, admin DM'ga taklif yuboradi.
 async function handleMediaArxiv(env, msg) {
-  let turi, fileId;
+  let turi, fileId, aslFileId = null;
   if (msg.photo && msg.photo.length) {
     turi = 'photo';
     fileId = msg.photo[msg.photo.length - 1].file_id;
   } else if (msg.video) {
     turi = 'video';
     fileId = (msg.video.thumbnail || msg.video.thumb || {}).file_id || null;
+    aslFileId = msg.video.file_id; // Montajchi uchun -- to'liq video
   } else if (msg.video_note) {
     turi = 'video_note';
     fileId = (msg.video_note.thumbnail || msg.video_note.thumb || {}).file_id || null;
+    aslFileId = msg.video_note.file_id;
   } else if (msg.document && (msg.document.mime_type || '').startsWith('image/')) {
     // "Fayl" (siqilmagan, asl sifat) qilib yuborilgan rasm -- Telegram buni
     // alohida `document` sifatida yuboradi, `photo` emas.
@@ -202,6 +204,7 @@ async function handleMediaArxiv(env, msg) {
   } else if (msg.document && (msg.document.mime_type || '').startsWith('video/')) {
     turi = 'video';
     fileId = (msg.document.thumbnail || msg.document.thumb || {}).file_id || null;
+    aslFileId = msg.document.file_id;
   } else {
     return;
   }
@@ -213,6 +216,7 @@ async function handleMediaArxiv(env, msg) {
       telegram_message_id: msg.message_id,
       turi,
       izoh: msg.caption || null,
+      asl_file_id: aslFileId,
       file_id: fileId,
     }]),
   });
@@ -241,6 +245,7 @@ async function handleSenaristTasdiq(env, cq, data) {
 
     if (amal === 'ok') {
       await oblojkaTayyorlaVaYubor(env, taklifId, cq.message.chat.id);
+      await montajBoshlash(env, taklifId, cq.message.chat.id);
     }
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '⚠️ Xato yuz berdi.');
@@ -319,6 +324,38 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     }
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
+  }
+}
+
+// Tasdiqlangan taklif manbasi VIDEO bo'lsa, Render'dagi Montajchiga ishga
+// tushirish so'rovini yuboradi (fire-and-forget -- Render darhol 202 qaytaradi,
+// og'ir ish fonda davom etib, tugagach natijani to'g'ridan-to'g'ri Telegram
+// orqali adminChatId'ga yuboradi). MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan
+// yoki manba rasm bo'lsa -- jim e'tiborsiz qoldiradi.
+async function montajBoshlash(env, taklifId, adminChatId) {
+  if (!env.MEDIA_SERVER_URL || !env.MEDIA_SECRET) return;
+  try {
+    const taklifRows = await sbFetch(env, `media_taklif?id=eq.${taklifId}&select=*`);
+    const taklif = taklifRows && taklifRows[0];
+    if (!taklif) return;
+
+    const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${taklif.media_arxiv_id}&select=turi,asl_file_id`);
+    const arxiv = arxivRows && arxivRows[0];
+    if (!arxiv || !arxiv.asl_file_id) return; // rasm yoki asl video topilmadi -- montaj shart emas
+    if (arxiv.turi !== 'video' && arxiv.turi !== 'video_note') return;
+
+    const title = (taklif.matn || '').split('\n\n')[0];
+    await fetch(`${env.MEDIA_SERVER_URL}/montaj`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
+      body: JSON.stringify({ aslFileId: arxiv.asl_file_id, adminChatId, title }),
+      // Render bepul tarifda uxlab qolgan bo'lsa, uyg'onishi 50+ soniya
+      // olishi mumkin -- ulanish shu vaqt ichida o'rnatilishi uchun uzoqroq
+      // timeout beramiz (aks holda so'rov Render'ga umuman YETIB BORMAYDI).
+      signal: AbortSignal.timeout(55000),
+    });
+  } catch (e) {
+    // Juda sekin bo'lsa ham -- keyingi safar qo'lda qayta urinib ko'rish mumkin.
   }
 }
 
