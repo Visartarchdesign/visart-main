@@ -194,15 +194,12 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
   ], { maxBuffer: 1024 * 1024 * 20 });
 }
 
-export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
+async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqich }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
   const outputPath = path.join(tmpDir, 'output.mp4');
-  const bosqich = async (matn) => {
-    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⏳ ${matn}`);
-  };
   try {
-    await bosqich('Montajchi boshladi: video yuklab olinmoqda...');
+    await bosqich('video yuklab olinmoqda...');
     const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, aslFileId);
     await tgDownloadToFile(env.MIJOZ_BOT_TOKEN, filePath, inputPath);
 
@@ -217,7 +214,7 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
     if (qaror.munosib === false) {
       await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
         `🚫 Bu video premium darajaga to'g'ri kelmadi, shuning uchun chiqarilmadi${title ? ` -- ${title}` : ''}.\n\n${qaror.sabab || ''}`);
-      return;
+      return true; // yakuniy natija -- qayta urinish shart emas
     }
     if (!qaror.segmentlar || !qaror.segmentlar.length) {
       throw new Error('Gemini kesish uchun segment bermadi');
@@ -229,10 +226,37 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}`);
-  } catch (e) {
-    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-      `⚠️ Montajchi xato berdi: ${String((e && e.message) || e)}`);
+    return true;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+}
+
+// Tarmoq/Gemini kabi vaqtinchalik xatolarda butun jarayonni avtomatik qayta
+// urinadi (post "osilib qolmasligi" uchun) -- faqat BARCHA urinishlar
+// tugagandan keyin adminga xato xabari yuboriladi. (Butun process'ni
+// o'ldiradigan OOM kabi xatolar bundan mustasno -- ular xotira sozlamalari
+// bilan oldindan oldi olingan.)
+export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
+  const MAX_URINISH = 3;
+  let oxirgiXato;
+  for (let urinish = 1; urinish <= MAX_URINISH; urinish++) {
+    const bosqich = async (matn) => {
+      await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+        `⏳ ${matn}${urinish > 1 ? ` (${urinish}-urinish)` : ''}`);
+    };
+    try {
+      const tugadi = await bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqich });
+      if (tugadi) return;
+    } catch (e) {
+      oxirgiXato = e;
+      if (urinish < MAX_URINISH) {
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+          `🔁 Xato bo'ldi, qayta urinilmoqda (${urinish}/${MAX_URINISH}): ${String((e && e.message) || e)}`);
+        await new Promise((r) => setTimeout(r, 8000));
+      }
+    }
+  }
+  await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+    `⚠️ Montajchi ${MAX_URINISH} urinishdan keyin ham xato berdi: ${String((oxirgiXato && oxirgiXato.message) || oxirgiXato)}`);
 }
