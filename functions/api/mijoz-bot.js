@@ -244,8 +244,44 @@ async function handleUstaMedia(env, msg) {
     body: JSON.stringify({
       chat_id: chatId,
       reply_to_message_id: msg.message_id,
-      text: 'Qaysi ish turi bo\'yicha hisobot? 👇',
-      reply_markup: kasbKeyboard(chatId, msg.message_id),
+      text: 'Bu video/rasm kimga? 👇',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '👥 Guruh uchun', callback_data: `umaq:guruh:${chatId}:${msg.message_id}` },
+          { text: '👷 Prorab uchun', callback_data: `umaq:prorab:${chatId}:${msg.message_id}` },
+        ]],
+      },
+    }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+// 1.5-bosqich: "guruh uchun" yoki "prorab uchun"ligi tanlandi.
+// "Guruh uchun" -- bu shunchaki ustalarning o'zaro ichki muloqoti, hech
+// qayerga yuborilmaydi, media guruhning o'zida qoladi, xolos.
+// "Prorab uchun" -- keyingi bosqichga o'tadi (ish turi so'raladi, keyin
+// prorab/admin DM'ga tasdiqlash uchun yuboriladi).
+async function handleUstaMaqsad(env, cq, data) {
+  const [, maqsad, groupChatIdStr, msgIdStr] = data.split(':');
+  const groupChatId = groupChatIdStr;
+  const origMsgId = Number(msgIdStr);
+
+  await removeKb(env, cq.message.chat.id, cq.message.message_id);
+  await answerCq(env, cq.id);
+
+  if (maqsad === 'guruh') {
+    await tgSend(env.MIJOZ_BOT_TOKEN, groupChatId, '👥 Tushunarli, guruh uchun qoldi.');
+    return;
+  }
+
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: groupChatId,
+      reply_to_message_id: origMsgId,
+      text: "Qaysi ish turi bo'yicha hisobot? 👇",
+      reply_markup: kasbKeyboard(groupChatId, origMsgId),
     }),
     signal: AbortSignal.timeout(10000),
   }).catch(() => {});
@@ -522,6 +558,10 @@ export async function onRequestPost({ request, env }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ callback_query_id: cq.id }),
         }).catch(() => {});
+        return json({ ok: true });
+      }
+      if (data.startsWith('umaq:')) {
+        await handleUstaMaqsad(env, cq, data);
         return json({ ok: true });
       }
       if (data.startsWith('ucat:')) {
