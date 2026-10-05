@@ -751,22 +751,11 @@ export async function onRequestPost({ request, env }) {
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
     const hujjatRasmYokiVideo = msg.document && /^(image|video)\//.test(msg.document.mime_type || '');
     if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note || hujjatRasmYokiVideo)) {
-      // VAQTINCHALIK DEBUG -- muammo topilgach olib tashlanadi
-      if (env.ADMIN_TELEGRAM_IDS) {
-        const firstAdmin = env.ADMIN_TELEGRAM_IDS.split(',')[0].trim();
-        await tgSend(env.MIJOZ_BOT_TOKEN, firstAdmin,
-          `🐞 DEBUG: guruh media keldi. chat.id=${msg.chat.id} MEDIA_GROUP_CHAT_ID=${env.MEDIA_GROUP_CHAT_ID} mos=${String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID)}`).catch(() => {});
-      }
       if (env.MEDIA_GROUP_CHAT_ID && String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID)) {
         try {
           await handleMediaArxiv(env, msg);
-          if (env.ADMIN_TELEGRAM_IDS) {
-            await tgSend(env.MIJOZ_BOT_TOKEN, env.ADMIN_TELEGRAM_IDS.split(',')[0].trim(), '🐞 DEBUG: handleMediaArxiv tugadi, xato yoq.').catch(() => {});
-          }
         } catch (e) {
-          if (env.ADMIN_TELEGRAM_IDS) {
-            await tgSend(env.MIJOZ_BOT_TOKEN, env.ADMIN_TELEGRAM_IDS.split(',')[0].trim(), `🐞 DEBUG XATO: ${String(e && e.message || e)}`).catch(() => {});
-          }
+          // jim e'tiborsiz -- keyingi safar senarist baribir qolganlarini ko'radi
         }
       } else {
         await handleUstaMedia(env, msg);
