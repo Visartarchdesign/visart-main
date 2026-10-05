@@ -26,15 +26,17 @@ function tekshirSecret(req, res) {
 }
 
 // POST /oblojka
-// body: { shablon: 1|2|3, photoBase64, title, kategoriya? }
+// body: { shablon: 1|2|3|"karusel", photoBase64, title, kategoriya? }
+// "karusel" uchun title shart emas (katta matn chizilmaydi).
 app.post('/oblojka', async (req, res) => {
   if (!tekshirSecret(req, res)) return;
   try {
     const { shablon, photoBase64, title, kategoriya } = req.body || {};
-    if (!photoBase64 || !title) {
+    if (!photoBase64 || (!title && shablon !== 'karusel')) {
       return res.status(400).json({ ok: false, error: "photoBase64 va title kerak" });
     }
-    const png = await yasaOblojka({ shablon: Number(shablon) || 1, photoBase64, title, kategoriya });
+    const shablonQiymati = shablon === 'karusel' ? 'karusel' : (Number(shablon) || 1);
+    const png = await yasaOblojka({ shablon: shablonQiymati, photoBase64, title, kategoriya });
     res.set('Content-Type', 'image/png');
     res.send(png);
   } catch (e) {

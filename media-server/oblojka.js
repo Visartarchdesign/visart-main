@@ -98,8 +98,32 @@ function shablon3(photoUri, title, kategoriya) {
   </svg>`;
 }
 
+// 4-shablon: "Karusel slayd" -- to'liq fotosurat, KATTA sarlavha YO'Q (faqat
+// muqova slaydida bo'ladi), pastki burchakda nozik brend belgisi. Bir nechta
+// rasmli karusel postning 2-, 3-... slaydlari uchun -- har birida bir xil
+// katta matn takrorlanib zerikarli bo'lib qolmasligi uchun.
+function shablonKarusel(photoUri, kategoriya) {
+  return `
+  <svg width="${KENG}" height="${BALAND}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gradKarusel" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="80%" stop-color="#000000" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0.55"/>
+      </linearGradient>
+    </defs>
+    <image href="${photoUri}" x="0" y="0" width="${KENG}" height="${BALAND}" preserveAspectRatio="xMidYMid slice"/>
+    <rect x="0" y="0" width="${KENG}" height="${BALAND}" fill="url(#gradKarusel)"/>
+    <rect x="0" y="0" width="${KENG}" height="${BALAND}" fill="none" stroke="${RANGLAR.aksent}" stroke-width="10"/>
+    <text x="${KENG - 50}" y="${BALAND - 60}" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="${RANGLAR.matn}" letter-spacing="3" text-anchor="end">VISART DESIGN</text>
+    ${kategoriya ? `<text x="50" y="${BALAND - 60}" font-family="Arial, sans-serif" font-size="22" font-weight="600" fill="${RANGLAR.aksent}" letter-spacing="2">${escapeXml(kategoriya.toUpperCase())}</text>` : ''}
+  </svg>`;
+}
+
 export async function yasaOblojka({ shablon, photoBase64, title, kategoriya }) {
   const photoUri = toDataUri(photoBase64);
+  if (shablon === 'karusel') {
+    return sharp(Buffer.from(shablonKarusel(photoUri, kategoriya))).png().toBuffer();
+  }
   const tanlangan = { 1: shablon1, 2: shablon2, 3: shablon3 }[shablon] || shablon1;
   const svg = tanlangan(photoUri, title, kategoriya);
   return sharp(Buffer.from(svg)).png().toBuffer();
