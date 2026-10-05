@@ -208,6 +208,37 @@ async function handleMediaArxiv(env, msg) {
   } else {
     return;
   }
+
+  // Telegram albomi (media_group_id) bo'lmasa -- bu "fayl" rejimida
+  // bitta-bittadan yuborilgan rasm bo'lishi mumkin (ba'zi Telegram
+  // ilovalari fayllarni albom qilib yubormaydi). Shunday holatda, SHU
+  // guruhdan so'nggi 3 daqiqa ichida kelgan materialga "sun'iy" umumiy
+  // to'plam ID beramiz -- Senarist ularni ham bitta karusel sifatida
+  // ko'ra olishi uchun.
+  let mediaGroupId = msg.media_group_id || null;
+  if (!mediaGroupId) {
+    try {
+      const sana = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      const songgi = await sbFetch(env,
+        `media_arxiv?telegram_chat_id=eq.${msg.chat.id}&holat=eq.yangi&created_at=gte.${sana}&select=id,media_group_id&order=created_at.desc&limit=1`);
+      const oldingi = songgi && songgi[0];
+      if (oldingi) {
+        if (oldingi.media_group_id) {
+          mediaGroupId = oldingi.media_group_id;
+        } else {
+          mediaGroupId = `auto-${msg.chat.id}-${oldingi.id}`;
+          await sbFetch(env, `media_arxiv?id=eq.${oldingi.id}`, {
+            method: 'PATCH',
+            prefer: 'return=minimal',
+            body: JSON.stringify({ media_group_id: mediaGroupId }),
+          }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      // xato bo'lsa -- shunchaki alohida material sifatida qoladi
+    }
+  }
+
   await sbFetch(env, 'media_arxiv', {
     method: 'POST',
     prefer: 'return=minimal',
@@ -218,7 +249,7 @@ async function handleMediaArxiv(env, msg) {
       izoh: msg.caption || null,
       asl_file_id: aslFileId,
       file_id: fileId,
-      media_group_id: msg.media_group_id || null,
+      media_group_id: mediaGroupId,
     }]),
   });
 }
