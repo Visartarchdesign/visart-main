@@ -216,7 +216,7 @@ export async function onRequestGet(context) {
   try {
     return await handle(context);
   } catch (e) {
-    return json({ ok: false, error: 'server_error' }, 500);
+    return json({ ok: false, error: 'server_error', detail: String(e && e.message || e) }, 500);
   }
 }
 
