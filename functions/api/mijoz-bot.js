@@ -303,7 +303,24 @@ export async function onRequestPost({ request, env }) {
     }
 
     const msg = update.message;
-    if (!msg || !msg.text || !msg.chat) return json({ ok: true });
+    if (!msg || !msg.chat) return json({ ok: true });
+
+    // Bot guruhga YANGI qo'shilganda (admin uni qo'shganda) — tanishtiruv
+    // xabari yuboradi: o'zi haqida va vazifasi haqida qisqa ma'lumot + rahmat.
+    if (Array.isArray(msg.new_chat_members)) {
+      const botId = (env.MIJOZ_BOT_TOKEN || '').split(':')[0];
+      const botQoshildimi = msg.new_chat_members.some((m) => String(m.id) === botId);
+      if (botQoshildimi) {
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
+          "Assalomu alaykum! 👋 Men <b>Visart Design</b>ning rasmiy yordamchi botiman.\n\n" +
+          "Vazifam: shu guruhni loyihangizga bog'lash va loyiha davomidagi muhim yangiliklar — to'lov tasdig'i, bosqich yakunlanishi va boshqa yangiliklarni shu yerga avtomatik yetkazib turish.\n\n" +
+          "Admin tez orada guruhni <code>/obyekt &lt;ID&gt;</code> buyrug'i bilan loyihangizga bog'laydi.\n\n" +
+          "Visart jamoasi bilan ishlayotganingiz uchun minnatdorchilik bildiramiz — loyihangiz davomida doim aloqadamiz! 🏗️");
+        return json({ ok: true });
+      }
+    }
+
+    if (!msg.text) return json({ ok: true });
 
     // Guruh/superguruh xabarlari: FAQAT /obyekt buyrug'i qayta ishlanadi
     // (admin tekshiruvi bilan) -- shaxsiy lid-dialog oqimi guruhda ishlamaydi.
