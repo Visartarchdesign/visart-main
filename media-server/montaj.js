@@ -101,11 +101,17 @@ async function geminiFileWaitActive(apiKey, fileName) {
 
 async function geminiKesishQarori(apiKey, fileUri, mimeType) {
   const prompt =
-    "Siz professional video montajchisiz. Ushbu xom videoni Instagram Reels uchun tahlil qiling.\n" +
-    "Gapirishdagi uzoq pauza/duduqlanish, keraksiz boshlanish, kamera qattiq silkingan yoki fokusdan chiqqan (xira) joylarni aniqlang -- ular KESIB TASHLANISHI kerak.\n" +
-    "Qolgan (SAQLANADIGAN) segmentlarni soniya aniqligida, xronologik tartibda ro'yxat qiling. Kamida 1 ta segment bo'lishi SHART.\n" +
+    "Siz Instagram'da million qarashlar oluvchi, PREMIUM darajadagi arxitektura/interyer studiyasi uchun ishlaydigan professional video montajchisiz (Visart Design). " +
+    "Standartingiz PASAYTIRILMAYDI -- oddiy, zerikarli, 'xomaki' ko'rinadigan video chiqarish MUTLAQO taqiqlanadi.\n\n" +
+    "Ushbu xom videoni qattiq, talabchan nazar bilan tahlil qiling:\n" +
+    "1) KESIB TASHLANADI: uzoq pauza/duduqlanish, keraksiz/sust boshlanish, kamera qattiq silkingan yoki fokusdan chiqqan (xira) joylar, takrorlanuvchi/zerikarli kadrlar, hech narsa 'bo'lmayotgan' bo'sh vaqt.\n" +
+    "2) SAQLANADIGAN segmentlar FAQAT: vizual jihatdan kuchli, aniq fokusli, yaxshi yorug'lik/kadrlashga ega, dinamik (harakat/burchak o'zgarishi bor) bo'laklar. Reels pacing -- qisqa, tez, zarur bo'lmagan hech bir soniya qoldirilmasin.\n" +
+    "3) Birinchi saqlanadigan segment KUCHLI 'hook' bo'lishi kerak (eng jozibali kadrdan boshlansin) -- tomoshabinni birinchi 2-3 soniyada ushlab qolish shart.\n" +
+    "4) AGAR butun xom material past sifatli bo'lsa (doim xira/silkingan, yorug'lik yomon, hech qanday jozibali/premium kadr yo'q, yoki foydali uzunlik 3 soniyadan kam qoladi) -- buni tan oling va \"munosib\": false qaytaring. Chalasifat video chiqarishdan ko'ra, UMUMAN chiqarmaslik afzal.\n\n" +
     "JAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
-    '{"segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa izoh, nima olib tashlandi>"}';
+    '{"munosib": true, "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
+    'yoki material yetarli darajada bo\'lmasa:\n' +
+    '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
 
   let oxirgiXato;
   for (let urinish = 1; urinish <= 3; urinish++) {
@@ -201,6 +207,11 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
     const active = await geminiFileWaitActive(env.GEMINI_API_KEY, uploaded.name);
     const qaror = await geminiKesishQarori(env.GEMINI_API_KEY, active.uri, mimeType);
 
+    if (qaror.munosib === false) {
+      await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+        `🚫 Bu video premium darajaga to'g'ri kelmadi, shuning uchun chiqarilmadi${title ? ` -- ${title}` : ''}.\n\n${qaror.sabab || ''}`);
+      return;
+    }
     if (!qaror.segmentlar || !qaror.segmentlar.length) {
       throw new Error('Gemini kesish uchun segment bermadi');
     }
