@@ -549,7 +549,7 @@ export async function onRequestPost({ request, env }) {
     // Ustalar guruhidan video/foto kelsa -- matn kerak emas, darhol tasdiqlash
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
-    if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video)) {
+    if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note)) {
       await handleUstaMedia(env, msg);
       return json({ ok: true });
     }
