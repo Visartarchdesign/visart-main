@@ -478,7 +478,7 @@ async function montajBoshlash(env, taklifId, adminChatId) {
     await fetch(`${env.MEDIA_SERVER_URL}/montaj`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
-      body: JSON.stringify({ aslFileId: arxiv.asl_file_id, adminChatId, title }),
+      body: JSON.stringify({ aslFileId: arxiv.asl_file_id, adminChatId, title, taklifId }),
       // Render bepul tarifda uxlab qolgan bo'lsa, uyg'onishi 50+ soniya
       // olishi mumkin -- ulanish shu vaqt ichida o'rnatilishi uchun uzoqroq
       // timeout beramiz (aks holda so'rov Render'ga umuman YETIB BORMAYDI).
@@ -885,6 +885,16 @@ export async function onRequestPost({ request, env }) {
       }
       if (data.startsWith('stak:')) {
         await handleSenaristTasdiq(env, cq, data);
+        return json({ ok: true });
+      }
+      if (data.startsWith('montaj_retry:')) {
+        const taklifId = data.split(':')[1];
+        await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: cq.id, text: 'Qayta ishga tushirildi' }),
+        }).catch(() => {});
+        await montajBoshlash(env, taklifId, chatId);
         return json({ ok: true });
       }
       await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {

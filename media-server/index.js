@@ -50,7 +50,7 @@ app.post('/oblojka', async (req, res) => {
 // tugagach natija (yoki xato) to'g'ridan-to'g'ri Telegram orqali adminChatId'ga yuboriladi.
 app.post('/montaj', (req, res) => {
   if (!tekshirSecret(req, res)) return;
-  const { aslFileId, adminChatId, title } = req.body || {};
+  const { aslFileId, adminChatId, title, taklifId } = req.body || {};
   if (!aslFileId || !adminChatId) {
     return res.status(400).json({ ok: false, error: 'aslFileId va adminChatId kerak' });
   }
@@ -58,7 +58,7 @@ app.post('/montaj', (req, res) => {
     return res.status(500).json({ ok: false, error: 'MIJOZ_BOT_TOKEN yoki GEMINI_API_KEY sozlanmagan' });
   }
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarMontaj({ env: process.env, aslFileId, adminChatId, title }).catch(() => {});
+  bajarMontaj({ env: process.env, aslFileId, adminChatId, title, taklifId }).catch(() => {});
 });
 
 // VAQTINCHALIK: brauzerdan to'g'ridan-to'g'ri sinash uchun (qo'lda test).

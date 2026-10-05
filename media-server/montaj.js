@@ -45,11 +45,11 @@ async function tgSendVideo(token, chatId, filePath, caption) {
   }
 }
 
-async function tgSendMessage(token, chatId, text) {
+async function tgSendMessage(token, chatId, text, replyMarkup) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify({ chat_id: chatId, text, ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
   }).catch(() => {});
 }
 
@@ -237,7 +237,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqi
 // tugagandan keyin adminga xato xabari yuboriladi. (Butun process'ni
 // o'ldiradigan OOM kabi xatolar bundan mustasno -- ular xotira sozlamalari
 // bilan oldindan oldi olingan.)
-export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
+export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId }) {
   const MAX_URINISH = 3;
   let oxirgiXato;
   for (let urinish = 1; urinish <= MAX_URINISH; urinish++) {
@@ -257,6 +257,10 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title }) {
       }
     }
   }
+  const replyMarkup = taklifId
+    ? { inline_keyboard: [[{ text: '🔁 Qayta urinish', callback_data: `montaj_retry:${taklifId}` }]] }
+    : undefined;
   await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-    `⚠️ Montajchi ${MAX_URINISH} urinishdan keyin ham xato berdi: ${String((oxirgiXato && oxirgiXato.message) || oxirgiXato)}`);
+    `⚠️ Montajchi ${MAX_URINISH} urinishdan keyin ham xato berdi: ${String((oxirgiXato && oxirgiXato.message) || oxirgiXato)}`,
+    replyMarkup);
 }
