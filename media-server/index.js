@@ -59,5 +59,19 @@ app.post('/montaj', (req, res) => {
   bajarMontaj({ env: process.env, aslFileId, adminChatId, title }).catch(() => {});
 });
 
+// VAQTINCHALIK: brauzerdan to'g'ridan-to'g'ri sinash uchun (qo'lda test).
+// GET /montaj-test?secret=...&fileId=...&chatId=...
+app.get('/montaj-test', (req, res) => {
+  const { secret, fileId, chatId, title } = req.query;
+  if (!process.env.MEDIA_SECRET || secret !== process.env.MEDIA_SECRET) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  if (!fileId || !chatId) {
+    return res.status(400).json({ ok: false, error: 'fileId va chatId kerak' });
+  }
+  res.json({ ok: true, holat: 'boshlandi' });
+  bajarMontaj({ env: process.env, aslFileId: fileId, adminChatId: chatId, title: title || null }).catch(() => {});
+});
+
 const port = process.env.PORT || 10000;
 app.listen(port, () => console.log(`Visart media-server ${port}-portda ishga tushdi`));
