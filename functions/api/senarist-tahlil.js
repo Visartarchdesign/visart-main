@@ -37,7 +37,7 @@
 //     created_at timestamptz not null default now()
 //   );
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-sonnet-5';
 const KAM_MATERIAL_CHEGARA = 3; // shundan kam bo'lsa, kutamiz (keyingi safar yetadi)
 
 function json(data, status = 200) {
@@ -125,7 +125,7 @@ async function claudeTahlil(env, items) {
       'x-api-key': env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 500, messages: [{ role: 'user', content }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 900, messages: [{ role: 'user', content }] }),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
