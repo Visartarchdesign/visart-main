@@ -1158,6 +1158,14 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
 
+    // Admin shaxsiy xabarda video yuborsa (test/Montajchi uchun qo'lda sinov) --
+    // file_id'ni o'zini qaytarib beradi, boshqa hech narsa qilmaydi.
+    if (msg.chat.type === 'private' && msg.video && isAdmin(env, msg.from && msg.from.id)) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
+        `🆔 file_id: <code>${msg.video.file_id}</code>\nchat id: <code>${msg.chat.id}</code>`);
+      return json({ ok: true });
+    }
+
     if (!msg.text) return json({ ok: true });
 
     // Guruh/superguruh xabarlari: FAQAT /obyekt, /ustalar, /chatid buyruqlari
