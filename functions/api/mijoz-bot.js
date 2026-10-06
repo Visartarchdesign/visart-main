@@ -333,7 +333,7 @@ async function oblojkaYasash(env, shablon, photoBase64, title, kategoriya) {
 async function tgSendPhoto(token, chatId, pngBuffer, caption) {
   const form = new FormData();
   form.append('chat_id', String(chatId));
-  if (caption) form.append('caption', caption);
+  if (caption) form.append('caption', caption.slice(0, 1024));
   form.append('photo', new Blob([pngBuffer], { type: 'image/png' }), 'oblojka.png');
   await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
     method: 'POST',
@@ -351,7 +351,7 @@ async function tgSendMediaGroup(token, chatId, pngBuffers, caption) {
   const media = pngBuffers.map((buf, i) => {
     const field = `foto${i}`;
     form.append(field, new Blob([buf], { type: 'image/png' }), `${field}.png`);
-    return { type: 'photo', media: `attach://${field}`, ...(i === 0 && caption ? { caption } : {}) };
+    return { type: 'photo', media: `attach://${field}`, ...(i === 0 && caption ? { caption: caption.slice(0, 1024) } : {}) };
   });
   form.append('media', JSON.stringify(media));
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
@@ -382,7 +382,8 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     const idlar = taklif.media_arxiv_idlar
       ? taklif.media_arxiv_idlar.split(',').map((s) => s.trim()).filter(Boolean)
       : [String(taklif.media_arxiv_id)];
-    const title = (taklif.matn || '').split('\n\n')[0];
+    const title = taklif.sarlavha || (taklif.matn || '').split('\n\n')[0];
+    const kanalMatni = taklif.post_matni || title;
 
     if (idlar.length <= 1) {
       const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${idlar[0]}&select=file_id`);
@@ -404,7 +405,7 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
           // bitta shablon xato bersa ham, qolganlariga davom
         }
       }
-      if (kanalgaPng) await kanalgaPost(env, [kanalgaPng], title);
+      if (kanalgaPng) await kanalgaPost(env, [kanalgaPng], kanalMatni);
       return;
     }
 
@@ -434,7 +435,7 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     if (buffers.length < 2) return; // yetarli rasm yig'ilmadi
 
     await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}`);
-    await kanalgaPost(env, buffers, title);
+    await kanalgaPost(env, buffers, kanalMatni);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
   }

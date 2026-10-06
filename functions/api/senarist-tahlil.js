@@ -107,8 +107,12 @@ async function claudeTahlil(env, items) {
       "Vazifa: eng mos keladigan BITTA variantni tanlang:\n" +
       "- Agar eng yaxshi tanlov bitta alohida (albomsiz) rasm/video bo'lsa -- \"turi\":\"single\" va \"tanlangan_idlar\" massivida FAQAT 1 ta ID.\n" +
       "- Agar eng yaxshi tanlov bitta albomga tegishli bo'lsa -- \"turi\":\"karusel\", va \"tanlangan_idlar\"ga o'sha albomdagi ENG YAXSHI rasmlarni (kamida 2, ko'pi bilan 10 ta) Instagram karusel uchun eng mos TARTIBDA joylashtiring (birinchisi -- eng jozibali \"muqova\" rasm bo'lishi kerak). Sifatsiz/takroriy/xira rasmlarni albomdan chiqarib tashlang.\n\n" +
+      "MUHIM -- matn yozish qoidalari (siz bu yerda ham kontent-menejer/marketolog rolidasiz):\n" +
+      "- Agar \"izoh\" maydonida admin tomonidan aniq faktlar berilgan bo'lsa (maydon m2, xona turi, uslub, manzil/tuman va h.k.) -- bu faktlarni DIQQAT bilan o'qing va ularni sarlavha hamda post matnida ANIQ, TO'G'RI aks ettiring. Hech qachon o'ylab topmang va hech qachon e'tiborsiz qoldirmang.\n" +
+      "- \"sarlavha\": qisqa (5-8 so'z), DIQQATNI TORTUVCHI, aniq (umumiy \"Zamonaviy Uy Interyer\" kabi umumiy iboralardan qoching -- xona turi/o'lchami/uslubni albatta ko'rsating, masalan: \"15 m² Minimalist Oshxona -- Funksionallik Cho'qqisida\").\n" +
+      "- \"post_matni\": Instagram uchun TO'LIQ, nashr qilishga tayyor matn -- jozibali ochilish jumlasi + izohdagi faktlarga asoslangan 2-3 qisqa jumla (xususiyatlar/afzalliklar) + 4-6 ta tegishli o'zbek/ingliz hashtag (#visartdesign #interyer va h.k.). Rasmni ham ko'rib, undagi vizual detallarni (ranglar, materiallar, yorug'lik) ham qo'shing.\n\n" +
       'JAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n' +
-      '{"turi": "single" yoki "karusel", "tanlangan_idlar": [<raqam>, ...], "sarlavha": "<qisqa, jozibali, o\'zbek tilida sarlavha>", "sabab": "<nega shu tanlandi, 1 jumla>"}',
+      '{"turi": "single" yoki "karusel", "tanlangan_idlar": [<raqam>, ...], "sarlavha": "<qisqa, aniq, jozibali sarlavha>", "post_matni": "<to\'liq Instagram posti matni, hashtaglar bilan>", "sabab": "<nega shu tanlandi, 1 jumla -- faqat admin uchun, ichki>"}',
   });
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -250,6 +254,8 @@ async function handle({ request, env }) {
       prefer: 'return=representation',
       body: JSON.stringify([{
         matn: `${natija.sarlavha}\n\n${natija.sabab || ''}`,
+        sarlavha: natija.sarlavha || null,
+        post_matni: natija.post_matni || null,
         media_arxiv_id: tanlanganIdlar[0],
         media_arxiv_idlar: tanlanganIdlar.join(','),
         holat: 'kutilmoqda',
@@ -281,7 +287,7 @@ async function handle({ request, env }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: adminId,
-        text: `🎬 Senarist taklifi${natija.turi === 'karusel' ? ` (${tanlanganIdlar.length} rasmli karusel)` : ''}:\n\n📝 ${natija.sarlavha}\n\n💡 ${natija.sabab || ''}\n\n(manba: #${tanlanganIdlar.join(', #')})`,
+        text: `🎬 Senarist taklifi${natija.turi === 'karusel' ? ` (${tanlanganIdlar.length} rasmli karusel)` : ''}:\n\n📝 ${natija.sarlavha}\n\n📄 Post matni:\n${natija.post_matni || '(yo\'q)'}\n\n💡 ${natija.sabab || ''}\n\n(manba: #${tanlanganIdlar.join(', #')})`,
         reply_markup: kb,
       }),
       signal: AbortSignal.timeout(10000),
