@@ -6,7 +6,11 @@
 // Tasdiqlangan taklif keyingi bosqich (Montajchi agenti) uchun navbatga
 // qo'yiladi -- hozircha faqat tasdiqlash/rad etish ishlaydi.
 //
-// Tashqi bepul cron (cron-job.org) kuniga 1 marta chaqirishi kerak:
+// Tashqi bepul cron (cron-job.org) quyidagi JADVAL bilan chaqirishi kerak
+// (auditoriya "leisure browsing" vaqtiga moslangan, Toshkent vaqti bo'yicha):
+//   Ish kunlari (Dush-Juma), 18:30 -- cron: 30 13 * * 1-5
+//   Dam olish kunlari (Shan-Yak), 21:00 -- cron: 00 16 * * 6,0
+//   (ikkisi ham bir xil URL'ni chaqiradi, ikki alohida cron-job.org vazifasi sifatida sozlanadi)
 //   GET https://visartdesign.uz/api/senarist-tahlil?secret=<SENARIST_SECRET>
 //
 // Qo'shimcha Cloudflare Pages Environment Variable:
