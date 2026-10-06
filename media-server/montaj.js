@@ -130,9 +130,10 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
     "2) SAQLANADIGAN segmentlar FAQAT: vizual jihatdan kuchli, aniq fokusli, yaxshi yorug'lik/kadrlashga ega, dinamik (harakat/burchak o'zgarishi bor) bo'laklar. Reels pacing -- qisqa, tez, zarur bo'lmagan hech bir soniya qoldirilmasin. Statik, harakatsiz kadrni 1.5 soniyadan uzoq SAQLAMANG -- zamonaviy Reels/Shorts tomoshabini zerikib ketadi.\n" +
     "3) Birinchi saqlanadigan segment KUCHLI 'hook' bo'lishi kerak (eng jozibali, harakatli kadrdan boshlansin, hech qachon statik/sekin kadr bilan emas) -- tomoshabinni birinchi 1-2 soniyada ushlab qolish shart (bu 2026-yilgi algoritm standarti, oldingi 'sekin kirish' uslubi endi ishlamaydi).\n" +
     "4) AGAR butun xom material past sifatli bo'lsa (doim xira/silkingan, yorug'lik yomon, hech qanday jozibali/premium kadr yo'q, yoki foydali uzunlik 3 soniyadan kam qoladi) -- buni tan oling va \"munosib\": false qaytaring. Chalasifat video chiqarishdan ko'ra, UMUMAN chiqarmaslik afzal.\n" +
-    (qoshimchaKorsatma ? `\n5) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
+    "5) SARLAVHA: videoning ko'rgan mazmuniga (interyer uslubi, xona turi, material, yoritish, kayfiyat) ASOSLANGAN, 3-6 so'zdan iborat, DIQQATNI TORTUVCHI o'zbek tilidagi sarlavha yozing (masalan: \"Minimalizm Uyg'unligi\", \"Yorug' Zamonaviy Oshxona\", \"Hashamatli Mehmonxona Dizayni\") -- umumiy/bo'sh \"Interyer dizayni\" kabi klişelardan qoching, imlo xatosiz yozing.\n" +
+    (qoshimchaKorsatma ? `\n6) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
     "\nJAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
-    '{"munosib": true, "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
+    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
     'yoki material yetarli darajada bo\'lmasa:\n' +
     '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
 
@@ -581,6 +582,11 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       throw new Error('Gemini kesish uchun segment bermadi');
     }
 
+    // Gemini videoning mazmuniga qarab o'zi sarlavha topgan -- shu, qo'lda
+    // berilgan (yoki umuman berilmagan) "title"dan ustun turadi: qopqoq,
+    // video ustidagi matn va YouTube sarlavhasi shundan foydalanadi.
+    const sarlavha = qaror.sarlavha || title || 'Visart Design';
+
     await bosqich(`FFmpeg kesmoqda va birlashtirmoqda (${qaror.segmentlar.length} segment)...`);
     await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath, tmpDir);
 
@@ -590,7 +596,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     try {
       await bosqich('Sarlavha videoga yozilmoqda...');
       const bilanTitlePath = path.join(tmpDir, 'output-title.mp4');
-      const bajarildi = await sarlavhaKuydir(outputPath, bilanTitlePath, title);
+      const bajarildi = await sarlavhaKuydir(outputPath, bilanTitlePath, sarlavha);
       if (bajarildi) fs.renameSync(bilanTitlePath, outputPath);
     } catch (e) {
       // sarlavha ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
@@ -605,25 +611,25 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       const framePath = path.join(tmpDir, 'frame.jpg');
       await ffmpegKadrOl(outputPath, framePath);
       const frameBuf = fs.readFileSync(framePath);
-      const aiFonBuf = await geminiPremiumFon(title);
-      qopqoqBuf = await yasaPremiumQopqoq(frameBuf, aiFonBuf, title);
+      const aiFonBuf = await geminiPremiumFon(sarlavha);
+      qopqoqBuf = await yasaPremiumQopqoq(frameBuf, aiFonBuf, sarlavha);
     } catch (e) {
       qopqoqBuf = null; // qopqoq ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
     }
 
     if (qopqoqBuf) {
       await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId,
-        qopqoqBuf, `🖼️ Premium qopqoq${title ? ` -- ${title}` : ''}`);
+        qopqoqBuf, `🖼️ Premium qopqoq -- ${sarlavha}`);
     }
 
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
-      outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
+      outputPath, `🎬 Montaj tayyor -- ${sarlavha}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
 
     // YouTube Shorts -- sozlanmagan yoki xato bo'lsa jim o'tkaziladi.
     try {
       await bosqich('YouTube Shorts yuklanmoqda...');
-      const ytNatija = await youtubeUpload(env, outputPath, title, qaror.izoh);
+      const ytNatija = await youtubeUpload(env, outputPath, sarlavha, qaror.izoh);
       if (ytNatija) {
         const vaqtToshkent = new Date(ytNatija.nashrVaqti.getTime() + 5 * 60 * 60 * 1000);
         const vaqtMatni = `${String(vaqtToshkent.getUTCDate()).padStart(2, '0')}.${String(vaqtToshkent.getUTCMonth() + 1).padStart(2, '0')} ${String(vaqtToshkent.getUTCHours()).padStart(2, '0')}:${String(vaqtToshkent.getUTCMinutes()).padStart(2, '0')}`;
