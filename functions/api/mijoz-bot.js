@@ -15,6 +15,12 @@
 //   SUPABASE_URL             — https://<project-ref>.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY — Supabase service_role kaliti (faqat server tomonda, hech qachon frontend'ga chiqmaydi)
 //
+// Instagram avtomatik post (ixtiyoriy -- sozlanmasa jim o'tkazib yuboriladi):
+//   INSTAGRAM_ACCESS_TOKEN         — Meta System User muddatsiz tokeni
+//   INSTAGRAM_BUSINESS_ACCOUNT_ID  — Instagram Business Account ID (raqamli)
+//   (rasm Instagram'ga faqat ochiq URL orqali yuboriladi -- shuning uchun
+//   Supabase Storage'dagi "public-media" bucket'iga vaqtincha yuklanadi)
+//
 // Webhook o'rnatish (deploy qilingandan keyin, BIR MARTA, terminal/brauzerda):
 //   https://api.telegram.org/bot<MIJOZ_BOT_TOKEN>/setWebhook?url=https://visartdesign.uz/api/mijoz-bot&secret_token=<MIJOZ_BOT_SECRET>
 //
@@ -393,6 +399,101 @@ async function tgSendMediaGroup(token, chatId, pngBuffers, caption) {
 // hammasi BITTA Telegram albomi sifatida yuboriladi (faqat 1-rasmda katta
 // sarlavha bo'ladi). MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan bo'lsa -- jim
 // e'tiborsiz qoldiradi.
+// Rasmni Supabase Storage'ning ochiq ("public-media") bucket'iga yuklaydi va
+// ochiq URL qaytaradi -- Instagram Graph API rasmni FAQAT ochiq URL orqali
+// qabul qiladi (fayl/base64 emas). Bucket mavjud bo'lmasa, avtomatik
+// yaratiladi (public: true).
+async function supabasePublicUpload(env, buffer, filename) {
+  const bucket = 'public-media';
+  const path = `instagram/${Date.now()}-${filename}`;
+  const upload = async () => fetch(`${env.SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'image/png',
+      'x-upsert': 'true',
+    },
+    body: buffer,
+    signal: AbortSignal.timeout(20000),
+  });
+
+  let res = await upload();
+  if (res.status === 404 || res.status === 400) {
+    // bucket mavjud emasligi mumkin -- yaratib ko'ramiz
+    await fetch(`${env.SUPABASE_URL}/storage/v1/bucket`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id: bucket, name: bucket, public: true }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {});
+    res = await upload();
+  }
+  if (!res.ok) throw new Error(`Supabase Storage yuklash xato: ${res.status}`);
+  return `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+async function igFetch(path, params) {
+  const url = new URL(`https://graph.facebook.com/v21.0/${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString(), { method: 'POST', signal: AbortSignal.timeout(20000) });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error) {
+    throw new Error(`Instagram API xato: ${(data && data.error && data.error.message) || res.status}`);
+  }
+  return data;
+}
+
+// Tayyor oblojka(lar)ni Instagram Business akkauntga avtomatik post qiladi.
+// INSTAGRAM_ACCESS_TOKEN/INSTAGRAM_BUSINESS_ACCOUNT_ID sozlanmagan bo'lsa --
+// jim e'tiborsiz qoldiriladi (hali ulanmagan).
+async function instagramPost(env, pngBuffers, caption) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return;
+  if (!pngBuffers || !pngBuffers.length) return;
+  try {
+    const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+    const token = env.INSTAGRAM_ACCESS_TOKEN;
+    const igCaption = (caption || '').slice(0, 2200);
+
+    const urls = [];
+    for (let i = 0; i < pngBuffers.length; i++) {
+      urls.push(await supabasePublicUpload(env, pngBuffers[i], `${i}.png`));
+    }
+
+    if (urls.length === 1) {
+      const container = await igFetch(`${igId}/media`, {
+        image_url: urls[0],
+        caption: igCaption,
+        access_token: token,
+      });
+      await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
+      return;
+    }
+
+    // Karusel: har bir rasm uchun child container, so'ng umumiy container
+    const childIds = [];
+    for (const url of urls.slice(0, 10)) {
+      const child = await igFetch(`${igId}/media`, {
+        image_url: url,
+        is_carousel_item: 'true',
+        access_token: token,
+      });
+      childIds.push(child.id);
+    }
+    const parent = await igFetch(`${igId}/media`, {
+      media_type: 'CAROUSEL',
+      children: childIds.join(','),
+      caption: igCaption,
+      access_token: token,
+    });
+    await igFetch(`${igId}/media_publish`, { creation_id: parent.id, access_token: token });
+  } catch (e) {
+    // Instagram xato bersa ham, Telegram kanalga ketgan asosiy oqimni buzmaydi
+  }
+}
+
 async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
   if (!env.MEDIA_SERVER_URL || !env.MEDIA_SECRET) return;
   try {
@@ -426,7 +527,10 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
           // bitta shablon xato bersa ham, qolganlariga davom
         }
       }
-      if (kanalgaPng) await kanalgaPost(env, [kanalgaPng], kanalMatni);
+      if (kanalgaPng) {
+        await kanalgaPost(env, [kanalgaPng], kanalMatni);
+        await instagramPost(env, [kanalgaPng], kanalMatni);
+      }
       return;
     }
 
@@ -457,6 +561,7 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
 
     await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}\n\n🆔${taklifId}`);
     await kanalgaPost(env, buffers, kanalMatni);
+    await instagramPost(env, buffers, kanalMatni);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
   }
