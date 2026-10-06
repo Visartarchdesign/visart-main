@@ -194,6 +194,55 @@ async function ffmpegKadrOl(videoPath, outPath) {
   ]);
 }
 
+// Video o'lchamini (width/height) olib qaytaradi -- sarlavha overlay'ini
+// aniq shu o'lchamda (ko'chmasdan/cho'zilmasdan) yasash uchun kerak.
+async function ffmpegOlchamOl(videoPath) {
+  const { stdout } = await execFileAsync('ffprobe', [
+    '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
+    '-of', 'csv=s=x:p=0', videoPath,
+  ]);
+  const [w, h] = stdout.trim().split('x').map((n) => parseInt(n, 10));
+  return { width: w || 1080, height: h || 1920 };
+}
+
+// Instagram/YouTube feed'da video avtomatik o'ynaganda odam BIRDANIGA nima
+// haqida ekanini bilishi uchun -- videoning o'zi ustiga, birinchi soniyalarda
+// ko'rinadigan sarlavha "kuydiriladi" (shaffof PNG overlay, video o'lchamiga
+// mos). Xato bersa, original videoni o'zgarishsiz qaytaradi.
+async function sarlavhaKuydir(videoPath, outPath, title) {
+  if (!title) return false;
+  const { width, height } = await ffmpegOlchamOl(videoPath);
+  const titleSafe = xmlEscape(title);
+  const qatorlar = ikkiQatorgaBol(titleSafe, Math.max(10, Math.round(width / 38)));
+  const fontSize = Math.round(width * 0.062);
+  const panelBaland = 90 + qatorlar.length * (fontSize + 18);
+  const overlaySvg = Buffer.from(`
+    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000" stop-opacity="0.75"/>
+          <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${width}" height="${panelBaland}" fill="url(#g)"/>
+      ${qatorlar.map((q, i) => `<text x="${Math.round(width * 0.055)}" y="${60 + (i + 1) * (fontSize + 10)}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="800" fill="#ffffff">${q}</text>`).join('')}
+      <rect x="${Math.round(width * 0.055)}" y="${panelBaland - 22}" width="${Math.round(width * 0.14)}" height="5" fill="#c9a876"/>
+    </svg>
+  `);
+  const overlayPath = outPath.replace(/\.mp4$/, '-overlay.png');
+  await sharp(overlaySvg).png().toFile(overlayPath);
+
+  await execFileAsync('ffmpeg', [
+    '-y', '-i', videoPath, '-i', overlayPath,
+    '-filter_complex', "[0:v][1:v]overlay=0:0:enable='lt(t,4)'",
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p',
+    '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+    '-c:a', 'copy', '-movflags', '+faststart',
+    outPath,
+  ], { maxBuffer: 1024 * 1024 * 20 });
+  return true;
+}
+
 // Pollinations.ai (tekin, kalit/billing shart emas) orqali video mavzusiga
 // oid, MAVHUM/konseptual premium fon rasm yasaydi (haqiqiy xona emas -- faqat
 // dekorativ fon, Visart brend rangida). Xato bersa yoki tarmoq band bo'lsa,
@@ -534,6 +583,18 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
 
     await bosqich(`FFmpeg kesmoqda va birlashtirmoqda (${qaror.segmentlar.length} segment)...`);
     await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath, tmpDir);
+
+    // Sarlavhani video ustiga "kuydirish" -- feed'da avtomatik o'ynaganda
+    // odam birdaniga nima haqida ekanini bilsin. Xato bersa, original video
+    // o'zgarishsiz qoladi (hech narsa to'xtamaydi).
+    try {
+      await bosqich('Sarlavha videoga yozilmoqda...');
+      const bilanTitlePath = path.join(tmpDir, 'output-title.mp4');
+      const bajarildi = await sarlavhaKuydir(outputPath, bilanTitlePath, title);
+      if (bajarildi) fs.renameSync(bilanTitlePath, outputPath);
+    } catch (e) {
+      // sarlavha ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+    }
 
     // Premium qopqoq (cover/thumbnail) -- video kadri + AI fon. Xato bersa ham
     // (Gemini kvota/billing yo'q), oddiy video yuborishga tushadi, hech narsa
