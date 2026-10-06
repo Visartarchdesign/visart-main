@@ -500,7 +500,7 @@ async function youtubeUpload(env, videoPath, title, description) {
       method: 'PUT',
       headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(stat.size) },
       body: videoBuf,
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(180000),
     });
     if (!uploadRes.ok) {
       const txt = await uploadRes.text().catch(() => '');
@@ -509,7 +509,7 @@ async function youtubeUpload(env, videoPath, title, description) {
     const data = await uploadRes.json();
     return data.id ? { url: `https://youtube.com/shorts/${data.id}`, nashrVaqti } : null;
   } catch (e) {
-    return null;
+    return { xato: String((e && e.message) || e) };
   }
 }
 
@@ -630,13 +630,17 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     try {
       await bosqich('YouTube Shorts yuklanmoqda...');
       const ytNatija = await youtubeUpload(env, outputPath, sarlavha, qaror.izoh);
-      if (ytNatija) {
+      if (ytNatija && ytNatija.url) {
         const vaqtToshkent = new Date(ytNatija.nashrVaqti.getTime() + 5 * 60 * 60 * 1000);
         const vaqtMatni = `${String(vaqtToshkent.getUTCDate()).padStart(2, '0')}.${String(vaqtToshkent.getUTCMonth() + 1).padStart(2, '0')} ${String(vaqtToshkent.getUTCHours()).padStart(2, '0')}:${String(vaqtToshkent.getUTCMinutes()).padStart(2, '0')}`;
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
           `📺 YouTube Shorts yuklandi, nashr vaqti rejalashtirildi: ${vaqtMatni} (Toshkent)\n${ytNatija.url}`);
+      } else if (ytNatija && ytNatija.xato) {
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ YouTube yuklashda xato: ${ytNatija.xato}`);
       }
-    } catch (e) { /* jim e'tiborsiz */ }
+    } catch (e) {
+      await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ YouTube yuklashda xato: ${String((e && e.message) || e)}`);
+    }
 
     return true;
   } finally {
