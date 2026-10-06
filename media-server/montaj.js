@@ -21,7 +21,10 @@ import sharp from 'sharp';
 const execFileAsync = promisify(execFile);
 // "Flash Lite" tekin tarifda ancha yuqori kunlik limitga ega (500/kun,
 // oddiy "Flash"da bor-yo'g'i 20/kun) -- 24/7 avtomatik pipeline uchun shart.
-const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+// Bir nechtasi ZANJIR sifatida ro'yxatlangan: birinchisi kunlik limitga
+// yetsa (429), avtomatik keyingisiga o'tiladi -- shu bilan amalda
+// 500+500+500=1500/kun gacha quvvat olinadi, billing shart bo'lmaydi.
+const GEMINI_MODELLAR = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
 
 async function tgGetFilePath(token, fileId) {
   const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
@@ -134,39 +137,46 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
     '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
 
   let oxirgiXato;
-  for (let urinish = 1; urinish <= 3; urinish++) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { file_data: { mime_type: mimeType, file_uri: fileUri } },
-              { text: prompt },
-            ],
-          }],
-        }),
+  for (const model of GEMINI_MODELLAR) {
+    for (let urinish = 1; urinish <= 3; urinish++) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { file_data: { mime_type: mimeType, file_uri: fileUri } },
+                { text: prompt },
+              ],
+            }],
+          }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
+          data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
+          data.candidates[0].content.parts[0].text) || '';
+        const match = text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('Gemini javobi JSON emas: ' + text.slice(0, 200));
+        return JSON.parse(match[0]);
       }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      const text = (data.candidates && data.candidates[0] && data.candidates[0].content &&
-        data.candidates[0].content.parts && data.candidates[0].content.parts[0] &&
-        data.candidates[0].content.parts[0].text) || '';
-      const match = text.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('Gemini javobi JSON emas: ' + text.slice(0, 200));
-      return JSON.parse(match[0]);
+      const txt = await res.text().catch(() => '');
+      oxirgiXato = new Error(`Gemini (${model}) generateContent xato: ${res.status} ${txt.slice(0, 300)}`);
+      if (res.status === 429) {
+        // Shu modelning kunlik/daqiqalik limiti tugagan -- qayta urinishning
+        // foydasi yo'q, zanjirdagi KEYINGI modelga darhol o'tamiz.
+        break;
+      }
+      // 503 (band) -- vaqtinchalik, biroz kutib SHU modelni qayta urinamiz
+      if (res.status === 503 && urinish < 3) {
+        await new Promise((r) => setTimeout(r, urinish * 5000));
+        continue;
+      }
+      throw oxirgiXato;
     }
-    const txt = await res.text().catch(() => '');
-    oxirgiXato = new Error(`Gemini generateContent xato: ${res.status} ${txt.slice(0, 300)}`);
-    // 503 (band) yoki 429 (limit) -- vaqtinchalik, biroz kutib qayta urinamiz
-    if ((res.status === 503 || res.status === 429) && urinish < 3) {
-      await new Promise((r) => setTimeout(r, urinish * 5000));
-      continue;
-    }
-    throw oxirgiXato;
   }
   throw oxirgiXato;
 }
