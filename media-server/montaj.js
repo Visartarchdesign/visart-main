@@ -214,9 +214,31 @@ async function geminiPremiumFon(mavzu) {
   }
 }
 
-// Video kadri + AI fon + sarlavha'ni birlashtirib, premium darajadagi
-// qopqoq (cover/thumbnail) PNG yasaydi. AI fon bo'lmasa (null), oddiy
-// qorong'i gradient fonga tushadi -- har doim ishlashi kafolatlanadi.
+function xmlEscape(s) {
+  return String(s || '').replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+}
+
+// Matnni so'z bo'yicha taxminan 2 qatorga bo'ladi (katta sarlavha sig'dirish uchun)
+function ikkiQatorgaBol(matn, maxBelgiQator) {
+  const sozlar = String(matn || '').trim().split(/\s+/);
+  let qator1 = '';
+  let qator2 = '';
+  for (const s of sozlar) {
+    if ((qator1 + ' ' + s).trim().length <= maxBelgiQator) {
+      qator1 = (qator1 + ' ' + s).trim();
+    } else {
+      qator2 = (qator2 + ' ' + s).trim();
+    }
+  }
+  return qator2 ? [qator1, qator2] : [qator1];
+}
+
+// Video kadri + AI fon + sarlavha'ni birlashtirib, premium "magazine cover"
+// darajadagi qopqoq (cover/thumbnail) PNG yasaydi: yuqorida minimal
+// logotip belgisi, markazda oltin ramkali va soyali foto-karta (fon
+// ko'rinib turishi uchun KICHIKROQ), pastda aniq ierarxiyali matn paneli
+// (eyebrow teg + katta sarlavha + oltin chiziq). AI fon bo'lmasa (null),
+// oddiy qorong'i fonga tushadi -- har doim ishlashi kafolatlanadi.
 async function yasaPremiumQopqoq(frameBuf, aiFonBuf, title) {
   const KENG = 1080;
   const BALAND = 1920;
@@ -227,13 +249,16 @@ async function yasaPremiumQopqoq(frameBuf, aiFonBuf, title) {
         create: { width: KENG, height: BALAND, channels: 4, background: { r: 21, g: 19, b: 15, alpha: 1 } },
       }).png().toBuffer();
 
-  // Haqiqiy video kadrini markaziy "karta" sifatida joylaymiz (soyali, burchaklari yumaloq)
-  const kartaKeng = 880;
-  const kartaBaland = 1100;
+  // Foto-karta -- endi kichikroq va markazga yaqinroq, AI fon atrofda
+  // ko'rinib tursin (aks holda "premium fon" yasashning ma'nosi qolmaydi).
+  const kartaKeng = 860;
+  const kartaBaland = 1180;
   const kartaX = Math.round((KENG - kartaKeng) / 2);
-  const kartaY = 420;
+  const kartaY = 260;
+  const kartaRadius = 28;
+
   const kartaMask = Buffer.from(
-    `<svg width="${kartaKeng}" height="${kartaBaland}"><rect x="0" y="0" width="${kartaKeng}" height="${kartaBaland}" rx="28" fill="#fff"/></svg>`
+    `<svg width="${kartaKeng}" height="${kartaBaland}"><rect x="0" y="0" width="${kartaKeng}" height="${kartaBaland}" rx="${kartaRadius}" fill="#fff"/></svg>`
   );
   const frameRounded = await sharp(frameBuf)
     .resize(kartaKeng, kartaBaland, { fit: 'cover' })
@@ -241,26 +266,55 @@ async function yasaPremiumQopqoq(frameBuf, aiFonBuf, title) {
     .png()
     .toBuffer();
 
-  const titleSafe = String(title || 'Visart Design').replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+  // Soft soya -- bir nechta yarim shaffof, bosqichma-bosqich kattalashuvchi
+  // qatlam (haqiqiy gaussian blur filtri ishlatmasdan, ishonchli chiqishi uchun)
+  const soyaSvg = Buffer.from(`
+    <svg width="${KENG}" height="${BALAND}" xmlns="http://www.w3.org/2000/svg">
+      <rect x="${kartaX - 22}" y="${kartaY - 4}" width="${kartaKeng + 44}" height="${kartaBaland + 44}" rx="42" fill="#000" opacity="0.12"/>
+      <rect x="${kartaX - 12}" y="${kartaY + 2}" width="${kartaKeng + 24}" height="${kartaBaland + 32}" rx="36" fill="#000" opacity="0.22"/>
+      <rect x="${kartaX - 4}" y="${kartaY + 10}" width="${kartaKeng + 8}" height="${kartaBaland + 18}" rx="32" fill="#000" opacity="0.3"/>
+    </svg>
+  `);
+
+  const footerY = kartaY + kartaBaland + 40; // 1480
+  const titleSafe = xmlEscape(title || 'Visart Design');
+  const qatorlar = ikkiQatorgaBol(titleSafe, 16);
+  const titleBaseY = footerY + 240;
+
   const overlaySvg = Buffer.from(`
     <svg width="${KENG}" height="${BALAND}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#000" stop-opacity="0.55"/>
-          <stop offset="18%" stop-color="#000" stop-opacity="0"/>
-          <stop offset="78%" stop-color="#000" stop-opacity="0"/>
-          <stop offset="100%" stop-color="#000" stop-opacity="0.9"/>
+        <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000" stop-opacity="0.5"/>
+          <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="foot" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0c0a08" stop-opacity="0"/>
+          <stop offset="22%" stop-color="#0c0a08" stop-opacity="0.94"/>
+          <stop offset="100%" stop-color="#0c0a08" stop-opacity="0.98"/>
         </linearGradient>
       </defs>
-      <rect x="0" y="0" width="${KENG}" height="${BALAND}" fill="url(#g)"/>
-      <text x="60" y="110" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#ffffff" letter-spacing="4">VISART DESIGN</text>
-      <text x="60" y="${BALAND - 140}" font-family="Arial, sans-serif" font-size="56" font-weight="800" fill="#ffffff">${titleSafe}</text>
-      <rect x="60" y="${BALAND - 90}" width="140" height="6" fill="#c9a876"/>
+
+      <rect x="0" y="0" width="${KENG}" height="220" fill="url(#top)"/>
+      <rect x="0" y="${footerY - 140}" width="${KENG}" height="${BALAND - (footerY - 140)}" fill="url(#foot)"/>
+
+      <!-- minimal logotip belgisi -->
+      <rect x="60" y="62" width="16" height="16" fill="#c9a876" transform="rotate(45 68 70)"/>
+      <text x="96" y="80" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="700" fill="#ffffff" letter-spacing="5">VISART DESIGN</text>
+
+      <!-- karta atrofida nozik oltin ramka -->
+      <rect x="${kartaX}" y="${kartaY}" width="${kartaKeng}" height="${kartaBaland}" rx="${kartaRadius}" fill="none" stroke="#c9a876" stroke-width="2.5" opacity="0.9"/>
+
+      <!-- pastki matn paneli -->
+      <text x="60" y="${footerY + 100}" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#c9a876" letter-spacing="5">PREMIUM INTERIOR</text>
+      <rect x="60" y="${footerY + 122}" width="110" height="5" fill="#c9a876"/>
+      ${qatorlar.map((q, i) => `<text x="60" y="${titleBaseY + i * 78}" font-family="Arial, sans-serif" font-size="68" font-weight="800" fill="#ffffff">${q}</text>`).join('')}
     </svg>
   `);
 
   return sharp(fonLayer)
     .composite([
+      { input: soyaSvg, left: 0, top: 0 },
       { input: frameRounded, left: kartaX, top: kartaY },
       { input: overlaySvg, left: 0, top: 0 },
     ])
