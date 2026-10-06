@@ -19,7 +19,9 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
-const GEMINI_MODEL = 'gemini-3.8-flash';
+// "Flash Lite" tekin tarifda ancha yuqori kunlik limitga ega (500/kun,
+// oddiy "Flash"da bor-yo'g'i 20/kun) -- 24/7 avtomatik pipeline uchun shart.
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
 
 async function tgGetFilePath(token, fileId) {
   const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
