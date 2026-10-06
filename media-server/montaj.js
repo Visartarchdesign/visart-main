@@ -287,8 +287,68 @@ async function youtubeAccessToken(env) {
   return data.access_token || null;
 }
 
+// YouTube Shorts uchun eng yaqin "optimal" nashr vaqtini hisoblaydi (Toshkent,
+// UTC+5): kunlik oynalar 12:30 va 18:30 -- tadqiqotga ko'ra Shorts uchun eng
+// kuchli vaqt tushlik va kechki "passiv scroll" payti (SocialPilot, 301k+
+// video tahlili). 03:00-07:00 va yakshanba kechqurun (18:30 oynasi)
+// qoldirilади -- bular eng zaif vaqt hisoblanadi. Aniq soatdan ko'ra muntazam
+// chiqish muhimroq bo'lgani uchun har kuni ikkita oyna beriladi (faqat
+// Juma/Shanba/Payshankaga cheklanmaydi).
+function keyingiYoutubeVaqt() {
+  const TOSHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
+  const hozirToshkent = new Date(Date.now() + TOSHKENT_OFFSET_MS);
+  const kun = hozirToshkent.getUTCDay(); // 0=Yak
+  const soat = hozirToshkent.getUTCHours();
+  const minut = hozirToshkent.getUTCMinutes();
+  const hozirDaqiqa = soat * 60 + minut;
+
+  const oynaErta = 12 * 60 + 30;
+  const oynaKech = 18 * 60 + 30;
+
+  function sanaOlish(kunOrttirish) {
+    const d = new Date(hozirToshkent);
+    d.setUTCDate(d.getUTCDate() + kunOrttirish);
+    d.setUTCHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function vaqtQoshib(sana, daqiqalar) {
+    const d = new Date(sana);
+    d.setUTCMinutes(d.getUTCMinutes() + daqiqalar);
+    return d;
+  }
+
+  let tanlanganSana, tanlanganDaqiqa;
+  if (kun === 0 && hozirDaqiqa < oynaErta) {
+    // Yakshanba, hali tushlik oynasidan oldin -- yakshanba kechqurun zaif, shuning uchun tushlik oynasi ishlatiladi
+    tanlanganSana = sanaOlish(0);
+    tanlanganDaqiqa = oynaErta;
+  } else if (kun === 0) {
+    // Yakshanba, tushlikdan keyin -- yakshanba kechqurunni tashlab, dushanba tushlikka o'tkaziladi
+    tanlanganSana = sanaOlish(1);
+    tanlanganDaqiqa = oynaErta;
+  } else if (hozirDaqiqa < oynaErta) {
+    tanlanganSana = sanaOlish(0);
+    tanlanganDaqiqa = oynaErta;
+  } else if (hozirDaqiqa < oynaKech) {
+    tanlanganSana = sanaOlish(0);
+    tanlanganDaqiqa = oynaKech;
+  } else {
+    // Bugungi oynalar tugagan -- ertangi birinchi oynaga o'tadi (ertaga yakshanba
+    // bo'lsa ham tushlik oynasi muammosiz, faqat yakshanba KECHASI qoldiriladi)
+    tanlanganSana = sanaOlish(1);
+    tanlanganDaqiqa = oynaErta;
+  }
+
+  const natija = vaqtQoshib(tanlanganSana, tanlanganDaqiqa);
+  // Toshkent vaqtidan UTC'ga qaytarish
+  return new Date(natija.getTime() - TOSHKENT_OFFSET_MS);
+}
+
 // Tayyor videoni YouTube'ga Shorts sifatida yuklaydi (resumable upload).
-// Sozlanmagan yoki xato bo'lsa, jim null qaytaradi -- asosiy Telegram oqimi buzilmaydi.
+// "private" + publishAt bilan yuklanadi -- YouTube o'zi belgilangan optimal
+// vaqtda avtomatik ommaga ochadi. Sozlanmagan yoki xato bo'lsa, jim null
+// qaytaradi -- asosiy Telegram oqimi buzilmaydi.
 async function youtubeUpload(env, videoPath, title, description) {
   if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) return null;
   try {
@@ -296,13 +356,18 @@ async function youtubeUpload(env, videoPath, title, description) {
     if (!accessToken) return null;
 
     const stat = fs.statSync(videoPath);
+    const nashrVaqti = keyingiYoutubeVaqt();
     const metadata = {
       snippet: {
         title: `${String(title || 'Visart Design').slice(0, 85)} #Shorts`,
         description: String(description || '').slice(0, 4900),
         categoryId: '26', // Howto & Style
       },
-      status: { privacyStatus: 'public', selfDeclaredMadeForKids: false },
+      status: {
+        privacyStatus: 'private',
+        publishAt: nashrVaqti.toISOString(),
+        selfDeclaredMadeForKids: false,
+      },
     };
 
     const startRes = await fetch(
@@ -338,7 +403,7 @@ async function youtubeUpload(env, videoPath, title, description) {
       throw new Error(`YouTube video yuklashda xato: ${uploadRes.status} ${txt.slice(0, 200)}`);
     }
     const data = await uploadRes.json();
-    return data.id ? `https://youtube.com/shorts/${data.id}` : null;
+    return data.id ? { url: `https://youtube.com/shorts/${data.id}`, nashrVaqti } : null;
   } catch (e) {
     return null;
   }
@@ -443,9 +508,12 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     // YouTube Shorts -- sozlanmagan yoki xato bo'lsa jim o'tkaziladi.
     try {
       await bosqich('YouTube Shorts yuklanmoqda...');
-      const ytUrl = await youtubeUpload(env, outputPath, title, qaror.izoh);
-      if (ytUrl) {
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `📺 YouTube Shorts: ${ytUrl}`);
+      const ytNatija = await youtubeUpload(env, outputPath, title, qaror.izoh);
+      if (ytNatija) {
+        const vaqtToshkent = new Date(ytNatija.nashrVaqti.getTime() + 5 * 60 * 60 * 1000);
+        const vaqtMatni = `${String(vaqtToshkent.getUTCDate()).padStart(2, '0')}.${String(vaqtToshkent.getUTCMonth() + 1).padStart(2, '0')} ${String(vaqtToshkent.getUTCHours()).padStart(2, '0')}:${String(vaqtToshkent.getUTCMinutes()).padStart(2, '0')}`;
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+          `📺 YouTube Shorts yuklandi, nashr vaqti rejalashtirildi: ${vaqtMatni} (Toshkent)\n${ytNatija.url}`);
       }
     } catch (e) { /* jim e'tiborsiz */ }
 
