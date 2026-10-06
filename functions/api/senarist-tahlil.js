@@ -290,7 +290,7 @@ async function handle({ request, env }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: adminId,
-        text: `🎬 Senarist taklifi${natija.turi === 'karusel' ? ` (${tanlanganIdlar.length} rasmli karusel)` : ''}:\n\n📝 ${natija.sarlavha}\n\n📄 Post matni:\n${natija.post_matni || '(yo\'q)'}\n\n💡 ${natija.sabab || ''}\n\n(manba: #${tanlanganIdlar.join(', #')})`,
+        text: `🎬 Senarist taklifi${natija.turi === 'karusel' ? ` (${tanlanganIdlar.length} rasmli karusel)` : ''}:\n\n📝 ${natija.sarlavha}\n\n📄 Post matni:\n${natija.post_matni || '(yo\'q)'}\n\n💡 ${natija.sabab || ''}\n\n(manba: #${tanlanganIdlar.join(', #')})\n\n🆔${taklifId}`,
         reply_markup: kb,
       }),
       signal: AbortSignal.timeout(10000),

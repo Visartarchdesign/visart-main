@@ -399,7 +399,7 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
       for (const shablon of [1, 2, 3]) {
         try {
           const png = await oblojkaYasash(env, shablon, base64, title, null);
-          await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, png, `Oblojka -- ${shablon}-shablon`);
+          await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, png, `Oblojka -- ${shablon}-shablon\n\n🆔${taklifId}`);
           if (shablon === 1) kanalgaPng = png; // kanalga 1-shablon (sarlavhali) ketadi
         } catch (e) {
           // bitta shablon xato bersa ham, qolganlariga davom
@@ -434,7 +434,7 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     }
     if (buffers.length < 2) return; // yetarli rasm yig'ilmadi
 
-    await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}`);
+    await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}\n\n🆔${taklifId}`);
     await kanalgaPost(env, buffers, kanalMatni);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
@@ -463,7 +463,7 @@ async function kanalgaPost(env, pngBuffers, title) {
 // og'ir ish fonda davom etib, tugagach natijani to'g'ridan-to'g'ri Telegram
 // orqali adminChatId'ga yuboradi). MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan
 // yoki manba rasm bo'lsa -- jim e'tiborsiz qoldiradi.
-async function montajBoshlash(env, taklifId, adminChatId) {
+async function montajBoshlash(env, taklifId, adminChatId, korsatma) {
   if (!env.MEDIA_SERVER_URL || !env.MEDIA_SECRET) return;
   try {
     const taklifRows = await sbFetch(env, `media_taklif?id=eq.${taklifId}&select=*`);
@@ -475,11 +475,11 @@ async function montajBoshlash(env, taklifId, adminChatId) {
     if (!arxiv || !arxiv.asl_file_id) return; // rasm yoki asl video topilmadi -- montaj shart emas
     if (arxiv.turi !== 'video' && arxiv.turi !== 'video_note') return;
 
-    const title = (taklif.matn || '').split('\n\n')[0];
+    const title = taklif.sarlavha || (taklif.matn || '').split('\n\n')[0];
     await fetch(`${env.MEDIA_SERVER_URL}/montaj`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
-      body: JSON.stringify({ aslFileId: arxiv.asl_file_id, adminChatId, title, taklifId }),
+      body: JSON.stringify({ aslFileId: arxiv.asl_file_id, adminChatId, title, taklifId, korsatma }),
       // Render bepul tarifda uxlab qolgan bo'lsa, uyg'onishi 50+ soniya
       // olishi mumkin -- ulanish shu vaqt ichida o'rnatilishi uchun uzoqroq
       // timeout beramiz (aks holda so'rov Render'ga umuman YETIB BORMAYDI).
@@ -487,6 +487,84 @@ async function montajBoshlash(env, taklifId, adminChatId) {
     });
   } catch (e) {
     // Juda sekin bo'lsa ham -- keyingi safar qo'lda qayta urinib ko'rish mumkin.
+  }
+}
+
+// Admin natija xabariga reply qilib yozgan ko'rsatmasini bajaradi: video
+// bo'lsa Montajchini ko'rsatma bilan qayta ishga tushiradi, rasm/karusel
+// bo'lsa Claude orqali matnni (sarlavha+post_matni) qayta yozdiradi va
+// Oblojkani qaytadan yuborib qo'yadi.
+async function tuzatishBajar(env, taklifId, adminChatId, korsatma) {
+  try {
+    const taklifRows = await sbFetch(env, `media_taklif?id=eq.${taklifId}&select=*`);
+    const taklif = taklifRows && taklifRows[0];
+    if (!taklif) return;
+    const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${taklif.media_arxiv_id}&select=turi`);
+    const turi = arxivRows && arxivRows[0] ? arxivRows[0].turi : null;
+
+    if (turi === 'video' || turi === 'video_note') {
+      await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "🔧 Ko'rsatmangiz bilan Montajchi qayta ishga tushirilmoqda...");
+      await montajBoshlash(env, taklifId, adminChatId, korsatma);
+      return;
+    }
+
+    await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "🔧 Ko'rsatmangiz bilan matn qayta yozilmoqda...");
+    const yangi = await claudeMatnTuzatish(env, taklif.sarlavha, taklif.post_matni, korsatma);
+    if (!yangi) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "⚠️ Matnni qayta yozishda xato bo'ldi, qayta urinib ko'ring.");
+      return;
+    }
+    await sbFetch(env, `media_taklif?id=eq.${taklifId}`, {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: JSON.stringify({
+        sarlavha: yangi.sarlavha,
+        post_matni: yangi.post_matni,
+        matn: `${yangi.sarlavha}\n\n${taklif.matn ? taklif.matn.split('\n\n').slice(1).join('\n\n') : ''}`,
+      }),
+    });
+    await oblojkaTayyorlaVaYubor(env, taklifId, adminChatId);
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ To'g'irlashda xato: ${String((e && e.message) || e)}`);
+  }
+}
+
+async function claudeMatnTuzatish(env, oldSarlavha, oldPostMatni, korsatma) {
+  if (!env.ANTHROPIC_API_KEY) return null;
+  const prompt =
+    "Siz Visart Design uchun ijtimoiy tarmoq matnlari yozuvchi kontent-menejersiz.\n\n" +
+    `Oldingi sarlavha: "${oldSarlavha || ''}"\n` +
+    `Oldingi post matni: "${oldPostMatni || ''}"\n\n` +
+    `Admin shu ko'rsatmani berdi: "${korsatma}"\n\n` +
+    "Shu ko'rsatmaga asosan matnni qayta yozing. Qoidalar o'zgarmas:\n" +
+    "- Hech qanday faktni (raqam, joy, o'lcham) o'ylab topmang -- faqat berilgan ma'lumotlarga tayaning.\n" +
+    "- Sodda, tabiiy, zamonaviy o'zbek tilida yozing (rus tilidan kalka tarjima taqiqlangan).\n" +
+    "- Formatlash belgilari (**, *, __) ishlatmang. Bullet ro'yxat emas, ravon jumlalar bilan yozing.\n" +
+    "- post_matni oxirida 4-6 ta tegishli hashtag bo'lsin.\n\n" +
+    'JAVOBNI FAQAT shu JSON formatda qaytaring: {"sarlavha": "<yangi sarlavha>", "post_matni": "<yangi post matni>"}';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data.content && data.content[0] ? data.content[0].text : '';
+    const match = text.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -908,6 +986,18 @@ export async function onRequestPost({ request, env }) {
 
     const msg = update.message;
     if (!msg || !msg.chat) return json({ ok: true });
+
+    // Admin natija xabariga (oblojka/karusel/montaj/taklif) REPLY qilib matn
+    // yozsa -- bu "to'g'irlash" ko'rsatmasi. Xabarning o'zida (yoki uning
+    // reply_to_message'ida) yashiringan "🆔<id>" belgisidan taklifId topiladi.
+    if (msg.chat.type === 'private' && msg.reply_to_message && msg.text && isAdmin(env, msg.from && msg.from.id)) {
+      const manba = msg.reply_to_message.text || msg.reply_to_message.caption || '';
+      const taklifMatch = manba.match(/🆔(\d+)/);
+      if (taklifMatch) {
+        await tuzatishBajar(env, taklifMatch[1], msg.chat.id, msg.text);
+        return json({ ok: true });
+      }
+    }
 
     // Bot guruhga YANGI qo'shilganda (admin uni qo'shganda) — tanishtiruv
     // xabari yuboradi: o'zi haqida va vazifasi haqida qisqa ma'lumot + rahmat.

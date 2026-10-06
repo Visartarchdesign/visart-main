@@ -99,7 +99,7 @@ async function geminiFileWaitActive(apiKey, fileName) {
   throw new Error("Gemini fayl ACTIVE bo'lishini kutish vaqti tugadi");
 }
 
-async function geminiKesishQarori(apiKey, fileUri, mimeType) {
+async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) {
   const prompt =
     "Siz Instagram'da million qarashlar oluvchi, PREMIUM darajadagi arxitektura/interyer studiyasi uchun ishlaydigan professional video montajchisiz (Visart Design). " +
     "Standartingiz PASAYTIRILMAYDI -- oddiy, zerikarli, 'xomaki' ko'rinadigan video chiqarish MUTLAQO taqiqlanadi.\n\n" +
@@ -107,8 +107,9 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType) {
     "1) KESIB TASHLANADI: uzoq pauza/duduqlanish, keraksiz/sust boshlanish, kamera qattiq silkingan yoki fokusdan chiqqan (xira) joylar, takrorlanuvchi/zerikarli kadrlar, hech narsa 'bo'lmayotgan' bo'sh vaqt.\n" +
     "2) SAQLANADIGAN segmentlar FAQAT: vizual jihatdan kuchli, aniq fokusli, yaxshi yorug'lik/kadrlashga ega, dinamik (harakat/burchak o'zgarishi bor) bo'laklar. Reels pacing -- qisqa, tez, zarur bo'lmagan hech bir soniya qoldirilmasin.\n" +
     "3) Birinchi saqlanadigan segment KUCHLI 'hook' bo'lishi kerak (eng jozibali kadrdan boshlansin) -- tomoshabinni birinchi 2-3 soniyada ushlab qolish shart.\n" +
-    "4) AGAR butun xom material past sifatli bo'lsa (doim xira/silkingan, yorug'lik yomon, hech qanday jozibali/premium kadr yo'q, yoki foydali uzunlik 3 soniyadan kam qoladi) -- buni tan oling va \"munosib\": false qaytaring. Chalasifat video chiqarishdan ko'ra, UMUMAN chiqarmaslik afzal.\n\n" +
-    "JAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
+    "4) AGAR butun xom material past sifatli bo'lsa (doim xira/silkingan, yorug'lik yomon, hech qanday jozibali/premium kadr yo'q, yoki foydali uzunlik 3 soniyadan kam qoladi) -- buni tan oling va \"munosib\": false qaytaring. Chalasifat video chiqarishdan ko'ra, UMUMAN chiqarmaslik afzal.\n" +
+    (qoshimchaKorsatma ? `\n5) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
+    "\nJAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
     '{"munosib": true, "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
     'yoki material yetarli darajada bo\'lmasa:\n' +
     '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
@@ -194,7 +195,7 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
   ], { maxBuffer: 1024 * 1024 * 20 });
 }
 
-async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqich }) {
+async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
   const outputPath = path.join(tmpDir, 'output.mp4');
@@ -209,7 +210,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqi
     const active = await geminiFileWaitActive(env.GEMINI_API_KEY, uploaded.name);
 
     await bosqich('Gemini video tahlil qilmoqda (kesish qarori)...');
-    const qaror = await geminiKesishQarori(env.GEMINI_API_KEY, active.uri, mimeType);
+    const qaror = await geminiKesishQarori(env.GEMINI_API_KEY, active.uri, mimeType, korsatma);
 
     if (qaror.munosib === false) {
       await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
@@ -225,7 +226,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqi
 
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
-      outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}`);
+      outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
     return true;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -237,7 +238,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqi
 // tugagandan keyin adminga xato xabari yuboriladi. (Butun process'ni
 // o'ldiradigan OOM kabi xatolar bundan mustasno -- ular xotira sozlamalari
 // bilan oldindan oldi olingan.)
-export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId }) {
+export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma }) {
   const MAX_URINISH = 3;
   let oxirgiXato;
   for (let urinish = 1; urinish <= MAX_URINISH; urinish++) {
@@ -246,7 +247,7 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
         `⏳ ${matn}${urinish > 1 ? ` (${urinish}-urinish)` : ''}`);
     };
     try {
-      const tugadi = await bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, bosqich });
+      const tugadi = await bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich });
       if (tugadi) return;
     } catch (e) {
       oxirgiXato = e;
