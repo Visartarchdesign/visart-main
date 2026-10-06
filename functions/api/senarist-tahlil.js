@@ -133,7 +133,8 @@ async function claudeTahlil(env, items) {
     throw new Error(`Claude API -> ${res.status}: ${txt.slice(0, 300)}`);
   }
   const data = await res.json();
-  const text = data.content && data.content[0] ? data.content[0].text : '';
+  const textBlok = (data.content || []).find((b) => b.type === 'text');
+  const text = textBlok ? textBlok.text : '';
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Claude javobi JSON emas: " + text.slice(0, 200));
   return JSON.parse(match[0]);

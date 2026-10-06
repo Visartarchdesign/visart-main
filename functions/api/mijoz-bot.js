@@ -560,7 +560,8 @@ async function claudeMatnTuzatish(env, oldSarlavha, oldPostMatni, korsatma) {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const text = data.content && data.content[0] ? data.content[0].text : '';
+    const textBlok = (data.content || []).find((b) => b.type === 'text');
+    const text = textBlok ? textBlok.text : '';
     const match = text.match(/\{[\s\S]*\}/);
     return match ? JSON.parse(match[0]) : null;
   } catch (e) {
