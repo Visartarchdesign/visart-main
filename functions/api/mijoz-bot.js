@@ -17,7 +17,11 @@
 //
 // Instagram avtomatik post (ixtiyoriy -- sozlanmasa jim o'tkazib yuboriladi):
 //   INSTAGRAM_ACCESS_TOKEN         — Meta System User muddatsiz tokeni
+//                                    (instagram_content_publish + pages_manage_posts
+//                                    ruxsatlari bilan -- Instagram VA Facebook uchun birga ishlatiladi)
 //   INSTAGRAM_BUSINESS_ACCOUNT_ID  — Instagram Business Account ID (raqamli)
+//   FACEBOOK_PAGE_ID               — Facebook sahifa ID (masalan 842860749057867)
+//                                    (ixtiyoriy -- sozlanmasa Facebook'ga joylash o'tkazib yuboriladi)
 //   (rasm Instagram'ga faqat ochiq URL orqali yuboriladi -- shuning uchun
 //   Supabase Storage'dagi "public-media" bucket'iga vaqtincha yuklanadi)
 //
@@ -446,21 +450,26 @@ async function igFetch(path, params) {
   return data;
 }
 
+// Bir nechta PNG'ni Supabase'ga yuklab, ochiq URL'lar ro'yxatini qaytaradi --
+// Instagram va Facebook ikkalasi ham shu URL'larni (qayta yuklamasdan) ishlatadi.
+async function ochiqUrllarYasash(env, pngBuffers) {
+  const urls = [];
+  for (let i = 0; i < pngBuffers.length; i++) {
+    urls.push(await supabasePublicUpload(env, pngBuffers[i], `${i}.png`));
+  }
+  return urls;
+}
+
 // Tayyor oblojka(lar)ni Instagram Business akkauntga avtomatik post qiladi.
 // INSTAGRAM_ACCESS_TOKEN/INSTAGRAM_BUSINESS_ACCOUNT_ID sozlanmagan bo'lsa --
 // jim e'tiborsiz qoldiriladi (hali ulanmagan).
-async function instagramPost(env, pngBuffers, caption) {
+async function instagramPost(env, urls, caption) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return;
-  if (!pngBuffers || !pngBuffers.length) return;
+  if (!urls || !urls.length) return;
   try {
     const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
     const token = env.INSTAGRAM_ACCESS_TOKEN;
     const igCaption = (caption || '').slice(0, 2200);
-
-    const urls = [];
-    for (let i = 0; i < pngBuffers.length; i++) {
-      urls.push(await supabasePublicUpload(env, pngBuffers[i], `${i}.png`));
-    }
 
     if (urls.length === 1) {
       const container = await igFetch(`${igId}/media`, {
@@ -491,6 +500,39 @@ async function instagramPost(env, pngBuffers, caption) {
     await igFetch(`${igId}/media_publish`, { creation_id: parent.id, access_token: token });
   } catch (e) {
     // Instagram xato bersa ham, Telegram kanalga ketgan asosiy oqimni buzmaydi
+  }
+}
+
+// Tayyor oblojka(lar)ni Facebook sahifasiga avtomatik post qiladi (Instagram
+// bilan bir xil vaqt/token, alohida jadval shart emas -- auditoriya katta
+// qismi bir xil). FACEBOOK_PAGE_ID/INSTAGRAM_ACCESS_TOKEN (pages_manage_posts
+// ruxsati bilan) sozlanmagan bo'lsa -- jim e'tiborsiz qoldiriladi.
+async function facebookPost(env, urls, caption) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.FACEBOOK_PAGE_ID) return;
+  if (!urls || !urls.length) return;
+  try {
+    const pageId = env.FACEBOOK_PAGE_ID;
+    const token = env.INSTAGRAM_ACCESS_TOKEN;
+    const fbCaption = (caption || '').slice(0, 5000);
+
+    if (urls.length === 1) {
+      await igFetch(`${pageId}/photos`, { url: urls[0], caption: fbCaption, access_token: token });
+      return;
+    }
+
+    // Bir nechta rasm: har birini "nashr qilinmagan" holda yuklab, keyin
+    // bitta umumiy feed postida (ko'p-rasmli) birlashtiramiz.
+    const mediaFbids = [];
+    for (const url of urls.slice(0, 10)) {
+      const photo = await igFetch(`${pageId}/photos`, { url, published: 'false', access_token: token });
+      mediaFbids.push(photo.id);
+    }
+    const attachedMedia = mediaFbids.map((id) => JSON.stringify({ media_fbid: id }));
+    const params = { message: fbCaption, access_token: token };
+    attachedMedia.forEach((item, i) => { params[`attached_media[${i}]`] = item; });
+    await igFetch(`${pageId}/feed`, params);
+  } catch (e) {
+    // Facebook xato bersa ham, Telegram/Instagram oqimini buzmaydi
   }
 }
 
@@ -529,7 +571,9 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
       }
       if (kanalgaPng) {
         await kanalgaPost(env, [kanalgaPng], kanalMatni);
-        await instagramPost(env, [kanalgaPng], kanalMatni);
+        const urls = await ochiqUrllarYasash(env, [kanalgaPng]);
+        await instagramPost(env, urls, kanalMatni);
+        await facebookPost(env, urls, kanalMatni);
       }
       return;
     }
@@ -561,7 +605,9 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
 
     await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}\n\n🆔${taklifId}`);
     await kanalgaPost(env, buffers, kanalMatni);
-    await instagramPost(env, buffers, kanalMatni);
+    const urls = await ochiqUrllarYasash(env, buffers);
+    await instagramPost(env, urls, kanalMatni);
+    await facebookPost(env, urls, kanalMatni);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
   }
