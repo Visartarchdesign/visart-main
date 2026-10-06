@@ -145,12 +145,32 @@ async function claudeTahlil(env, items) {
 // generatsiya qilinadi). Admin natijani "Visart Media" guruhiga ODDIY
 // rasm/video sifatida tashlaydi -- mavjud `handleMediaArxiv` oqimi buni
 // avtomatik qabul qiladi, hech qanday qo'shimcha kod kerak emas.
-const AI_PROMPT_SHABLONLAR = [
-  "Luxury minimalist living room interior, warm ambient lighting, large windows, neutral beige and walnut palette, modern architecture magazine style, photorealistic, 9:16 vertical",
-  "Modern minimalist villa exterior at golden hour, clean geometric facade, large glass panels, landscaped garden, architectural photography, photorealistic, 9:16 vertical",
-  "Premium modern kitchen interior, matte black and oak cabinetry, marble island, soft natural light, photorealistic, architectural digest style, 9:16 vertical",
-  "Elegant master bedroom interior, soft neutral tones, statement headboard, warm evening lighting, minimalist luxury, photorealistic, 9:16 vertical",
-  "Contemporary office/co-working interior, biophilic design with plants, wood and glass, natural daylight, photorealistic, 9:16 vertical",
+// MUHIM: bular HAQIQIY Visart loyihasi sifatida ko'rsatilmaydi (bu
+// ishonchni buzadi) -- faqat FOYDALI MASLAHAT/MA'LUMOT postiga mos,
+// MAVHUM/illyustrativ vizual g'oya. Har bir shablon: {mavzu, rasm_gipi}.
+// "rasm_gipi" -- Gemini'ga beriladigan, ANIQ loyiha emas, balki konsept/
+// illyustrativ uslubdagi rasm uchun prompt.
+const AI_MASLAHAT_SHABLONLAR = [
+  {
+    mavzu: "Kichik xonani vizual kattaroq ko'rsatish usullari",
+    rasm_gipi: "Minimal flat-design illustration, interior design concept icons (mirror, light, light colors), soft pastel palette, abstract (not a real room photo), 9:16 vertical",
+  },
+  {
+    mavzu: "To'g'ri yoritish xonani qanday o'zgartiradi",
+    rasm_gipi: "Abstract illustration of warm vs cold lighting concept, minimal flat design, soft gradients, architectural icons, not a real room photo, 9:16 vertical",
+  },
+  {
+    mavzu: "Kichik byudjet bilan premium ko'rinishga erishish yo'llari",
+    rasm_gipi: "Minimal flat-design illustration, budget vs premium interior concept icons, clean modern style, abstract (not a real room photo), 9:16 vertical",
+  },
+  {
+    mavzu: "Oshxonada funksional zonalashtirish qoidalari",
+    rasm_gipi: "Abstract flat-design floor plan / zoning diagram illustration, minimal modern style, not a real photo, 9:16 vertical",
+  },
+  {
+    mavzu: "Minimalist interyerda rang tanlash qoidalari",
+    rasm_gipi: "Abstract color palette illustration for interior design, minimal flat style, swatches and simple room silhouette, not a real room photo, 9:16 vertical",
+  },
 ];
 
 // Senarist jim xato bilan to'xtab qolsa (Claude limiti, Supabase va h.k.),
@@ -172,16 +192,53 @@ async function adminXabarBer(env, matn) {
   }
 }
 
+// Umumiy, keng tan olingan arxitektura/interyer qoidalariga asoslangan
+// qisqa maslahat matnini Claude'dan so'raydi -- HECH QANDAY o'ylab
+// topilgan statistika/raqam yoki "bizning loyiha" degan da'vo bo'lmasligi
+// kerak, faqat umumiy va to'g'ri dizayn tamoyillari.
+async function claudeMaslahatYoz(env, mavzu) {
+  if (!env.ANTHROPIC_API_KEY) return null;
+  const prompt =
+    `Mavzu: "${mavzu}".\n\n` +
+    "Visart Design (arxitektura/interyer studiyasi) Instagram sahifasi uchun qisqa, FOYDALI maslahat posti yozing.\n" +
+    "QOIDALAR (qat'iy):\n" +
+    "- Faqat KENG TAN OLINGAN, umumiy dizayn/arxitektura tamoyillariga tayaning (masalan: yorug'lik, ranglar, zonalashtirish haqida umumiy bilim). HECH QANDAY aniq raqam, statistika yoki \"bizning loyihada\" degan da'vo yozmang -- bu o'ylab topilgan yolg'on bo'ladi.\n" +
+    "- Bu AI-konsept rasm bilan boradi, HAQIQIY Visart loyihasi sifatida taqdim etilmaydi -- shuning uchun matnda ham buni aniq loyiha deb ko'rsatmang, umumiy maslahat sifatida yozing.\n" +
+    "- Sodda, tabiiy o'zbek tilida, formatlash belgilarisiz (**, * yo'q), 3-5 qisqa jumla + oxirida 3-5 ta hashtag.\n\n" +
+    'JAVOBNI FAQAT shu JSON formatda qaytaring: {"sarlavha": "<qisqa sarlavha>", "post_matni": "<to\'liq post matni>"}';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: MODEL, max_tokens: 500, messages: [{ role: 'user', content: prompt }] }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const textBlok = (data.content || []).find((b) => b.type === 'text');
+    const text = textBlok ? textBlok.text : '';
+    const match = text.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function aiTaklifYubor(env) {
   try {
     const admins = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!admins.length) return;
-    const prompt = AI_PROMPT_SHABLONLAR[Math.floor(Math.random() * AI_PROMPT_SHABLONLAR.length)];
+    const shablon = AI_MASLAHAT_SHABLONLAR[Math.floor(Math.random() * AI_MASLAHAT_SHABLONLAR.length)];
+    const maslahat = await claudeMaslahatYoz(env, shablon.mavzu);
+
     const matn =
-      "📸 Bugun real material yetarli emas. Postni uzmaslik uchun AI orqali rasm generatsiya qilsak bo'ladi:\n\n" +
+      "💡 Bugun real material yetarli emas. Postni uzmaslik uchun FOYDALI MASLAHAT formatida kontent tayyorladim (bu HAQIQIY loyiha sifatida emas, umumiy maslahat sifatida chiqadi):\n\n" +
+      `📝 ${maslahat ? maslahat.sarlavha : shablon.mavzu}\n\n` +
+      `📄 Post matni:\n${maslahat ? maslahat.post_matni : '(avtomatik yozilmadi, o\'zingiz yozib qo\'yishingiz mumkin)'}\n\n` +
+      "Rasm uchun (MAVHUM/konseptual, haqiqiy loyiha emas -- shuning uchun aniq xona fotosi EMAS, illyustrativ uslubda):\n" +
       "1) Quyidagi promptni Gemini ilovasiga (gemini.google.com yoki telefon ilovasi) nusxa ko'chiring:\n\n" +
-      `\`${prompt}\`\n\n` +
-      "2) Chiqqan natijani \"Visart Media\" guruhiga ODDIY rasm sifatida tashlang -- tizim uni avtomatik qabul qilib, davom ettiradi.";
+      `\`${shablon.rasm_gipi}\`\n\n` +
+      "2) Chiqqan natijani \"Visart Media\" guruhiga shu post matni bilan birga (izoh qilib) tashlang -- tizim avtomatik qabul qilib, davom ettiradi.";
     for (const adminId of admins) {
       await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
