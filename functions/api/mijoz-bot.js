@@ -254,16 +254,37 @@ async function handleMediaArxiv(env, msg) {
     }]),
   });
 
-  // Haqiqiy Telegram albomi uchun (hammasi bir vaqtda, o'zi bog'langan)
-  // qo'shimcha xabar kerak emas. Faqat albomsiz (fayl, bittalab) holatda --
-  // odamga joriy to'plam holatini bildirib turamiz.
   if (!haqiqiyAlbom && mediaGroupId) {
+    // Albomsiz (fayl, bittalab) holat -- odamga joriy to'plam holatini
+    // darhol bildiramiz.
     try {
       const toplam = await sbFetch(env,
         `media_arxiv?media_group_id=eq.${mediaGroupId}&holat=eq.yangi&select=id`);
       const son = toplam ? toplam.length : 1;
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
         `📥 Qabul qilindi (joriy to'plamda: ${son} ta). Ketma-ket yuborishda davom eting -- 3 daqiqa ichida yuborilgan hammasi BITTA to'plam bo'ladi. Yangi/boshqa obyekt boshlamoqchi bo'lsangiz, shunchaki 3 daqiqa kutib keyin yuboring.`);
+    } catch (e) {
+      // e'tiborsiz -- bu faqat qulaylik xabari
+    }
+  } else if (haqiqiyAlbom && mediaGroupId) {
+    // Haqiqiy Telegram albomi -- har bir rasm/video ALOHIDA xabar sifatida
+    // keladi, shuning uchun har birida bildirishnoma yubormaymiz (spam
+    // bo'lardi). Buning o'rniga: qisqa kutib (albomning qolgan a'zolari
+    // odatda 1 soniya ichida yetib keladi), shu guruhda O'ZIMIZDAN KEYIN
+    // boshqa yangi a'zo kelmaganini tekshiramiz -- shunda bu ALBOMNING
+    // OXIRGI xabari deb hisoblab, "albom qabul qilindi" deb bitta
+    // umumiy xabar yuboramiz.
+    try {
+      await new Promise((r) => setTimeout(r, 1500));
+      const keyingilari = await sbFetch(env,
+        `media_arxiv?media_group_id=eq.${mediaGroupId}&holat=eq.yangi&telegram_message_id=gt.${msg.message_id}&select=id&limit=1`);
+      if (!keyingilari || !keyingilari.length) {
+        const toplam = await sbFetch(env,
+          `media_arxiv?media_group_id=eq.${mediaGroupId}&holat=eq.yangi&select=id`);
+        const son = toplam ? toplam.length : 1;
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
+          `✅ Albom qabul qilindi (${son} ta rasm/video). Keyingi foto/videongizni yuborishingiz mumkin.`);
+      }
     } catch (e) {
       // e'tiborsiz -- bu faqat qulaylik xabari
     }
