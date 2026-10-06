@@ -12,9 +12,11 @@ import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
 const GEMINI_MODEL = 'gemini-3.8-flash';
+const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
 
 async function tgGetFilePath(token, fileId) {
   const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
@@ -42,6 +44,18 @@ async function tgSendVideo(token, chatId, filePath, caption) {
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
     throw new Error(`Telegram sendVideo xato: ${res.status} ${txt.slice(0, 200)}`);
+  }
+}
+
+async function tgSendPhoto(token, chatId, buf, caption) {
+  const form = new FormData();
+  form.append('chat_id', String(chatId));
+  if (caption) form.append('caption', caption.slice(0, 1024));
+  form.append('photo', new Blob([buf], { type: 'image/png' }), 'cover.png');
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`Telegram sendPhoto xato: ${res.status} ${txt.slice(0, 200)}`);
   }
 }
 
@@ -152,6 +166,104 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
   throw oxirgiXato;
 }
 
+// Tayyor videodan eng jozibali o'rtaroq kadrni JPEG rasm sifatida ajratib
+// oladi (video uzunligining ~35% nuqtasidan) -- thumbnail asosi sifatida.
+async function ffmpegKadrOl(videoPath, outPath) {
+  const { stdout } = await execFileAsync('ffprobe', [
+    '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', videoPath,
+  ]);
+  const davomiylik = parseFloat(stdout) || 3;
+  const vaqt = Math.max(0.2, davomiylik * 0.35);
+  await execFileAsync('ffmpeg', [
+    '-y', '-ss', String(vaqt), '-i', videoPath, '-vframes', '1', '-q:v', '2', outPath,
+  ]);
+}
+
+// Gemini'ning rasm-generatsiya modeli orqali, video mavzusiga oid, MAVHUM/
+// konseptual premium fon rasm yasaydi (haqiqiy xona emas -- faqat dekorativ
+// fon, Visart brend rangida). Gemini billing/kvota bo'lmasa yoki xato bersa,
+// null qaytaradi -- chaqiruvchi tomon oddiy (AI'siz) qopqoqqa tushadi.
+async function geminiPremiumFon(apiKey, mavzu) {
+  try {
+    const prompt =
+      `Premium, abstract architectural/interior-design concept background image related to: "${mavzu || 'zamonaviy interyer dizayni'}". ` +
+      "Dark elegant backdrop (deep charcoal/black) with warm gold geometric accents, soft bokeh light, minimal luxury magazine-cover aesthetic. " +
+      "NO real room, NO people, NO text, NO logos -- purely abstract decorative background. Vertical 9:16 composition.";
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        signal: AbortSignal.timeout(30000),
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+    const imgPart = parts.find((p) => p.inlineData || p.inline_data);
+    const inline = imgPart && (imgPart.inlineData || imgPart.inline_data);
+    if (!inline || !inline.data) return null;
+    return Buffer.from(inline.data, 'base64');
+  } catch (e) {
+    return null;
+  }
+}
+
+// Video kadri + AI fon + sarlavha'ni birlashtirib, premium darajadagi
+// qopqoq (cover/thumbnail) PNG yasaydi. AI fon bo'lmasa (null), oddiy
+// qorong'i gradient fonga tushadi -- har doim ishlashi kafolatlanadi.
+async function yasaPremiumQopqoq(frameBuf, aiFonBuf, title) {
+  const KENG = 1080;
+  const BALAND = 1920;
+
+  const fonLayer = aiFonBuf
+    ? await sharp(aiFonBuf).resize(KENG, BALAND, { fit: 'cover' }).png().toBuffer()
+    : await sharp({
+        create: { width: KENG, height: BALAND, channels: 4, background: { r: 21, g: 19, b: 15, alpha: 1 } },
+      }).png().toBuffer();
+
+  // Haqiqiy video kadrini markaziy "karta" sifatida joylaymiz (soyali, burchaklari yumaloq)
+  const kartaKeng = 880;
+  const kartaBaland = 1100;
+  const kartaX = Math.round((KENG - kartaKeng) / 2);
+  const kartaY = 420;
+  const kartaMask = Buffer.from(
+    `<svg width="${kartaKeng}" height="${kartaBaland}"><rect x="0" y="0" width="${kartaKeng}" height="${kartaBaland}" rx="28" fill="#fff"/></svg>`
+  );
+  const frameRounded = await sharp(frameBuf)
+    .resize(kartaKeng, kartaBaland, { fit: 'cover' })
+    .composite([{ input: kartaMask, blend: 'dest-in' }])
+    .png()
+    .toBuffer();
+
+  const titleSafe = String(title || 'Visart Design').replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+  const overlaySvg = Buffer.from(`
+    <svg width="${KENG}" height="${BALAND}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#000" stop-opacity="0.55"/>
+          <stop offset="18%" stop-color="#000" stop-opacity="0"/>
+          <stop offset="78%" stop-color="#000" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#000" stop-opacity="0.9"/>
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="${KENG}" height="${BALAND}" fill="url(#g)"/>
+      <text x="60" y="110" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#ffffff" letter-spacing="4">VISART DESIGN</text>
+      <text x="60" y="${BALAND - 140}" font-family="Arial, sans-serif" font-size="56" font-weight="800" fill="#ffffff">${titleSafe}</text>
+      <rect x="60" y="${BALAND - 90}" width="140" height="6" fill="#c9a876"/>
+    </svg>
+  `);
+
+  return sharp(fonLayer)
+    .composite([
+      { input: frameRounded, left: kartaX, top: kartaY },
+      { input: overlaySvg, left: 0, top: 0 },
+    ])
+    .png()
+    .toBuffer();
+}
+
 // Xotira tejash uchun (Render bepul tarifi 512MB bilan cheklangan): bitta
 // og'ir filter_complex grafigi o'rniga, har bir segmentni ALOHIDA-ALOHIDA
 // (ketma-ket, bitta-bittadan) qayta kodlaymiz, keyin ularni concat demuxer
@@ -223,6 +335,26 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
 
     await bosqich(`FFmpeg kesmoqda va birlashtirmoqda (${qaror.segmentlar.length} segment)...`);
     await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath, tmpDir);
+
+    // Premium qopqoq (cover/thumbnail) -- video kadri + AI fon. Xato bersa ham
+    // (Gemini kvota/billing yo'q), oddiy video yuborishga tushadi, hech narsa
+    // to'xtamaydi.
+    let qopqoqBuf = null;
+    try {
+      await bosqich('Premium qopqoq (AI fon) tayyorlanmoqda...');
+      const framePath = path.join(tmpDir, 'frame.jpg');
+      await ffmpegKadrOl(outputPath, framePath);
+      const frameBuf = fs.readFileSync(framePath);
+      const aiFonBuf = env.GEMINI_API_KEY ? await geminiPremiumFon(env.GEMINI_API_KEY, title) : null;
+      qopqoqBuf = await yasaPremiumQopqoq(frameBuf, aiFonBuf, title);
+    } catch (e) {
+      qopqoqBuf = null; // qopqoq ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+    }
+
+    if (qopqoqBuf) {
+      await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId,
+        qopqoqBuf, `🖼️ Premium qopqoq${title ? ` -- ${title}` : ''}`);
+    }
 
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
