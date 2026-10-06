@@ -145,6 +145,25 @@ const AI_PROMPT_SHABLONLAR = [
   "Contemporary office/co-working interior, biophilic design with plants, wood and glass, natural daylight, photorealistic, 9:16 vertical",
 ];
 
+// Senarist jim xato bilan to'xtab qolsa (Claude limiti, Supabase va h.k.),
+// admin buni HECH QACHON bilmay, ish "sababsiz" to'xtab qolmasligi uchun
+// albatta DM yuboriladi.
+async function adminXabarBer(env, matn) {
+  try {
+    const admins = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    for (const adminId of admins) {
+      await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: adminId, text: matn }),
+        signal: AbortSignal.timeout(10000),
+      }).catch(() => {});
+    }
+  } catch (e) {
+    // jim e'tiborsiz
+  }
+}
+
 async function aiTaklifYubor(env) {
   try {
     const admins = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -182,6 +201,7 @@ async function handle({ request, env }) {
   try {
     rows = await sbFetch(env, 'media_arxiv?holat=eq.yangi&select=*&order=created_at.asc&limit=15');
   } catch (e) {
+    await adminXabarBer(env, `⚠️ Senarist to'xtadi: Supabase xato -- ${String((e && e.message) || e)}`);
     return json({ ok: false, error: 'supabase_xato' }, 500);
   }
   if (!rows || rows.length < KAM_MATERIAL_CHEGARA) {
@@ -211,6 +231,7 @@ async function handle({ request, env }) {
   try {
     natija = await claudeTahlil(env, items);
   } catch (e) {
+    await adminXabarBer(env, `⚠️ Senarist to'xtadi: Claude API xato (limit/kvota tugagan bo'lishi mumkin) -- ${String((e && e.message) || e)}`);
     return json({ ok: false, error: 'claude_xato' }, 500);
   }
 
@@ -218,6 +239,7 @@ async function handle({ request, env }) {
     ? natija.tanlangan_idlar
     : (natija.tanlangan_id ? [natija.tanlangan_id] : null); // eski format bilan orqaga moslik
   if (!tanlanganIdlar || !tanlanganIdlar.length) {
+    await adminXabarBer(env, "⚠️ Senarist to'xtadi: Claude hech qanday tanlov bermadi.");
     return json({ ok: false, error: 'claude_tanlov_bermadi' }, 500);
   }
 
@@ -235,6 +257,7 @@ async function handle({ request, env }) {
     });
     taklifId = inserted && inserted[0] ? inserted[0].id : null;
   } catch (e) {
+    await adminXabarBer(env, `⚠️ Senarist to'xtadi: taklifni bazaga yozishda xato -- ${String((e && e.message) || e)}`);
     return json({ ok: false, error: 'taklif_yozishda_xato' }, 500);
   }
 
@@ -272,6 +295,7 @@ export async function onRequestGet(context) {
   try {
     return await handle(context);
   } catch (e) {
+    await adminXabarBer(context.env, `⚠️ Senarist kutilmagan xato bilan to'xtadi: ${String((e && e.message) || e)}`);
     return json({ ok: false, error: 'server_error' }, 500);
   }
 }
