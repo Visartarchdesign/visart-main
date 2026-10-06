@@ -20,7 +20,6 @@ import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
 const GEMINI_MODEL = 'gemini-3.8-flash';
-const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
 
 async function tgGetFilePath(token, fileId) {
   const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
@@ -183,32 +182,21 @@ async function ffmpegKadrOl(videoPath, outPath) {
   ]);
 }
 
-// Gemini'ning rasm-generatsiya modeli orqali, video mavzusiga oid, MAVHUM/
-// konseptual premium fon rasm yasaydi (haqiqiy xona emas -- faqat dekorativ
-// fon, Visart brend rangida). Gemini billing/kvota bo'lmasa yoki xato bersa,
+// Pollinations.ai (tekin, kalit/billing shart emas) orqali video mavzusiga
+// oid, MAVHUM/konseptual premium fon rasm yasaydi (haqiqiy xona emas -- faqat
+// dekorativ fon, Visart brend rangida). Xato bersa yoki tarmoq band bo'lsa,
 // null qaytaradi -- chaqiruvchi tomon oddiy (AI'siz) qopqoqqa tushadi.
-async function geminiPremiumFon(apiKey, mavzu) {
+async function geminiPremiumFon(mavzu) {
   try {
     const prompt =
-      `Premium, abstract architectural/interior-design concept background image related to: "${mavzu || 'zamonaviy interyer dizayni'}". ` +
-      "Dark elegant backdrop (deep charcoal/black) with warm gold geometric accents, soft bokeh light, minimal luxury magazine-cover aesthetic. " +
-      "NO real room, NO people, NO text, NO logos -- purely abstract decorative background. Vertical 9:16 composition.";
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        signal: AbortSignal.timeout(30000),
-      }
-    );
+      `Premium abstract architectural interior design concept background, related to: ${mavzu || 'zamonaviy interyer dizayni'}. ` +
+      "Dark elegant backdrop deep charcoal black with warm gold geometric accents, soft bokeh light, minimal luxury magazine cover aesthetic, " +
+      "no real room, no people, no text, no logos, purely abstract decorative background, vertical composition";
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1080&height=1920&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1e6)}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
     if (!res.ok) return null;
-    const data = await res.json();
-    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
-    const imgPart = parts.find((p) => p.inlineData || p.inline_data);
-    const inline = imgPart && (imgPart.inlineData || imgPart.inline_data);
-    if (!inline || !inline.data) return null;
-    return Buffer.from(inline.data, 'base64');
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.length > 1000 ? buf : null;
   } catch (e) {
     return null;
   }
@@ -490,7 +478,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       const framePath = path.join(tmpDir, 'frame.jpg');
       await ffmpegKadrOl(outputPath, framePath);
       const frameBuf = fs.readFileSync(framePath);
-      const aiFonBuf = env.GEMINI_API_KEY ? await geminiPremiumFon(env.GEMINI_API_KEY, title) : null;
+      const aiFonBuf = await geminiPremiumFon(title);
       qopqoqBuf = await yasaPremiumQopqoq(frameBuf, aiFonBuf, title);
     } catch (e) {
       qopqoqBuf = null; // qopqoq ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
