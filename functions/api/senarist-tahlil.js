@@ -119,6 +119,8 @@ async function claudeTahlil(env, items) {
       "- TIL: SODDA, TABIIY, ZAMONAVIY o'zbek tilida (lotin yozuvida) yozing -- xuddi haqiqiy odam Instagram'ga yozgandek. Rus tilidan so'zma-so'z tarjima qilingan noqulay iboralar (\"integrallashtirilgan\", \"tekhnika\" kabi) ISHLATMANG. Murakkab/kitobiy so'zlardan qoching, oddiy kundalik so'zlashuv uslubida yozing.\n" +
       "  YOMON namuna (ishlatmang): \"Integrallashtirilgan oshxona, yangi tekhnikasi bilan jihozlangan.\"\n" +
       "  YAXSHI namuna: \"Oshxona zamonaviy texnika bilan jihozlangan, hammasi qo'l ostida.\"\n\n" +
+      "- DIQQATNI TORTISH (hook) usullari -- birinchi jumlada shulardan birini ishlating: (a) konkret raqam/o'lcham bilan boshlash (\"15 m²da...\"), (b) kutilmagan qarama-qarshilik (\"Kichik xona -- katta imkoniyat\"), (c) savol bilan boshlash (\"Oshxonangiz tor tuyuladimi?\"), (d) \"ko'pchilik xato qiladi\" turidagi qiziqish uyg'otuvchi kirish. Umumiy/bo'sh \"Zamonaviy va qulay\" kabi klişe jumlalardan QOCHING.\n" +
+      "- IMLO: matnni yozib bo'lgach o'zingiz qayta o'qing -- imlo/punktuatsiya xatosi, so'z qo'shilib ketishi yoki noto'g'ri harf ISHLATILMASLIGI SHART. Faqat to'g'ri, standart o'zbek lotin yozuvida yozing.\n\n" +
       'JAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n' +
       '{"turi": "single" yoki "karusel", "tanlangan_idlar": [<raqam>, ...], "sarlavha": "<qisqa, aniq, jozibali sarlavha>", "post_matni": "<to\'liq Instagram posti matni, hashtaglar bilan>", "sabab": "<nega shu tanlandi, 1 jumla -- faqat admin uchun, ichki>"}',
   });
@@ -176,7 +178,35 @@ const AI_MASLAHAT_SHABLONLAR = [
     mavzu: "Minimalist interyerda rang tanlash qoidalari",
     rasm_gipi: "Abstract color palette illustration for interior design, minimal flat style, swatches and simple room silhouette, not a real room photo, 9:16 vertical",
   },
+  {
+    mavzu: "Interyer dizaynida ko'p qiladigan 5 ta xato",
+    rasm_gipi: "Minimal flat-design illustration, checklist/mistake icons, interior design theme, soft modern palette, abstract (not a real room photo), 9:16 vertical",
+  },
+  {
+    mavzu: "2026-yilda dolzarb interyer trendlari (tabiiy materiallar, issiq minimalizm)",
+    rasm_gipi: "Abstract flat-design illustration of natural materials and warm minimalism trend -- wood, linen, stone texture icons, soft palette, not a real room photo, 9:16 vertical",
+  },
+  {
+    mavzu: "Saqlash joyi (storage) kamchil xonalarda qanday ko'payadi",
+    rasm_gipi: "Minimal flat-design illustration of smart storage concepts, built-in shelving icons, abstract, not a real room photo, 9:16 vertical",
+  },
+  {
+    mavzu: "Mebel va devor rangini to'g'ri moslashtirish qoidasi",
+    rasm_gipi: "Abstract color-matching illustration, furniture and wall palette swatches, minimal flat style, not a real room photo, 9:16 vertical",
+  },
+  {
+    mavzu: "Yotoqxonada tinch uyqu uchun dizayn maslahatlari",
+    rasm_gipi: "Minimal flat-design illustration, calm bedroom concept icons, soft muted palette, abstract (not a real room photo), 9:16 vertical",
+  },
 ];
+
+// Bir xil mavzu ketma-ket/tez-tez takrorlanmasligi uchun, sof tasodifiy
+// o'rniga yil kuniga asoslangan aylanma tanlov (barcha mavzular tugamaguncha
+// takrorlanmaydi).
+function kunlikShablonTanla() {
+  const kun = Math.floor(Date.now() / 86400000);
+  return AI_MASLAHAT_SHABLONLAR[kun % AI_MASLAHAT_SHABLONLAR.length];
+}
 
 // Senarist jim xato bilan to'xtab qolsa (Claude limiti, Supabase va h.k.),
 // admin buni HECH QACHON bilmay, ish "sababsiz" to'xtab qolmasligi uchun
@@ -209,7 +239,8 @@ async function claudeMaslahatYoz(env, mavzu) {
     "QOIDALAR (qat'iy):\n" +
     "- Faqat KENG TAN OLINGAN, umumiy dizayn/arxitektura tamoyillariga tayaning (masalan: yorug'lik, ranglar, zonalashtirish haqida umumiy bilim). HECH QANDAY aniq raqam, statistika yoki \"bizning loyihada\" degan da'vo yozmang -- bu o'ylab topilgan yolg'on bo'ladi.\n" +
     "- Bu AI-konsept rasm bilan boradi, HAQIQIY Visart loyihasi sifatida taqdim etilmaydi -- shuning uchun matnda ham buni aniq loyiha deb ko'rsatmang, umumiy maslahat sifatida yozing.\n" +
-    "- Sodda, tabiiy o'zbek tilida, formatlash belgilarisiz (**, * yo'q), 3-5 qisqa jumla + oxirida 3-5 ta hashtag.\n\n" +
+    "- Birinchi jumla DIQQATNI TORTISHI kerak -- savol yoki kutilmagan fakt bilan boshlang, bo'sh \"Zamonaviy dizayn\" kabi klişelardan qoching.\n" +
+    "- Sodda, tabiiy o'zbek tilida, formatlash belgilarisiz (**, * yo'q), 3-5 qisqa jumla + oxirida 3-5 ta hashtag. Yozib bo'lgach imlo xatosiz ekanligini tekshirib chiqing.\n\n" +
     'JAVOBNI FAQAT shu JSON formatda qaytaring: {"sarlavha": "<qisqa sarlavha>", "post_matni": "<to\'liq post matni>"}';
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -233,7 +264,7 @@ async function aiTaklifYubor(env) {
   try {
     const admins = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
     if (!admins.length) return;
-    const shablon = AI_MASLAHAT_SHABLONLAR[Math.floor(Math.random() * AI_MASLAHAT_SHABLONLAR.length)];
+    const shablon = kunlikShablonTanla();
     const maslahat = await claudeMaslahatYoz(env, shablon.mavzu);
 
     const matn =
