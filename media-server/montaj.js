@@ -6,6 +6,10 @@
 //
 // Cheklov: Telegram oddiy Bot API orqali faqat 20MB gacha fayl yuklab olish
 // mumkin (getFile). Shundan katta xom video kelsa, xato qaytariladi.
+//
+// YouTube Shorts avtomatik yuklash (ixtiyoriy -- sozlanmasa jim o'tkazib
+// yuboriladi): YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
+// (Google Cloud OAuth, "In production" holatida olingan muddatsiz token).
 
 import fs from 'fs';
 import path from 'path';
@@ -264,6 +268,82 @@ async function yasaPremiumQopqoq(frameBuf, aiFonBuf, title) {
     .toBuffer();
 }
 
+// YouTube: muddatsiz refresh_token'ni vaqtinchalik access_token'ga almashtiradi.
+async function youtubeAccessToken(env) {
+  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) return null;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.YOUTUBE_CLIENT_ID,
+      client_secret: env.YOUTUBE_CLIENT_SECRET,
+      refresh_token: env.YOUTUBE_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.access_token || null;
+}
+
+// Tayyor videoni YouTube'ga Shorts sifatida yuklaydi (resumable upload).
+// Sozlanmagan yoki xato bo'lsa, jim null qaytaradi -- asosiy Telegram oqimi buzilmaydi.
+async function youtubeUpload(env, videoPath, title, description) {
+  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) return null;
+  try {
+    const accessToken = await youtubeAccessToken(env);
+    if (!accessToken) return null;
+
+    const stat = fs.statSync(videoPath);
+    const metadata = {
+      snippet: {
+        title: `${String(title || 'Visart Design').slice(0, 85)} #Shorts`,
+        description: String(description || '').slice(0, 4900),
+        categoryId: '26', // Howto & Style
+      },
+      status: { privacyStatus: 'public', selfDeclaredMadeForKids: false },
+    };
+
+    const startRes = await fetch(
+      'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': 'video/mp4',
+          'X-Upload-Content-Length': String(stat.size),
+        },
+        body: JSON.stringify(metadata),
+        signal: AbortSignal.timeout(15000),
+      }
+    );
+    if (!startRes.ok) {
+      const txt = await startRes.text().catch(() => '');
+      throw new Error(`YouTube upload boshlashda xato: ${startRes.status} ${txt.slice(0, 200)}`);
+    }
+    const uploadUrl = startRes.headers.get('location');
+    if (!uploadUrl) throw new Error("YouTube upload URL qaytmadi");
+
+    const videoBuf = fs.readFileSync(videoPath);
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(stat.size) },
+      body: videoBuf,
+      signal: AbortSignal.timeout(120000),
+    });
+    if (!uploadRes.ok) {
+      const txt = await uploadRes.text().catch(() => '');
+      throw new Error(`YouTube video yuklashda xato: ${uploadRes.status} ${txt.slice(0, 200)}`);
+    }
+    const data = await uploadRes.json();
+    return data.id ? `https://youtube.com/shorts/${data.id}` : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Xotira tejash uchun (Render bepul tarifi 512MB bilan cheklangan): bitta
 // og'ir filter_complex grafigi o'rniga, har bir segmentni ALOHIDA-ALOHIDA
 // (ketma-ket, bitta-bittadan) qayta kodlaymiz, keyin ularni concat demuxer
@@ -359,6 +439,16 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor${title ? ` -- ${title}` : ''}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
+
+    // YouTube Shorts -- sozlanmagan yoki xato bo'lsa jim o'tkaziladi.
+    try {
+      await bosqich('YouTube Shorts yuklanmoqda...');
+      const ytUrl = await youtubeUpload(env, outputPath, title, qaror.izoh);
+      if (ytUrl) {
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `📺 YouTube Shorts: ${ytUrl}`);
+      }
+    } catch (e) { /* jim e'tiborsiz */ }
+
     return true;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
