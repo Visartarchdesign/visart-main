@@ -171,6 +171,7 @@ async function claudeTahlil(env, items) {
       "Bir xil \"albom\" qiymatiga ega elementlar BITTA Telegram xabarida (albom/media group) birga yuborilgan -- ular odatda bitta xonadon/obyektning turli burchaklari, shuning uchun ularni BITTA karusel post sifatida birga ko'rsatish mumkin.\n\n" +
       "Vazifa: eng mos keladigan BITTA variantni tanlang:\n" +
       "- Agar eng yaxshi tanlov bitta alohida (albomsiz) rasm/video bo'lsa -- \"turi\":\"single\" va \"tanlangan_idlar\" massivida FAQAT 1 ta ID.\n" +
+      "- MUHIM: karusel FAQAT \"turi: photo\" bo'lgan elementlardan tuziladi. \"turi: video\" yoki \"video_note\" elementlar karuselga HECH QACHON kirmaydi (ular alohida video post bo'ladi) -- video tanlansangiz \"turi\":\"single\" va FAQAT 1 ta ID.\n" +
       "- Agar eng yaxshi tanlov bitta albomga tegishli bo'lsa -- \"turi\":\"karusel\", va \"tanlangan_idlar\"ga o'sha albomdagi ENG YAXSHI rasmlarni (kamida 2, ko'pi bilan 10 ta) Instagram karusel uchun eng mos TARTIBDA joylashtiring (birinchisi -- eng jozibali \"muqova\" rasm bo'lishi kerak). Sifatsiz/takroriy/xira rasmlarni albomdan chiqarib tashlang.\n\n" +
       "MUHIM -- matn yozish qoidalari (siz bu yerda ham kontent-menejer/marketolog rolidasiz):\n" +
       "- FAKTLARNI HECH QACHON O'YLAB TOPMANG. Faqat \"izoh\" maydonida ANIQ yozilgan faktlarni (maydon m2, xona turi, uslub, manzil va h.k.) ishlating. Agar biror item uchun izoh berilmagan bo'lsa yoki aniq raqam/joy ko'rsatilmagan bo'lsa, o'sha narsa haqida HECH QANDAY raqam yoki faktni o'zingiz o'ylab yozmang -- faqat rasmda ko'rinib turgan narsalarni (ranglar, materiallar, uslub) tasvirlang. Masalan, agar hech kim \"30 m2\" demagan bo'lsa, siz ham yozmang.\n" +
@@ -415,6 +416,22 @@ async function handle({ request, env }) {
   if (!tanlanganIdlar || !tanlanganIdlar.length) {
     await adminXabarBer(env, "⚠️ Senarist to'xtadi: Claude hech qanday tanlov bermadi.");
     return json({ ok: false, error: 'claude_tanlov_bermadi' }, 500);
+  }
+
+  // Karusel faqat RASMLARDAN: video thumbnail'i rasm sifatida postga tushib
+  // qolmasin. Rasm yetarli bo'lmasa -- bitta (birinchi) elementga qaytamiz.
+  const turiById = {};
+  items.forEach((it) => { turiById[String(it.id)] = it.turi; });
+  if (natija.turi === 'karusel') {
+    const faqatRasm = tanlanganIdlar.filter((id) => turiById[String(id)] === 'photo');
+    if (faqatRasm.length >= 2) {
+      tanlanganIdlar.splice(0, tanlanganIdlar.length, ...faqatRasm);
+    } else {
+      tanlanganIdlar.splice(1);
+      natija.turi = 'single';
+    }
+  } else if (tanlanganIdlar.length > 1) {
+    tanlanganIdlar.splice(1);
   }
 
   let taklifId = null;

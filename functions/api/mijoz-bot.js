@@ -577,6 +577,15 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     const title = taklif.sarlavha || (taklif.matn || '').split('\n\n')[0];
     const kanalMatni = taklif.post_matni || title;
 
+    // Oblojka/karusel FAQAT rasmlardan. Video bo'lsa -- uni Montajchi qayta
+    // ishlaydi (alohida), videodan olingan bitta kadr rasm sifatida
+    // postga tushmasin.
+    const turiRows = await sbFetch(env, `media_arxiv?id=in.(${idlar.join(',')})&select=id,turi`);
+    const rasmIdlarSet = new Set((turiRows || []).filter((r) => r.turi === 'photo').map((r) => String(r.id)));
+    const rasmIdlar = idlar.filter((id) => rasmIdlarSet.has(String(id)));
+    if (!rasmIdlar.length) return;
+    idlar.splice(0, idlar.length, ...rasmIdlar);
+
     if (idlar.length <= 1) {
       const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${idlar[0]}&select=file_id`);
       const fileId = arxivRows && arxivRows[0] ? arxivRows[0].file_id : null;
