@@ -503,36 +503,47 @@ async function instagramPost(env, urls, caption) {
   }
 }
 
-// Tayyor oblojka(lar)ni Facebook sahifasiga avtomatik post qiladi (Instagram
-// bilan bir xil vaqt/token, alohida jadval shart emas -- auditoriya katta
-// qismi bir xil). FACEBOOK_PAGE_ID/INSTAGRAM_ACCESS_TOKEN (pages_manage_posts
-// ruxsati bilan) sozlanmagan bo'lsa -- jim e'tiborsiz qoldiriladi.
+// Facebook uchun eng yaqin "optimal" ertalabki oynani hisoblaydi (Toshkent,
+// UTC+5): tadqiqotga ko'ra Facebook auditoriyasi ertalab 07:00-11:30 oralig'ida
+// eng faol (Instagram'dan farqli). Hozir shu oraliqda bo'lsak -- DARHOL
+// (navbat ortiqcha kutish keltirmasin), aks holda eng yaqin 09:00'ga.
+function keyingiFacebookVaqt() {
+  const TOSHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
+  const hozirToshkent = new Date(Date.now() + TOSHKENT_OFFSET_MS);
+  const hozirDaqiqa = hozirToshkent.getUTCHours() * 60 + hozirToshkent.getUTCMinutes();
+  const oynaBosh = 7 * 60;
+  const oynaOxiri = 11 * 60 + 30;
+  const maqsadDaqiqa = 9 * 60;
+
+  if (hozirDaqiqa >= oynaBosh && hozirDaqiqa <= oynaOxiri) {
+    return new Date(); // allaqachon ertalabki oyna ichidamiz -- darhol
+  }
+  const kunOrttirish = hozirDaqiqa > oynaOxiri ? 1 : 0; // oyna o'tib ketgan bo'lsa -- ertaga
+  const sana = new Date(hozirToshkent);
+  sana.setUTCDate(sana.getUTCDate() + kunOrttirish);
+  sana.setUTCHours(0, maqsadDaqiqa, 0, 0);
+  return new Date(sana.getTime() - TOSHKENT_OFFSET_MS);
+}
+
+// Tayyor oblojka(lar)ni Facebook sahifasiga DARHOL emas, `nashr_navbati`
+// navbatiga qo'yadi -- Instagram'dan ALOHIDA, o'z ertalabki "prime window"ida
+// (functions/api/nashr-navbati.js, tashqi cron orqali) chiqishi uchun.
+// FACEBOOK_PAGE_ID/INSTAGRAM_ACCESS_TOKEN sozlanmagan bo'lsa -- jim
+// e'tiborsiz qoldiriladi.
 async function facebookPost(env, urls, caption) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.FACEBOOK_PAGE_ID) return;
   if (!urls || !urls.length) return;
   try {
-    const pageId = env.FACEBOOK_PAGE_ID;
-    const token = env.INSTAGRAM_ACCESS_TOKEN;
-    const fbCaption = (caption || '').slice(0, 5000);
-
-    if (urls.length === 1) {
-      await igFetch(`${pageId}/photos`, { url: urls[0], caption: fbCaption, access_token: token });
-      return;
-    }
-
-    // Bir nechta rasm: har birini "nashr qilinmagan" holda yuklab, keyin
-    // bitta umumiy feed postida (ko'p-rasmli) birlashtiramiz.
-    const mediaFbids = [];
-    for (const url of urls.slice(0, 10)) {
-      const photo = await igFetch(`${pageId}/photos`, { url, published: 'false', access_token: token });
-      mediaFbids.push(photo.id);
-    }
-    const attachedMedia = mediaFbids.map((id) => JSON.stringify({ media_fbid: id }));
-    const params = { message: fbCaption, access_token: token };
-    attachedMedia.forEach((item, i) => { params[`attached_media[${i}]`] = item; });
-    await igFetch(`${pageId}/feed`, params);
+    await sbFetch(env, 'nashr_navbati', {
+      method: 'POST',
+      body: JSON.stringify({
+        turi: 'facebook_photo',
+        payload: { urls, caption: (caption || '').slice(0, 5000) },
+        nashr_vaqti: keyingiFacebookVaqt().toISOString(),
+      }),
+    });
   } catch (e) {
-    // Facebook xato bersa ham, Telegram/Instagram oqimini buzmaydi
+    // navbatga qo'yishda xato bo'lsa ham, Telegram/Instagram oqimini buzmaydi
   }
 }
 

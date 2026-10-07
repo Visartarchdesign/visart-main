@@ -1,0 +1,152 @@
+// Cloudflare Pages Function — /api/nashr-navbati
+// Kechiktirilgan-nashr navbatini (`nashr_navbati` jadvali) ishga tushiruvchi
+// worker. mijoz-bot.js (Facebook post'ini ertalabki oynaga kechiktiradi) va
+// media-server/montaj.js (qo'shimcha Instagram Story bosqichini
+// rejalashtiradi) shu jadvalga YOZADI; bu Function esa vaqti kelgan
+// qatorlarni O'QIB, haqiqiy Graph API chaqiruvini qiladi.
+//
+// Tashqi bepul cron (cron-job.org) har 15 daqiqada chaqirishi kerak (Toshkent
+// vaqti muhim emas -- har doim "vaqti kelganlarni" tekshiradi):
+//   cron: */15 * * * *
+//   GET https://visartdesign.uz/api/nashr-navbati?secret=<NASHR_NAVBATI_SECRET>
+//
+// Kerakli jadval (SQL) va to'liq jadval/vaqt rejasi uchun qarang:
+//   functions/api/senarist-tahlil.js (bosh izoh)
+//
+// Qo'shimcha Cloudflare Pages Environment Variable:
+//   NASHR_NAVBATI_SECRET -- o'zingiz o'ylab topgan tasodifiy satr
+//   (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, INSTAGRAM_ACCESS_TOKEN,
+//    INSTAGRAM_BUSINESS_ACCOUNT_ID, FACEBOOK_PAGE_ID -- allaqachon bor)
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  });
+}
+
+async function sbFetch(env, path, init = {}) {
+  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: init.prefer || 'return=representation',
+      ...(init.headers || {}),
+    },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`Supabase ${path} -> ${res.status}: ${txt.slice(0, 300)}`);
+  }
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+async function igFetch(path, params) {
+  const url = new URL(`https://graph.facebook.com/v21.0/${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString(), { method: 'POST', signal: AbortSignal.timeout(20000) });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error) {
+    throw new Error(`Graph API xato: ${(data && data.error && data.error.message) || res.status}`);
+  }
+  return data;
+}
+
+// Container tayyor (FINISHED) bo'lguncha kutadi -- faqat video (Story) uchun
+// kerak, rasm (Facebook photo) sinxron darhol nashr qilinadi.
+async function igContainerKutish(containerId, token) {
+  const max = 20; // 20 x 10s = ~3.3 daqiqa (worker o'zi har 15 daqiqada qayta chaqiriladi)
+  for (let i = 0; i < max; i++) {
+    await new Promise((r) => setTimeout(r, 10000));
+    const url = new URL(`https://graph.facebook.com/v21.0/${containerId}`);
+    url.searchParams.set('fields', 'status_code');
+    url.searchParams.set('access_token', token);
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+    const data = await res.json().catch(() => null);
+    if (data && data.status_code === 'FINISHED') return true;
+    if (data && (data.status_code === 'ERROR' || data.status_code === 'EXPIRED')) return false;
+  }
+  return false;
+}
+
+async function bajarFacebookPhoto(env, payload) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.FACEBOOK_PAGE_ID) throw new Error('Facebook sozlanmagan');
+  const { urls, caption } = payload;
+  if (!urls || !urls.length) throw new Error("payload.urls bo'sh");
+  const pageId = env.FACEBOOK_PAGE_ID;
+  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  const fbCaption = (caption || '').slice(0, 5000);
+
+  if (urls.length === 1) {
+    await igFetch(`${pageId}/photos`, { url: urls[0], caption: fbCaption, access_token: token });
+    return;
+  }
+  const attached = [];
+  for (const url of urls.slice(0, 10)) {
+    const r = await igFetch(`${pageId}/photos`, { url, published: 'false', access_token: token });
+    attached.push({ media_fbid: r.id });
+  }
+  await igFetch(`${pageId}/feed`, {
+    message: fbCaption,
+    attached_media: JSON.stringify(attached),
+    access_token: token,
+  });
+}
+
+async function bajarInstagramStory(env, payload) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) throw new Error('Instagram sozlanmagan');
+  const { video_url: videoUrl } = payload;
+  if (!videoUrl) throw new Error("payload.video_url bo'sh");
+  const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  const container = await igFetch(`${igId}/media`, { media_type: 'STORIES', video_url: videoUrl, access_token: token });
+  const tayyor = await igContainerKutish(container.id, token);
+  if (!tayyor) throw new Error('Story container FINISHED holatiga yetmadi');
+  await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
+}
+
+export async function onRequestGet({ request, env }) {
+  const url = new URL(request.url);
+  if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
+    return json({ error: 'ruxsat yo\'q' }, 403);
+  }
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return json({ error: 'Supabase sozlanmagan' }, 500);
+  }
+
+  const hozir = new Date().toISOString();
+  const qatorlar = await sbFetch(
+    env,
+    `nashr_navbati?holat=eq.kutilmoqda&nashr_vaqti=lte.${encodeURIComponent(hozir)}&order=nashr_vaqti.asc&limit=10&select=*`
+  );
+
+  const natijalar = [];
+  for (const q of qatorlar || []) {
+    try {
+      if (q.turi === 'facebook_photo') {
+        await bajarFacebookPhoto(env, q.payload);
+      } else if (q.turi === 'instagram_story') {
+        await bajarInstagramStory(env, q.payload);
+      } else {
+        throw new Error(`noma'lum turi: ${q.turi}`);
+      }
+      await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ holat: 'bajarildi' }),
+      });
+      natijalar.push({ id: q.id, holat: 'bajarildi' });
+    } catch (e) {
+      await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ holat: 'xato', xato_matni: String((e && e.message) || e).slice(0, 500) }),
+      }).catch(() => {});
+      natijalar.push({ id: q.id, holat: 'xato', xato: String((e && e.message) || e) });
+    }
+  }
+
+  return json({ ok: true, bajarildi: natijalar.length, natijalar });
+}

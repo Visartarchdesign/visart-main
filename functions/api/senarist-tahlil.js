@@ -32,22 +32,21 @@
 //   Dushanba/Shanba 08:15 (Stories uchun yengil tekshiruv) -- cron: 15 03 * * 1,6
 //   GET https://visartdesign.uz/api/senarist-tahlil?secret=<SENARIST_SECRET>
 //
-// Instagram Stories: Reel/carousel kuni Senarist/admin kun bo'ylab bir nechta
-// Story bosqichini (ob'ektdan 1-2 kadr ertalab ~08:15, so'rov/poll ~13:00,
-// asosiy post haqida teaser ~bir oz oldin, post'ni Story'ga ulash darhol
-// undan keyin, savol-javob kechqurun) qo'lda ham tashlashi mumkin -- bu
-// yagona "katta post" dan ko'ra tabiiyroq ko'rinadi. Montajchi (media-server/
-// montaj.js) hozircha har bir tasdiqlangan Reels'ni e'lon qilgach, SHU
-// DAQIQADA bir xil videoni Story sifatida ham avtomatik joylaydi (minimal,
-// ishonchli bazaviy daraja); to'liq ko'p-bosqichli Story oqimi keyingi
-// bosqichda alohida navbat/jadval mexanizmi bilan qo'shilishi mumkin.
+// Instagram Stories: darhol (Reel bilan bir vaqtda) ulanadigan asosiy Story'dan
+// TASHQARI, bitta QO'SHIMCHA "savol-javob" bosqichi ham avtomatik rejalashtiriladi
+// (kechqurun 21:30 yoki ertangi 08:15 -- qaysi biri yaqinroq bo'lsa) --
+// `nashr_navbati` jadvaliga yoziladi va nashr-navbati.js uni o'z vaqtida chiqaradi.
+// Ertalabki (~08:15) va tushlikdagi (~13:00) qo'shimcha bosqichlar hali qo'lda
+// qo'shiladi -- ular uchun alohida kontent (rasm/poll matni) kerak bo'lgani uchun.
 //
-// Facebook: hozircha Instagram bilan BIR VAQTDA (admin tasdiqlagan zahoti)
-// chiqadi -- tadqiqotga ko'ra Facebook uchun ideal vaqt ertalab (Sesh-Pay
-// 09:00) bo'lsa-da, buni Instagram'dan ALOHIDA kechiktirib chiqarish
-// hozirgi arxitekturada (sinxron so'rov, navbat yo'q) amalga oshmaydi --
-// keyingi bosqichda alohida kechiktirilgan nashr navbati qo'shilganda
-// Facebook'ni ertasi kuni 09:00'ga o'tkazish mumkin bo'ladi.
+// Facebook: Instagram darhol chiqadi, Facebook esa `nashr_navbati` navbatiga
+// qo'yiladi va eng yaqin ertalabki oynada (07:00-11:30 oralig'ida bo'lsa --
+// SHU KUNI, aks holda ertasi kuni 09:00'da) avtomatik chiqadi -- shunda bitta
+// video/rasm IKKI alohida "prime window"ga tushadi.
+//
+// Ikkalasini ham ishga tushiruvchi worker -- har 15 daqiqada chaqirilishi kerak:
+//   cron: */15 * * * *
+//   GET https://visartdesign.uz/api/nashr-navbati?secret=<NASHR_NAVBATI_SECRET>
 //
 // Telegram: kanalga e'lon qilish ham admin tasdiqlagan zahoti ketadi;
 // eng mos umumiy oyna -- 20:00 (Sesh-Pay + Yak kuchliroq).
@@ -56,6 +55,7 @@
 //   SENARIST_SECRET   -- o'zingiz o'ylab topgan tasodifiy satr
 //   ANTHROPIC_API_KEY -- Claude API kaliti (console.anthropic.com)
 //   MEDIA_GROUP_CHAT_ID -- "Visart Media" guruhining chat ID'si (/chatid orqali olinadi)
+//   NASHR_NAVBATI_SECRET -- functions/api/nashr-navbati.js uchun, o'zingiz o'ylab topgan tasodifiy satr
 //   (MIJOZ_BOT_TOKEN, ADMIN_TELEGRAM_IDS, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY -- allaqachon bor)
 //
 // Kerakli Supabase jadvallari (SQL Editor'da bir marta ishga tushiring):
@@ -79,6 +79,19 @@
 //     holat text not null default 'kutilmoqda',
 //     created_at timestamptz not null default now()
 //   );
+//   -- Kechiktirilgan-nashr navbati (Facebook'ni Instagram'dan keyinroq, va
+//   -- qo'shimcha Instagram Story bosqichlarini o'z vaqtida chiqarish uchun
+//   -- -- bajaruvchi: functions/api/nashr-navbati.js, tashqi cron orqali):
+//   create table if not exists nashr_navbati (
+//     id bigint generated always as identity primary key,
+//     turi text not null, -- 'facebook_photo' | 'instagram_story'
+//     payload jsonb not null, -- {urls,caption} yoki {video_url}
+//     nashr_vaqti timestamptz not null,
+//     holat text not null default 'kutilmoqda', -- kutilmoqda | bajarildi | xato
+//     xato_matni text,
+//     created_at timestamptz not null default now()
+//   );
+//   create index if not exists nashr_navbati_holat_vaqt_idx on nashr_navbati (holat, nashr_vaqti);
 
 const MODEL = 'claude-sonnet-5';
 const KAM_MATERIAL_CHEGARA = 3; // shundan kam bo'lsa, kutamiz (keyingi safar yetadi)

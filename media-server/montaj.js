@@ -721,6 +721,56 @@ async function instagramStoryPost(env, videoUrl) {
   return true;
 }
 
+// Qo'shimcha "savol-javob" Story bosqichi uchun eng yaqin vaqtni hisoblaydi
+// (Toshkent, UTC+5): kechqurungi 21:30 oynasi hali o'tmagan bo'lsa -- SHU
+// KUNI 21:30, aks holda ertangi ertalabki 08:15 oynasiga o'tkaziladi --
+// O'zbekiston auditoriyasi Story faolligi tadqiqotiga asoslangan ikkita
+// kuchli kunlik nuqta.
+function keyingiStoryVaqt() {
+  const TOSHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
+  const hozirToshkent = new Date(Date.now() + TOSHKENT_OFFSET_MS);
+  const hozirDaqiqa = hozirToshkent.getUTCHours() * 60 + hozirToshkent.getUTCMinutes();
+  const kechqurunOyna = 21 * 60 + 30;
+  const ertalabOyna = 8 * 60 + 15;
+
+  const sana = new Date(hozirToshkent);
+  let daqiqa;
+  if (hozirDaqiqa < kechqurunOyna) {
+    daqiqa = kechqurunOyna;
+  } else {
+    sana.setUTCDate(sana.getUTCDate() + 1);
+    daqiqa = ertalabOyna;
+  }
+  sana.setUTCHours(0, daqiqa, 0, 0);
+  return new Date(sana.getTime() - TOSHKENT_OFFSET_MS);
+}
+
+// Bir xil videoni QO'SHIMCHA Story bosqichi sifatida (darhol chiqqan asosiy
+// Story'dan keyinroq, kun davomida ikkinchi touchpoint sifatida) `nashr_navbati`
+// navbatiga qo'yadi -- worker (functions/api/nashr-navbati.js) uni o'z
+// vaqtida chiqaradi. Supabase sozlanmagan yoki xato bo'lsa, jim o'tkaziladi.
+async function navbatgaQoshStory(env, videoUrl) {
+  try {
+    await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
+      method: 'POST',
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        turi: 'instagram_story',
+        payload: { video_url: videoUrl },
+        nashr_vaqti: keyingiStoryVaqt().toISOString(),
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (e) {
+    // navbatga qo'yishda xato bo'lsa ham, asosiy oqimni to'xtatmaydi
+  }
+}
+
 async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
@@ -858,12 +908,13 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     // tasdiq SO'RALMAYDI -- admin buni allaqachon Senarist taklifini
     // tasdiqlaganda (bitta "✅ Tasdiqlash" bosilganda) ruxsat bergan, xuddi
     // foto-postlar (instagramPost, mijoz-bot.js) qanday avtomatik chiqsa.
-    // ESLATMA (O'zbekiston auditoriyasi tadqiqotiga asosan): bu yerda Story
-    // Reels bilan BIR DAQIQADA, FAQAT bitta nusxa sifatida chiqadi -- ideal
-    // holatda kun bo'ylab bir nechta Story bosqichi (ertalabki teaser,
-    // tushlikdagi poll, kechqurungi savol-javob) bo'lishi kerak; bu hozircha
-    // qo'lda (admin tomonidan) qo'shiladi, to'liq avtomatik ko'p-bosqichli
-    // Story oqimi alohida kechiktirilgan-nashr navbati qo'shilganda keladi.
+    // ESLATMA (O'zbekiston auditoriyasi tadqiqotiga asosan): darhol bitta
+    // Story (Reel bilan bir daqiqada -- "post'ni Story'ga ulash") chiqadi,
+    // SO'NG kun davomidagi ikkinchi touchpoint ("savol-javob" bosqichi, 21:30
+    // yoki ertangi 08:15) `nashr_navbati` navbatiga qo'yiladi -- worker
+    // (functions/api/nashr-navbati.js) o'z vaqtida chiqaradi. Ertalabki/
+    // tushlikdagi qo'shimcha bosqichlar (alohida kontent -- poll, teaser
+    // matni talab qiladi) hali qo'lda qo'shiladi.
     if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
         await bosqich('Instagram Reels/Story uchun yuklanmoqda...');
@@ -871,7 +922,8 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
         const igCaption = `${sarlavha}\n\n${qaror.izoh || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
         await instagramReelsPost(env, videoUrl, igCaption);
         await instagramStoryPost(env, videoUrl);
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, '📸 Instagram Reels va Story\'ga avtomatik joylandi.');
+        await navbatgaQoshStory(env, videoUrl);
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, '📸 Instagram Reels va Story\'ga avtomatik joylandi (2-Story bosqichi rejalashtirildi).');
       } catch (e) {
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
           `⚠️ Instagram Reels/Story joylashda xato: ${String((e && e.message) || e)}`);
