@@ -210,7 +210,10 @@ const PERSONA_PRESETS = {
 };
 
 async function personVisibleBounds(assetPath, boxW, boxH, fit) {
-  const resized = sharp(assetPath).resize(boxW, boxH, { fit, position: 'bottom' });
+  // transparent padding is required here: sharp's default pad for fit:'contain'
+  // is opaque black, which would otherwise show up as a solid black box wherever
+  // the asset doesn't fill its bounding box.
+  const resized = sharp(assetPath).resize(boxW, boxH, { fit, position: 'bottom', background: { r: 0, g: 0, b: 0, alpha: 0 } });
   const { data, info } = await resized.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width, height, channels } = info;
   let minX = width, maxX = 0, minY = height, maxY = 0, found = false;

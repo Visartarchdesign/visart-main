@@ -30,7 +30,7 @@ try {
 
 // ---------------- TEST B — FLAGSHIP PERSON ----------------
 const inputsB = {
-  personAssetPath: null, // NOT YET SUPPLIED — no prepared transparent person asset exists in this session
+  personAssetPath: '/home/claude/visart-main/media-server/cover-system-abc/dev-assets/person-approved-v1.png', // background-removed only (rembg, alpha-channel edit) — face pixels untouched
   sceneImagePath: `${ASSETS}/int-02.jpg`, // real Visart interior render
 };
 try {
