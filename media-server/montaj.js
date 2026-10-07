@@ -941,6 +941,10 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
 
     // YouTube Shorts -- sozlanmagan yoki xato bo'lsa jim o'tkaziladi.
     try {
+      if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) {
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "ℹ️ YouTube sozlanmagan (YOUTUBE_* env yo'q) -- o'tkazib yuborildi");
+        return true;
+      }
       await bosqich('YouTube Shorts yuklanmoqda...');
       const ytNatija = await youtubeUpload(env, outputPath, sarlavha, qaror.izoh);
       if (ytNatija && ytNatija.url) {
