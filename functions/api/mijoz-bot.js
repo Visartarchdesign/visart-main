@@ -1309,6 +1309,10 @@ export async function onRequestPost({ request, env }) {
         } else {
           await sbFetch(env, `nashr_navbati?id=eq.${nid}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
           await answerCq(env, cq.id, { text: 'Bekor qilindi' });
+          const rr = await sbFetch(env, `nashr_navbati?id=eq.${nid}&select=payload`).catch(() => null);
+          const tid = rr && rr[0] && rr[0].payload && rr[0].payload.taklifId;
+          await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
+            `❌ Joylash bekor qilindi. Nima to'g'rilansin?\nShu xabarga REPLY qilib yozing (masalan: "montaj qisqaroq bo'lsin", "sarlavhani o'zgartir", "izohda narx bo'lmasin") -- shu ko'rsatma bilan qayta tayyorlab, yana tasdiqqa yuboraman.${tid ? `\n\n🆔${tid}` : ''}`);
         }
         return json({ ok: true });
       }

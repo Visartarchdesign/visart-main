@@ -994,7 +994,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
           body: JSON.stringify({
             turi: 'video_nashr',
             holat: 'tasdiq_kutilmoqda',
-            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: qaror.tavsif || '' },
+            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: qaror.tavsif || '', taklifId: taklifId || null },
             nashr_vaqti: new Date().toISOString(),
           }),
           signal: AbortSignal.timeout(10000),
@@ -1002,7 +1002,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
         if (!resp.ok) throw new Error(`navbat xato: ${resp.status} ${(await resp.text().catch(() => '')).slice(0, 150)}`);
         const nid = (await resp.json())[0].id;
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"`,
+          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"\n\nKamchilik bo'lsa -- shu xabarga REPLY qilib nimani to'g'rilashni yozing (montaj/sarlavha/izoh) -- qayta tayyorlayman.${taklifId ? `\n\n🆔${taklifId}` : ''}`,
           { inline_keyboard: [[
             { text: '✅ Joylash', callback_data: `vnash:${nid}:ok` },
             { text: '❌ Bekor', callback_data: `vnash:${nid}:no` },
