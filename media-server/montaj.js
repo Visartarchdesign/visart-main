@@ -318,12 +318,11 @@ async function youtubeAccessToken(env) {
 }
 
 // YouTube Shorts uchun eng yaqin "optimal" nashr vaqtini hisoblaydi (Toshkent,
-// UTC+5): kunlik oynalar 12:30 va 18:30 -- tadqiqotga ko'ra Shorts uchun eng
-// kuchli vaqt tushlik va kechki "passiv scroll" payti (SocialPilot, 301k+
-// video tahlili). 03:00-07:00 va yakshanba kechqurun (18:30 oynasi)
-// qoldirilади -- bular eng zaif vaqt hisoblanadi. Aniq soatdan ko'ra muntazam
-// chiqish muhimroq bo'lgani uchun har kuni ikkita oyna beriladi (faqat
-// Juma/Shanba/Payshankaga cheklanmaydi).
+// UTC+5): kunlik oynalar 16:00 va 19:00 -- O'zbekiston auditoriyasi va 2026
+// platforma tadqiqotiga ko'ra Shorts uchun eng kuchli diapazon 16:00-20:00,
+// eng kuchli kunlar Payshanba-Shanba (Juma 18:00 -- "flagship" slot, ikkala
+// kunlik oyna orasida). Aniq soatdan ko'ra muntazam chiqish muhimroq bo'lgani
+// uchun har kuni ikkita oyna beriladi (faqat Juma/Shanbaga cheklanmaydi).
 function keyingiYoutubeVaqt() {
   const TOSHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
   const hozirToshkent = new Date(Date.now() + TOSHKENT_OFFSET_MS);
@@ -332,8 +331,8 @@ function keyingiYoutubeVaqt() {
   const minut = hozirToshkent.getUTCMinutes();
   const hozirDaqiqa = soat * 60 + minut;
 
-  const oynaErta = 12 * 60 + 30;
-  const oynaKech = 18 * 60 + 30;
+  const oynaErta = 16 * 60;
+  const oynaKech = 19 * 60;
 
   function sanaOlish(kunOrttirish) {
     const d = new Date(hozirToshkent);
@@ -349,23 +348,14 @@ function keyingiYoutubeVaqt() {
   }
 
   let tanlanganSana, tanlanganDaqiqa;
-  if (kun === 0 && hozirDaqiqa < oynaErta) {
-    // Yakshanba, hali tushlik oynasidan oldin -- yakshanba kechqurun zaif, shuning uchun tushlik oynasi ishlatiladi
-    tanlanganSana = sanaOlish(0);
-    tanlanganDaqiqa = oynaErta;
-  } else if (kun === 0) {
-    // Yakshanba, tushlikdan keyin -- yakshanba kechqurunni tashlab, dushanba tushlikka o'tkaziladi
-    tanlanganSana = sanaOlish(1);
-    tanlanganDaqiqa = oynaErta;
-  } else if (hozirDaqiqa < oynaErta) {
+  if (hozirDaqiqa < oynaErta) {
     tanlanganSana = sanaOlish(0);
     tanlanganDaqiqa = oynaErta;
   } else if (hozirDaqiqa < oynaKech) {
     tanlanganSana = sanaOlish(0);
     tanlanganDaqiqa = oynaKech;
   } else {
-    // Bugungi oynalar tugagan -- ertangi birinchi oynaga o'tadi (ertaga yakshanba
-    // bo'lsa ham tushlik oynasi muammosiz, faqat yakshanba KECHASI qoldiriladi)
+    // Bugungi oynalar tugagan -- ertangi birinchi oynaga o'tadi
     tanlanganSana = sanaOlish(1);
     tanlanganDaqiqa = oynaErta;
   }
@@ -868,11 +858,17 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     // tasdiq SO'RALMAYDI -- admin buni allaqachon Senarist taklifini
     // tasdiqlaganda (bitta "✅ Tasdiqlash" bosilganda) ruxsat bergan, xuddi
     // foto-postlar (instagramPost, mijoz-bot.js) qanday avtomatik chiqsa.
+    // ESLATMA (O'zbekiston auditoriyasi tadqiqotiga asosan): bu yerda Story
+    // Reels bilan BIR DAQIQADA, FAQAT bitta nusxa sifatida chiqadi -- ideal
+    // holatda kun bo'ylab bir nechta Story bosqichi (ertalabki teaser,
+    // tushlikdagi poll, kechqurungi savol-javob) bo'lishi kerak; bu hozircha
+    // qo'lda (admin tomonidan) qo'shiladi, to'liq avtomatik ko'p-bosqichli
+    // Story oqimi alohida kechiktirilgan-nashr navbati qo'shilganda keladi.
     if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
         await bosqich('Instagram Reels/Story uchun yuklanmoqda...');
         const videoUrl = await supabaseVideoUpload(env, outputPath);
-        const igCaption = `${sarlavha}\n\n${qaror.izoh || ''}\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
+        const igCaption = `${sarlavha}\n\n${qaror.izoh || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
         await instagramReelsPost(env, videoUrl, igCaption);
         await instagramStoryPost(env, videoUrl);
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, '📸 Instagram Reels va Story\'ga avtomatik joylandi.');

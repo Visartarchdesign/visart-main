@@ -6,20 +6,51 @@
 // Tasdiqlangan taklif keyingi bosqich (Montajchi agenti) uchun navbatga
 // qo'yiladi -- hozircha faqat tasdiqlash/rad etish ishlaydi.
 //
-// Tashqi bepul cron (cron-job.org) quyidagi JADVAL bilan chaqirishi kerak --
-// O'zbekiston auditoriyasining Instagram faolligi eng yuqori soatlariga
-// (kechqurun 20:00-22:00 Toshkent, kunga qarab farqlanadi) moslangan, 3 ta
-// alohida cron-job.org vazifasi sifatida sozlanadi (har biri bir xil URL'ni
-// chaqiradi):
-//   Dush/Chor/Juma/Shan, 21:00 (Toshkent) -- cron: 0 16 * * 1,3,5,6
-//   Sesh/Payshanba,      20:00 (Toshkent) -- cron: 0 15 * * 2,4
-//   Yakshanba,           22:00 (Toshkent) -- cron: 0 17 * * 0
+// Tashqi bepul cron (cron-job.org) O'ZBEKISTON AUDITORIYASIGA MOSLANGAN,
+// Visart kabi arxitektura/ekspert brendi uchun haftalik reja asosida
+// chaqiradi (Toshkent vaqti, UTC+5). Admin tasdiqlagandan keyin montaj va
+// Instagram/Facebook posting DARHOL ishga tushgani uchun (qo'shimcha
+// kutish/navbat yo'q), cron VAQTI = AMALIY NASHR VAQTI deb olinadi -- shuning
+// uchun admin shu oynalar atrofida tasdiqlashga harakat qilsin.
+//
+// HAFTALIK REJA (flagship = eng muhim, albatta tasdiqlanishi kerak bo'lgan kun):
+//   Dushanba  -- asosiy Reel SHART EMAS, faqat Stories bilan isitish
+//   Seshanba  -- 19:30 flagship Instagram Reel (eng kuchli IG oynasi, Sesh-Pay)
+//   Chorshanba-- 12:15 carousel (loyiha/before-after/smeta), 18:30 2-IG oyna
+//   Payshanba -- 19:30 flagship Reel (case-study/ekspert video)
+//   Juma      -- 18:00 YouTube Shorts (IG flagship kunga qo'yilmaydi -- Juma/Shanba IG'da zaifroq)
+//   Shanba    -- agressiv sotuv emas, Stories bilan inson qiyofali kontent
+//   Yakshanba -- 10:00 YouTube uzun video (long-form uchun eng kuchli yakka slot)
+//
+// cron-job.org'da shu VAQTLARGA mos alohida vazifalar (har biri bir xil
+// URL'ni chaqiradi -- Senarist o'zi mavjud xom materialga qarab mos
+// formatni (Reel/carousel/Stories) tanlaydi):
+//   Seshanba  19:30 -- cron: 30 14 * * 2
+//   Chorshanba 12:15 -- cron: 15 07 * * 3
+//   Chorshanba 18:30 -- cron: 30 13 * * 3
+//   Payshanba 19:30 -- cron: 30 14 * * 4
+//   Dushanba/Shanba 08:15 (Stories uchun yengil tekshiruv) -- cron: 15 03 * * 1,6
 //   GET https://visartdesign.uz/api/senarist-tahlil?secret=<SENARIST_SECRET>
 //
-// Instagram Story: alohida jadval shart emas -- Montajchi (media-server/
-// montaj.js) har bir tasdiqlangan Reels'ni e'lon qilgach, SHU DAQIQADA bir
-// xil videoni Story sifatida ham avtomatik joylaydi (24 soatlik, yuqori
-// ko'rinuvchanlik, qo'shimcha tayyorgarlik shart emas).
+// Instagram Stories: Reel/carousel kuni Senarist/admin kun bo'ylab bir nechta
+// Story bosqichini (ob'ektdan 1-2 kadr ertalab ~08:15, so'rov/poll ~13:00,
+// asosiy post haqida teaser ~bir oz oldin, post'ni Story'ga ulash darhol
+// undan keyin, savol-javob kechqurun) qo'lda ham tashlashi mumkin -- bu
+// yagona "katta post" dan ko'ra tabiiyroq ko'rinadi. Montajchi (media-server/
+// montaj.js) hozircha har bir tasdiqlangan Reels'ni e'lon qilgach, SHU
+// DAQIQADA bir xil videoni Story sifatida ham avtomatik joylaydi (minimal,
+// ishonchli bazaviy daraja); to'liq ko'p-bosqichli Story oqimi keyingi
+// bosqichda alohida navbat/jadval mexanizmi bilan qo'shilishi mumkin.
+//
+// Facebook: hozircha Instagram bilan BIR VAQTDA (admin tasdiqlagan zahoti)
+// chiqadi -- tadqiqotga ko'ra Facebook uchun ideal vaqt ertalab (Sesh-Pay
+// 09:00) bo'lsa-da, buni Instagram'dan ALOHIDA kechiktirib chiqarish
+// hozirgi arxitekturada (sinxron so'rov, navbat yo'q) amalga oshmaydi --
+// keyingi bosqichda alohida kechiktirilgan nashr navbati qo'shilganda
+// Facebook'ni ertasi kuni 09:00'ga o'tkazish mumkin bo'ladi.
+//
+// Telegram: kanalga e'lon qilish ham admin tasdiqlagan zahoti ketadi;
+// eng mos umumiy oyna -- 20:00 (Sesh-Pay + Yak kuchliroq).
 //
 // Qo'shimcha Cloudflare Pages Environment Variable:
 //   SENARIST_SECRET   -- o'zingiz o'ylab topgan tasodifiy satr
@@ -125,7 +156,7 @@ async function claudeTahlil(env, items) {
       "- \"post_matni\" TUZILISHI (professional arxitektura-studiyalar standartiga asosan):\n" +
       "  1) OCHILISH JUMLASI -- estetikadan (\"zamonaviy\", \"chiroyli\") emas, KONKRET muammo/yechim yoki qiziq faktdan boshlang (agar izohda bor bo'lsa). Masalan umumiy \"Zamonaviy interyer\" o'rniga: \"Bu 15 m² oshxonada har bir santimetr hisobga olingan.\" -- xuddi do'stingizga qahva stoli ustida gapirayotgandek, oddiy va aniq tilda. MUHIM: Instagram feed'da \"...ko'proq\" tugmasidan oldin FAQAT taxminan 125 BELGI ko'rinadi -- shuning uchun ochilish jumlasi O'ZI ALOHIDA to'liq ma'no bersin va diqqatni ushlab tursin, qolgan matnni ochmasa ham tushunarli bo'lsin.\n" +
       "  2) 2-3 jumla -- rasmda ko'ringan va/yoki izohda aytilgan aniq xususiyatlar (material, rang, yorug'lik, funksionallik) -- lekin texnik spec-varaq kabi ro'yxat qilib emas, tabiiy hikoya jumlalari ichiga singdirib yozing.\n" +
-      "  3) OXIRIDA -- chaqiriq (call-to-action), KONTENT TURIGA mos tanlang va har safar aynan bir xil jumla bilan takrorlamang: (a) haqiqiy loyiha/xizmat posti bo'lsa -- \"DM yozing\"/\"buyurtma uchun yozing\" turidagi harakatga chaqiruv; (b) foydali maslahat/ma'lumot posti bo'lsa -- \"saqlab qoying\" (keyin kerak bo'ladi) yoki \"shuni biladigan tanishingizga yuboring\" turidagi save/share'ga undash (Instagram algoritmi uchun bu turdagi kontentda save/share like'dan ko'ra ko'proq qiymatga ega) -- vaziyatga qarab mos variantni tanlang.\n" +
+      "  3) OXIRIDA -- chaqiriq (call-to-action), KONTENT TURIGA mos tanlang va har safar aynan bir xil jumla bilan takrorlamang: (a) haqiqiy loyiha/xizmat posti bo'lsa -- \"DM yozing\"/\"buyurtma uchun yozing\" turidagi harakatga chaqiruv; (b) foydali maslahat/ma'lumot posti bo'lsa -- \"saqlab qoying\" (keyin kerak bo'ladi) yoki \"erga/ustaga/arxitektorga yuboring\" turidagi save/share'ga undash -- arxitektura/remont kontentida odamlar buni ko'pincha turmush o'rtog'i yoki ustasiga yuboradi, shuni ANIQ nomlab eslatish (\"ustangizga yuboring\") save/share like'dan ko'ra ko'proq qiymatga ega bo'lgan Instagram algoritmik signalni kuchaytiradi -- vaziyatga qarab mos variantni tanlang.\n" +
       "  4) Keyin hashtag'lar -- 6-8 ta, UCH QATLAMLI tanlang: 2-3 ta KENG (#interyer #dizayn #architecture), 2-3 ta TOR/NISH (aniq uslub/xona turiga mos, masalan #minimalistinteryer #oshxonadizayni), 2 ta MAHALLIY (#toshkent #uzbekistan yoki #visartdesign) -- faqat bir xil keng hashtag to'plamini doim takrorlamang, mazmunga mosini tanlang.\n" +
       "  5) SEO -- post_matni ICHIGA (1-qatlamda, zo'rlab emas, tabiiy jumla ichida) odamlar qidiruvda yozadigan iboralarni singdiring (masalan \"Toshkentda interyer dizayn\", \"arxitektura studiyasi\", xona/uslub nomi) -- bu Instagram'ning ichki qidiruvida va Google'da ham topilishga yordam beradi; hashtag'larda ham xuddi shu kalit so'zlarga mos variantlarni ustun qo'ying.\n" +
       "  HECH QANDAY formatlash belgisi ishlatmang (**, *, __), bullet ro'yxat yozmang -- ravon jumlalar bilan yozing, 1-2 ta tabiiy emoji bo'lishi mumkin.\n" +

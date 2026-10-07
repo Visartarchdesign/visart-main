@@ -774,10 +774,23 @@ async function claudeSsenariyYoz(env, topshiriq) {
     "studiyasi\" kabi qidiriladigan iboralarni tabiiy singdirib yozing, zo'rlab emas), oxirida aniq CTA.\n" +
     "8) HASHTAG REJASI -- 6-8 ta, 3 qatlamli (2-3 keng, 2-3 tor/nish, 2 mahalliy #toshkent/#uzbekistan/#visartdesign).\n" +
     "9) QAYSI TARMOQLARGA -- vazifaga qarab Instagram/Telegram/YouTube/Facebook'dan qaysilari, va qaysi " +
-    "TARTIBDA (masalan avval Reels, keyin shu kadrlardan Stories qilib qayta ishlatish).\n" +
-    "10) ENG YAXSHI NASHR VAQTI -- joriy kelishilgan jadvalga asosan tavsiya bering: Dush/Chor/Juma/Shan 21:00, " +
-    "Sesh/Payshanba 20:00, Yakshanba 22:00 (Toshkent vaqti, O'zbekiston auditoriyasining eng faol kechqurun " +
-    "soatlariga moslangan) -- vazifa kuni qaysi haftaning kuniga to'g'ri kelishini hisobga olib tanlang.\n\n" +
+    "TARTIBDA, HAR BIRINI TURLI VAQTGA TARQATIB (bitta videoni bir vaqtda hammaga tashlamang -- shunda u " +
+    "4 ta platformaning har birida alohida \"prime window\"ga tushadi): odatda avval Instagram Reels, so'ng " +
+    "o'sha kuni Telegram'da kengroq izoh bilan, ertasi kuni ertalab Facebook'ga qayta joylash, so'ng shu " +
+    "kadrlardan Stories qilib qayta ishlatish (va agar mos bo'lsa, YouTube Shorts'ga ham).\n" +
+    "10) ENG YAXSHI NASHR VAQTI -- vazifa kuni qaysi haftaning kuniga to'g'ri kelishini hisobga olib, " +
+    "O'ZBEKISTON auditoriyasi tadqiqotiga asoslangan HAFTALIK REJADAN tavsiya bering (Toshkent vaqti):\n" +
+    "    - Instagram Reels: Seshanba yoki Payshanba 19:30 -- bular \"flagship\" kun, eng kuchli IG oynasi (18:30-21:00, Sesh-Pay eng kuchli kunlar).\n" +
+    "    - Instagram carousel/post: Chorshanba 12:15 (tushlik oynasi) yoki 18:30 (kechki oyna).\n" +
+    "    - Instagram Stories: kun bo'ylab bir nechta bosqich -- 08:15 (ob'ektdan 1-2 kadr), 13:00 (savol/poll), " +
+    "19:15 (asosiy post haqida teaser, agar shu kuni Reel bo'lsa), 21:30 (savol-javob) -- faqat bitta \"katta\" Story emas.\n" +
+    "    - Facebook: Seshanba/Payshanba ertalab 09:00 (Facebook auditoriyasi IG'dan farqli -- ertalabki soatlarda kuchliroq).\n" +
+    "    - Telegram: 20:00 (Sesh-Pay va Yakshanba eng kuchli kunlar).\n" +
+    "    - YouTube Shorts: Juma 18:00 (Payshanba-Shanba kuchli oyna, 16:00-20:00).\n" +
+    "    - YouTube uzun video: Yakshanba 10:00 (long-form uchun eng kuchli yakka slot) yoki 19:00.\n" +
+    "    - Dushanba/Shanba kunlari katta \"flagship\" Reel SHART EMAS -- faqat Stories bilan auditoriyani isitish tavsiya etiladi.\n" +
+    "    ESLATMA: vaqt faqat KUCHAYTIRUVCHI omil -- birinchi 1-2 soniyadagi hook, retention va save/share " +
+    "qiymati asosiy omil, to'g'ri vaqt esa shularga boshlang'ich tezlik beradi, xolos.\n\n" +
     "QOIDALAR: hech qanday o'ylab topilgan raqam/fakt yozmang (faqat vazifada aytilgan yoki umumiy dizayn " +
     "tamoyillariga tayaning); \"ajoyib/mukammal/eng yaxshi\" kabi asossiz hype so'zlardan qoching; sodda, " +
     "tabiiy, zamonaviy o'zbek tilida (lotin), rus tilidan kalka tarjima yo'q; formatlash belgilari (**, *, __) " +
