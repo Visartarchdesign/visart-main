@@ -576,12 +576,16 @@ async function whisperSubtitrYarat(videoPath, tmpDir) {
     });
     const wavPath = videoPath.replace(/\.[^.]+$/, '.wav');
     const srtPath = `${wavPath}.srt`;
-    if (!fs.existsSync(srtPath)) return null;
+    if (!fs.existsSync(srtPath)) {
+      const yonida = fs.readdirSync(path.dirname(videoPath)).join(', ');
+      throw new Error(`SRT fayl topilmadi (${srtPath}); papkada: ${yonida}`);
+    }
     const segmentlar = srtParseQil(fs.readFileSync(srtPath, 'utf8'));
     fs.rmSync(srtPath, { force: true });
-    return segmentlar.length ? segmentlar : null;
+    if (!segmentlar.length) throw new Error('nutq aniqlanmadi (SRT bo\'sh)');
+    return segmentlar;
   } catch (e) {
-    return null; // whisper ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+    throw new Error(String((e && e.message) || e).slice(0, 400));
   }
 }
 
@@ -826,9 +830,13 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     // kerak emas) deb topgan videolarda, asl ovoz mavjud bo'lsa ishga
     // tushadi: odam ovozsiz (feed'da) ko'rsa ham tushunsin. Xato bersa yoki
     // nutq aniqlanmasa, video subtitrsiz o'zgarishsiz qoladi.
+    if (qaror.muzika_kerak) {
+      await bosqich("ℹ️ AI bu videoni 'musiqali' deb topdi -- subtitr o'tkazib yuborildi").catch(() => {});
+    }
     if (!qaror.muzika_kerak) {
       try {
         const audioBor = await ffmpegAudioBormi(outputPath);
+        if (!audioBor) await bosqich("ℹ️ Videoda ovoz yo'q -- subtitr o'tkazib yuborildi").catch(() => {});
         if (audioBor) {
           await bosqich('Subtitr (nutq) aniqlanmoqda...');
           const segmentlar = await whisperSubtitrYarat(outputPath, tmpDir);
@@ -840,7 +848,8 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
           }
         }
       } catch (e) {
-        // subtitr ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+        // subtitr ixtiyoriy -- video yuborish to'xtamaydi, lekin sabab ko'rinsin
+        await bosqich(`⚠️ Subtitr yaratilmadi: ${String((e && e.message) || e).slice(0, 400)}`).catch(() => {});
       }
     }
 
