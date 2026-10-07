@@ -710,8 +710,8 @@ async function tuzatishBajar(env, taklifId, adminChatId, korsatma) {
 
     await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "🔧 Ko'rsatmangiz bilan matn qayta yozilmoqda...");
     const yangi = await claudeMatnTuzatish(env, taklif.sarlavha, taklif.post_matni, korsatma);
-    if (!yangi) {
-      await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "⚠️ Matnni qayta yozishda xato bo'ldi, qayta urinib ko'ring.");
+    if (!yangi || yangi.xato) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Matnni qayta yozishda xato: ${(yangi && yangi.xato) || "noma'lum"}`);
       return;
     }
     await sbFetch(env, `media_taklif?id=eq.${taklifId}`, {
@@ -753,19 +753,23 @@ async function claudeMatnTuzatish(env, oldSarlavha, oldPostMatni, korsatma) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 400,
+        max_tokens: 1500,
         messages: [{ role: 'user', content: prompt }],
       }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(45000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      return { xato: `Claude API -> ${res.status}: ${txt.slice(0, 300)}` };
+    }
     const data = await res.json();
     const textBlok = (data.content || []).find((b) => b.type === 'text');
     const text = textBlok ? textBlok.text : '';
     const match = text.match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : null;
+    if (!match) return { xato: `Claude javobi JSON emas (stop=${data.stop_reason}): ${text.slice(0, 200)}` };
+    return JSON.parse(match[0]);
   } catch (e) {
-    return null;
+    return { xato: String((e && e.message) || e) };
   }
 }
 
