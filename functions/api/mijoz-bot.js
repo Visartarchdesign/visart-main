@@ -463,7 +463,16 @@ async function ochiqUrllarYasash(env, pngBuffers) {
 // Tayyor oblojka(lar)ni Instagram Business akkauntga avtomatik post qiladi.
 // INSTAGRAM_ACCESS_TOKEN/INSTAGRAM_BUSINESS_ACCOUNT_ID sozlanmagan bo'lsa --
 // jim e'tiborsiz qoldiriladi (hali ulanmagan).
-async function instagramPost(env, urls, caption) {
+async function tgSendMessageOddiy(env, chatId, text) {
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+async function instagramPost(env, urls, caption, adminChatId) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return;
   if (!urls || !urls.length) return;
   try {
@@ -499,7 +508,11 @@ async function instagramPost(env, urls, caption) {
     });
     await igFetch(`${igId}/media_publish`, { creation_id: parent.id, access_token: token });
   } catch (e) {
-    // Instagram xato bersa ham, Telegram kanalga ketgan asosiy oqimni buzmaydi
+    // Instagram xato bersa ham, Telegram kanalga ketgan asosiy oqimni buzmaydi --
+    // lekin sababini admin'ga yozamiz, aks holda jim yo'qolib ketadi.
+    if (adminChatId) {
+      await tgSendMessageOddiy(env, adminChatId, `⚠️ Instagram'ga post qo'yilmadi -- ${String((e && e.message) || e)}`);
+    }
   }
 }
 
@@ -530,7 +543,7 @@ function keyingiFacebookVaqt() {
 // (functions/api/nashr-navbati.js, tashqi cron orqali) chiqishi uchun.
 // FACEBOOK_PAGE_ID/INSTAGRAM_ACCESS_TOKEN sozlanmagan bo'lsa -- jim
 // e'tiborsiz qoldiriladi.
-async function facebookPost(env, urls, caption) {
+async function facebookPost(env, urls, caption, adminChatId) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.FACEBOOK_PAGE_ID) return;
   if (!urls || !urls.length) return;
   try {
@@ -543,7 +556,11 @@ async function facebookPost(env, urls, caption) {
       }),
     });
   } catch (e) {
-    // navbatga qo'yishda xato bo'lsa ham, Telegram/Instagram oqimini buzmaydi
+    // navbatga qo'yishda xato bo'lsa ham, Telegram/Instagram oqimini buzmaydi --
+    // lekin sababini admin'ga yozamiz.
+    if (adminChatId) {
+      await tgSendMessageOddiy(env, adminChatId, `⚠️ Facebook navbatiga qo'yilmadi -- ${String((e && e.message) || e)}`);
+    }
   }
 }
 
@@ -583,8 +600,8 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
       if (kanalgaPng) {
         await kanalgaPost(env, [kanalgaPng], kanalMatni);
         const urls = await ochiqUrllarYasash(env, [kanalgaPng]);
-        await instagramPost(env, urls, kanalMatni);
-        await facebookPost(env, urls, kanalMatni);
+        await instagramPost(env, urls, kanalMatni, adminChatId);
+        await facebookPost(env, urls, kanalMatni, adminChatId);
       }
       return;
     }
@@ -617,8 +634,8 @@ async function oblojkaTayyorlaVaYubor(env, taklifId, adminChatId) {
     await tgSendMediaGroup(env.MIJOZ_BOT_TOKEN, adminChatId, buffers, `🎠 Karusel tayyor -- ${title}\n\n🆔${taklifId}`);
     await kanalgaPost(env, buffers, kanalMatni);
     const urls = await ochiqUrllarYasash(env, buffers);
-    await instagramPost(env, urls, kanalMatni);
-    await facebookPost(env, urls, kanalMatni);
+    await instagramPost(env, urls, kanalMatni, adminChatId);
+    await facebookPost(env, urls, kanalMatni, adminChatId);
   } catch (e) {
     // jim e'tiborsiz -- oblojka ixtiyoriy qo'shimcha, asosiy tasdiqni to'xtatmaydi
   }
