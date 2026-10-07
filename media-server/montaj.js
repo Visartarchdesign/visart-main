@@ -146,7 +146,7 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
     "9) FON MUZIKA KERAKMI: videoning asl ovoz-yo'lagini tinglab/ko'rib baholang. Agar video kimdir KAMERA OLDIDA GAPIRIB biror narsani TUSHUNTIRAYOTGAN/MA'LUMOT BERAYOTGAN bo'lsa (masalan loyiha haqida so'zlab bermoqda, maslahat bermoqda) -- fon muzika SHART EMAS, chunki u ovozga xalaqit beradi va diqqatni bo'ladi: \"muzika_kerak\": false qaytaring. Agar video FAQAT vizual (gapirish yo'q yoki kam, asosan chiroyli kadrlar/jarayon ko'rsatilmoqda, ambient xona tovushi bor xolos) bo'lsa -- fon muzika Reels tajribasini sezilarli yaxshilaydi: \"muzika_kerak\": true qaytaring va \"muzika_kayfiyat\" maydonida ENG mos kayfiyatni tanlang: \"sokin\" (standart, xotirjam interyer namoyishi), \"energetik\" (jarayon/before-after/qurilish, tez ritm), \"ilhomlantiruvchi\" (katta/hero arxitektura kadrlar), \"hashamatli\" (premium/lyuks loyiha, sekin va nafis).\n" +
     (qoshimchaKorsatma ? `\n10) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
     "\nJAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
-    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "kategoriya": <1-8>, "aksent": "<qisqa so\'z/raqam yoki bo\'sh>", "raqam": "<katta raqam yoki bo\'sh>", "muzika_kerak": true/false, "muzika_kayfiyat": "<sokin|energetik|ilhomlantiruvchi|hashamatli yoki bo\'sh agar muzika_kerak false bo\'lsa>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
+    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "kategoriya": <1-8>, "aksent": "<qisqa so\'z/raqam yoki bo\'sh>", "raqam": "<katta raqam yoki bo\'sh>", "muzika_kerak": true/false, "muzika_kayfiyat": "<sokin|energetik|ilhomlantiruvchi|hashamatli yoki bo\'sh agar muzika_kerak false bo\'lsa>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi -- FAQAT admin uchun>", "tavsif": "<mijozlarga mo\'ljallangan Instagram/YouTube izohi: 1-qator kuchli hook, 2-3 qisqa gap videodagi foydali maslahat/qiymat (montaj haqida HECH NARSA yozmang), oxirida 1 ta savol yoki CTA>", "hashtaglar": "<6-8 ta mavzuga mos o\'zbekcha/ruscha hashtag, bo\'sh joy bilan>"}\n' +
     'yoki material yetarli darajada bo\'lmasa:\n' +
     '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
 
@@ -928,7 +928,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       try {
         await bosqich('Instagram Reels/Story uchun yuklanmoqda...');
         const videoUrl = await supabaseVideoUpload(env, outputPath);
-        const igCaption = `${sarlavha}\n\n${qaror.izoh || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
+        const igCaption = `${sarlavha}\n\n${qaror.tavsif || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign ${qaror.hashtaglar || '#arxitektura #interyerdizayn #ToshkentDizayn #qurilish'}`;
         await instagramReelsPost(env, videoUrl, igCaption);
         await instagramStoryPost(env, videoUrl);
         await navbatgaQoshStory(env, videoUrl);
@@ -946,7 +946,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
         return true;
       }
       await bosqich('YouTube Shorts yuklanmoqda...');
-      const ytNatija = await youtubeUpload(env, outputPath, sarlavha, qaror.izoh);
+      const ytNatija = await youtubeUpload(env, outputPath, sarlavha, qaror.tavsif || '');
       if (ytNatija && ytNatija.url) {
         const vaqtToshkent = new Date(ytNatija.nashrVaqti.getTime() + 5 * 60 * 60 * 1000);
         const vaqtMatni = `${String(vaqtToshkent.getUTCDate()).padStart(2, '0')}.${String(vaqtToshkent.getUTCMonth() + 1).padStart(2, '0')} ${String(vaqtToshkent.getUTCHours()).padStart(2, '0')}:${String(vaqtToshkent.getUTCMinutes()).padStart(2, '0')}`;
