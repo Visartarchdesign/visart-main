@@ -52,8 +52,14 @@ try {
 
 // ---------------- TEST C — TECHNICAL ----------------
 const inputsC = {
-  blueprintImagePath: `${ASSETS}/draw-01.jpg`, // real Visart electrical/floor plan
-  projectImagePath: `${ASSETS}/int-01.jpg`,    // real Visart finished interior render
+  // Library has no confirmed same-project blueprint+render pair (checked all
+  // draw-*/int-* — draw-01/draw-02 are the same apartment, but no int-* render
+  // is from that apartment). Closest thematic pairing until real matched
+  // photos are provided: draw-02 (bedroom furniture plan) + int-11 (premium
+  // bedroom render) — both bedrooms, but NOT verified to be the same physical
+  // project. Swap both paths together once a real matched pair is sent.
+  blueprintImagePath: `${ASSETS}/draw-02.jpg`,
+  projectImagePath: `${ASSETS}/int-11.jpg`,
 };
 try {
   assertRealAssets('C', inputsC);
