@@ -6,12 +6,20 @@
 // Tasdiqlangan taklif keyingi bosqich (Montajchi agenti) uchun navbatga
 // qo'yiladi -- hozircha faqat tasdiqlash/rad etish ishlaydi.
 //
-// Tashqi bepul cron (cron-job.org) quyidagi JADVAL bilan chaqirishi kerak
-// (auditoriya "leisure browsing" vaqtiga moslangan, Toshkent vaqti bo'yicha):
-//   Ish kunlari (Dush-Juma), 18:30 -- cron: 30 13 * * 1-5
-//   Dam olish kunlari (Shan-Yak), 21:00 -- cron: 00 16 * * 6,0
-//   (ikkisi ham bir xil URL'ni chaqiradi, ikki alohida cron-job.org vazifasi sifatida sozlanadi)
+// Tashqi bepul cron (cron-job.org) quyidagi JADVAL bilan chaqirishi kerak --
+// O'zbekiston auditoriyasining Instagram faolligi eng yuqori soatlariga
+// (kechqurun 20:00-22:00 Toshkent, kunga qarab farqlanadi) moslangan, 3 ta
+// alohida cron-job.org vazifasi sifatida sozlanadi (har biri bir xil URL'ni
+// chaqiradi):
+//   Dush/Chor/Juma/Shan, 21:00 (Toshkent) -- cron: 0 16 * * 1,3,5,6
+//   Sesh/Payshanba,      20:00 (Toshkent) -- cron: 0 15 * * 2,4
+//   Yakshanba,           22:00 (Toshkent) -- cron: 0 17 * * 0
 //   GET https://visartdesign.uz/api/senarist-tahlil?secret=<SENARIST_SECRET>
+//
+// Instagram Story: alohida jadval shart emas -- Montajchi (media-server/
+// montaj.js) har bir tasdiqlangan Reels'ni e'lon qilgach, SHU DAQIQADA bir
+// xil videoni Story sifatida ham avtomatik joylaydi (24 soatlik, yuqori
+// ko'rinuvchanlik, qo'shimcha tayyorgarlik shart emas).
 //
 // Qo'shimcha Cloudflare Pages Environment Variable:
 //   SENARIST_SECRET   -- o'zingiz o'ylab topgan tasodifiy satr
@@ -119,6 +127,7 @@ async function claudeTahlil(env, items) {
       "  2) 2-3 jumla -- rasmda ko'ringan va/yoki izohda aytilgan aniq xususiyatlar (material, rang, yorug'lik, funksionallik) -- lekin texnik spec-varaq kabi ro'yxat qilib emas, tabiiy hikoya jumlalari ichiga singdirib yozing.\n" +
       "  3) OXIRIDA -- chaqiriq (call-to-action), KONTENT TURIGA mos tanlang va har safar aynan bir xil jumla bilan takrorlamang: (a) haqiqiy loyiha/xizmat posti bo'lsa -- \"DM yozing\"/\"buyurtma uchun yozing\" turidagi harakatga chaqiruv; (b) foydali maslahat/ma'lumot posti bo'lsa -- \"saqlab qoying\" (keyin kerak bo'ladi) yoki \"shuni biladigan tanishingizga yuboring\" turidagi save/share'ga undash (Instagram algoritmi uchun bu turdagi kontentda save/share like'dan ko'ra ko'proq qiymatga ega) -- vaziyatga qarab mos variantni tanlang.\n" +
       "  4) Keyin hashtag'lar -- 6-8 ta, UCH QATLAMLI tanlang: 2-3 ta KENG (#interyer #dizayn #architecture), 2-3 ta TOR/NISH (aniq uslub/xona turiga mos, masalan #minimalistinteryer #oshxonadizayni), 2 ta MAHALLIY (#toshkent #uzbekistan yoki #visartdesign) -- faqat bir xil keng hashtag to'plamini doim takrorlamang, mazmunga mosini tanlang.\n" +
+      "  5) SEO -- post_matni ICHIGA (1-qatlamda, zo'rlab emas, tabiiy jumla ichida) odamlar qidiruvda yozadigan iboralarni singdiring (masalan \"Toshkentda interyer dizayn\", \"arxitektura studiyasi\", xona/uslub nomi) -- bu Instagram'ning ichki qidiruvida va Google'da ham topilishga yordam beradi; hashtag'larda ham xuddi shu kalit so'zlarga mos variantlarni ustun qo'ying.\n" +
       "  HECH QANDAY formatlash belgisi ishlatmang (**, *, __), bullet ro'yxat yozmang -- ravon jumlalar bilan yozing, 1-2 ta tabiiy emoji bo'lishi mumkin.\n" +
       "- TIL: SODDA, TABIIY, ZAMONAVIY o'zbek tilida (lotin yozuvida) yozing -- xuddi haqiqiy odam Instagram'ga yozgandek. Rus tilidan so'zma-so'z tarjima qilingan noqulay iboralar (\"integrallashtirilgan\", \"tekhnika\" kabi) ISHLATMANG. Murakkab/kitobiy so'zlardan qoching, oddiy kundalik so'zlashuv uslubida yozing.\n" +
       "  YOMON namuna (ishlatmang): \"Integrallashtirilgan oshxona, yangi tekhnikasi bilan jihozlangan.\"\n" +

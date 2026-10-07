@@ -745,6 +745,104 @@ function adminIdlari(env) {
   return (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+// Senarist -- vazifa asosida TO'LIQ suratga olish ssenariysi yozadi (hali
+// hech narsa suratga olinmagan, admin faqat qisqa topshiriq beradi). Oddiy
+// "mavjud materialdan post tanlash" (claudeTahlil, senarist-tahlil.js) dan
+// farqli -- bu YANGI kontent REJALASHTIRISH vositasi: /senariy <topshiriq>
+// buyrug'i orqali chaqiriladi (faqat shaxsiy chatda, admin).
+async function claudeSsenariyYoz(env, topshiriq) {
+  if (!env.ANTHROPIC_API_KEY) return null;
+  const prompt =
+    "Siz Visart Design (Toshkent, arxitektura/interyer studiyasi) uchun ishlaydigan, marketing, SEO va barcha asosiy " +
+    "ijtimoiy tarmoqlar (Instagram Reels/Stories, Telegram, YouTube Shorts, Facebook) algoritmlarini professional " +
+    "darajada biladigan Senarist-strategsiz. Admin sizga aniq VAZIFA beradi, siz esa jamoa (operator/videograf) " +
+    "DARHOL dalaga chiqib suratga olishi mumkin bo'lgan, TO'LIQ, amaliy ssenariy tuzasiz.\n\n" +
+    `VAZIFA: "${topshiriq}"\n\n` +
+    "Ssenariy quyidagi qismlardan iborat bo'lishi SHART:\n" +
+    "1) FORMAT TAVSIYASI -- shu vazifa uchun ENG mos format (Reels / Stories ketma-ketligi / Karusel / Tasvir), " +
+    "va NEGA aynan shu (bir jumla).\n" +
+    "2) HOOK (birinchi 1-2 soniya) -- aniq, suratga olinadigan harakat/kadr tavsifi (statik kadr EMAS).\n" +
+    "3) KADRLAR RO'YXATI (shot list) -- har biri: kamera burchagi/harakati, nima ko'rsatiladi, necha soniya " +
+    "taxminan (jami video 20-45 soniya atrofida bo'lsin, Reels pacing).\n" +
+    "4) GAPIRILADIGAN MATN (agar kerak bo'lsa) -- qisqa, tabiiy, sodda o'zbek tilida, kamera oldida aytiladigan " +
+    "aniq jumlalar (so'zma-so'z). Agar bu sof vizual (gapirishsiz) video bo'lsa, bo'sh qoldiring.\n" +
+    "5) EKRANDAGI MATN/SUBTITR TAKLIFI -- video ustiga chiqadigan qisqa matn bosqichlari (agar kerak bo'lsa).\n" +
+    "6) MUZIKA KERAKMI -- true/false. Agar video gapirib ma'lumot berish/tushuntirish asosida bo'lsa (ovoz " +
+    "o'zi diqqat markazida), odatda false (fon muzika shart emas, ovozga xalaqit beradi). Agar vizual/ritmik " +
+    "(gapirishsiz, faqat chiroyli kadrlar) bo'lsa, odatda true.\n" +
+    "7) CAPTION (post matni) -- 2-4 jumla, SEO kalit so'zlar (\"Toshkentda interyer dizayn\", \"arxitektura " +
+    "studiyasi\" kabi qidiriladigan iboralarni tabiiy singdirib yozing, zo'rlab emas), oxirida aniq CTA.\n" +
+    "8) HASHTAG REJASI -- 6-8 ta, 3 qatlamli (2-3 keng, 2-3 tor/nish, 2 mahalliy #toshkent/#uzbekistan/#visartdesign).\n" +
+    "9) QAYSI TARMOQLARGA -- vazifaga qarab Instagram/Telegram/YouTube/Facebook'dan qaysilari, va qaysi " +
+    "TARTIBDA (masalan avval Reels, keyin shu kadrlardan Stories qilib qayta ishlatish).\n" +
+    "10) ENG YAXSHI NASHR VAQTI -- joriy kelishilgan jadvalga asosan tavsiya bering: Dush/Chor/Juma/Shan 21:00, " +
+    "Sesh/Payshanba 20:00, Yakshanba 22:00 (Toshkent vaqti, O'zbekiston auditoriyasining eng faol kechqurun " +
+    "soatlariga moslangan) -- vazifa kuni qaysi haftaning kuniga to'g'ri kelishini hisobga olib tanlang.\n\n" +
+    "QOIDALAR: hech qanday o'ylab topilgan raqam/fakt yozmang (faqat vazifada aytilgan yoki umumiy dizayn " +
+    "tamoyillariga tayaning); \"ajoyib/mukammal/eng yaxshi\" kabi asossiz hype so'zlardan qoching; sodda, " +
+    "tabiiy, zamonaviy o'zbek tilida (lotin), rus tilidan kalka tarjima yo'q; formatlash belgilari (**, *, __) " +
+    "ishlatmang.\n\n" +
+    'JAVOBNI FAQAT shu JSON formatda qaytaring: {"format": "...", "hook": "...", "kadrlar": ["1) ...", "2) ..."], ' +
+    '"gap_matni": "...", "ekran_matni": ["...", "..."], "muzika_kerak": true/false, "caption": "...", ' +
+    '"hashtaglar": ["#...", ...], "tarmoqlar": "...", "nashr_vaqti": "..."}';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 1400,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const textBlok = (data.content || []).find((b) => b.type === 'text');
+    const text = textBlok ? textBlok.text : '';
+    const match = text.match(/\{[\s\S]*\}/);
+    return match ? JSON.parse(match[0]) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function htmlEscape(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function ssenariyMatnQil(sRaw) {
+  if (!sRaw) return "⚠️ Ssenariy yozishda xato bo'ldi (Claude javob bermadi). Qayta urinib ko'ring.";
+  // Telegram HTML parse_mode'ga yuborilgani uchun har bir maydonni escape qilamiz.
+  const s = {
+    format: htmlEscape(sRaw.format), tarmoqlar: htmlEscape(sRaw.tarmoqlar), nashr_vaqti: htmlEscape(sRaw.nashr_vaqti),
+    hook: htmlEscape(sRaw.hook), gap_matni: htmlEscape(sRaw.gap_matni), caption: htmlEscape(sRaw.caption),
+    muzika_kerak: sRaw.muzika_kerak,
+    kadrlar: (sRaw.kadrlar || []).map(htmlEscape), ekran_matni: (sRaw.ekran_matni || []).map(htmlEscape),
+    hashtaglar: (sRaw.hashtaglar || []).map(htmlEscape),
+  };
+  const kadrlar = (s.kadrlar || []).join('\n');
+  const ekranMatn = (s.ekran_matni || []).join(' → ');
+  const hashtaglar = (s.hashtaglar || []).join(' ');
+  return (
+    `🎬 SSENARIY\n\n` +
+    `📐 Format: ${s.format || '-'}\n` +
+    `📡 Tarmoqlar: ${s.tarmoqlar || '-'}\n` +
+    `🕐 Nashr vaqti: ${s.nashr_vaqti || '-'}\n\n` +
+    `🪝 Hook: ${s.hook || '-'}\n\n` +
+    `🎥 Kadrlar:\n${kadrlar || '-'}\n\n` +
+    (s.gap_matni ? `🗣️ Gapiriladigan matn:\n${s.gap_matni}\n\n` : '') +
+    (ekranMatn ? `📝 Ekrandagi matn: ${ekranMatn}\n\n` : '') +
+    `🎵 Muzika kerakmi: ${s.muzika_kerak ? 'Ha' : "Yo'q (ovoz/ma'lumot diqqat markazida)"}\n\n` +
+    `📄 Caption:\n${s.caption || '-'}\n\n` +
+    `#️⃣ ${hashtaglar || '-'}`
+  );
+}
+
 const USTA_KASBLAR = [
   ['malyarka', '🎨 Malyarka'],
   ['elektrik', '⚡ Elektrik'],
@@ -1213,6 +1311,21 @@ export async function onRequestPost({ request, env }) {
     }
 
     if (!msg.text) return json({ ok: true });
+
+    // /senariy <topshiriq> -- admin shaxsiy chatda, hali suratga OLINMAGAN
+    // yangi kontent uchun to'liq ssenariy so'raydi (vazifa-asosida rejalashtirish).
+    if (msg.chat.type === 'private' && msg.text.startsWith('/senariy') && isAdmin(env, msg.from && msg.from.id)) {
+      const topshiriq = msg.text.replace(/^\/senariy/, '').trim();
+      if (!topshiriq) {
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
+          "Vazifani yozing, masalan:\n<code>/senariy Yangi 120m² villa loyihasini tanishtiruvchi Reels</code>");
+        return json({ ok: true });
+      }
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, '✍️ Ssenariy tayyorlanmoqda...');
+      const ssenariy = await claudeSsenariyYoz(env, topshiriq);
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, ssenariyMatnQil(ssenariy));
+      return json({ ok: true });
+    }
 
     // Guruh/superguruh xabarlari: FAQAT /obyekt, /ustalar, /chatid buyruqlari
     // qayta ishlanadi (admin tekshiruvi bilan) -- shaxsiy lid-dialog oqimi

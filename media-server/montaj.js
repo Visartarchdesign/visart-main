@@ -1,8 +1,6 @@
 // Montajchi agenti -- Gemini (video ko'rib kesish qarorini beradi) + FFmpeg
-// (qarorga asosan kesib, Instagram uchun qayta kodlaydi).
-//
-// 1-bosqich (hozirgi): faqat kesish (subtitr yo'q). Whisper orqali subtitr
-// keyingi bosqichda qo'shiladi.
+// (qarorga asosan kesib, Instagram uchun qayta kodlaydi, kerak bo'lsa fon
+// muzika qo'shadi va Whisper orqali o'zbekcha subtitr kuydiradi).
 //
 // Cheklov: Telegram oddiy Bot API orqali faqat 20MB gacha fayl yuklab olish
 // mumkin (getFile). Shundan katta xom video kelsa, xato qaytariladi.
@@ -17,6 +15,7 @@ import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import sharp from 'sharp';
+import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
 
 const execFileAsync = promisify(execFile);
@@ -144,9 +143,10 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
     "   Noaniq bo'lsa 1 ni tanlang. 2 va 8 FAQAT video ichida ikkita aniq farqli holat/kadr ko'ringanda tanlanishi mumkin (chunki bu ikkisi ikkita alohida kadr ishlatadi).\n" +
     "7) AKSENT: sarlavha ichida (yoki alohida) rang bilan AJRATILISHI kerak bo'lgan QISQA so'z/raqam (masalan aniq m², narx, \"5 ta\" kabi) -- shart emas, bo'lmasa bo'sh qoldiring.\n" +
     "8) RAQAM: agar videoda aniq ko'rsatish mumkin bo'lgan KATTA raqam bo'lsa (maydon m², xato soni, narx) -- shu raqamni alohida qaytaring (masalan \"180 m²\", \"5\"), aks holda bo'sh qoldiring. HECH QACHON o'ylab topilgan raqam yozmang -- faqat qoshimchaKorsatma/izohda aniq berilgan bo'lsa.\n" +
-    (qoshimchaKorsatma ? `\n9) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
+    "9) FON MUZIKA KERAKMI: videoning asl ovoz-yo'lagini tinglab/ko'rib baholang. Agar video kimdir KAMERA OLDIDA GAPIRIB biror narsani TUSHUNTIRAYOTGAN/MA'LUMOT BERAYOTGAN bo'lsa (masalan loyiha haqida so'zlab bermoqda, maslahat bermoqda) -- fon muzika SHART EMAS, chunki u ovozga xalaqit beradi va diqqatni bo'ladi: \"muzika_kerak\": false qaytaring. Agar video FAQAT vizual (gapirish yo'q yoki kam, asosan chiroyli kadrlar/jarayon ko'rsatilmoqda, ambient xona tovushi bor xolos) bo'lsa -- fon muzika Reels tajribasini sezilarli yaxshilaydi: \"muzika_kerak\": true qaytaring va \"muzika_kayfiyat\" maydonida ENG mos kayfiyatni tanlang: \"sokin\" (standart, xotirjam interyer namoyishi), \"energetik\" (jarayon/before-after/qurilish, tez ritm), \"ilhomlantiruvchi\" (katta/hero arxitektura kadrlar), \"hashamatli\" (premium/lyuks loyiha, sekin va nafis).\n" +
+    (qoshimchaKorsatma ? `\n10) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
     "\nJAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
-    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "kategoriya": <1-8>, "aksent": "<qisqa so\'z/raqam yoki bo\'sh>", "raqam": "<katta raqam yoki bo\'sh>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
+    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "kategoriya": <1-8>, "aksent": "<qisqa so\'z/raqam yoki bo\'sh>", "raqam": "<katta raqam yoki bo\'sh>", "muzika_kerak": true/false, "muzika_kayfiyat": "<sokin|energetik|ilhomlantiruvchi|hashamatli yoki bo\'sh agar muzika_kerak false bo\'lsa>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
     'yoki material yetarli darajada bo\'lmasa:\n' +
     '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
 
@@ -482,6 +482,255 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
   ], { maxBuffer: 1024 * 1024 * 20 });
 }
 
+// media-server/music/<kayfiyat>/*.mp3 papkasidan TASODIFIY bitta trekni
+// tanlaydi. Papka bo'sh/mavjud bo'lmasa (hali to'ldirilmagan) -- null
+// qaytaradi, chaqiruvchi tomon jim musiqasiz davom etadi (xato bermaydi).
+function muzikaTanla(kayfiyat) {
+  try {
+    const papka = path.join(path.dirname(new URL(import.meta.url).pathname), 'music', kayfiyat || 'sokin');
+    const fayllar = fs.readdirSync(papka).filter((f) => /\.(mp3|m4a|aac|wav)$/i.test(f));
+    if (!fayllar.length) return null;
+    return path.join(papka, fayllar[Math.floor(Math.random() * fayllar.length)]);
+  } catch (e) {
+    return null; // papka yo'q -- hali musiqa qo'yilmagan
+  }
+}
+
+async function ffmpegAudioBormi(videoPath) {
+  const { stdout } = await execFileAsync('ffprobe', [
+    '-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=index',
+    '-of', 'csv=p=0', videoPath,
+  ]);
+  return stdout.trim().length > 0;
+}
+
+// Fon muzikani videoga qo'shadi. Video asl ovozi bor bo'lsa PASAYTIRIB
+// qoldiriladi (xona tovushi/ambient kabi eshitilib tursin), muzika esa asosiy
+// fon sifatida miks qilinadi va videoning uzunligiga moslab kesiladi
+// (`-shortest`). Trek video uzunligidan qisqa bo'lsa, loop qilinadi. Asl
+// videoda umuman audio trek bo'lmasa (jim kadr), faqat muzika qo'yiladi.
+async function ffmpegMuzikaQosh(videoPath, musicPath, outPath) {
+  const audioBor = await ffmpegAudioBormi(videoPath);
+  const filterComplex = audioBor
+    // [0:a] -- video asl ovozi 22% darajada (butunlay o'chirilmaydi -- ambient
+    // xona tovushi tabiiyroq eshitiladi); [1:a] -- muzika 55% darajada, 1.5s
+    // fade-in bilan boshlanadi (keskin kirmasligi uchun).
+    ? '[0:a]volume=0.22[a0];[1:a]volume=0.55,afade=t=in:st=0:d=1.5[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=2[aout]'
+    : '[1:a]volume=0.55,afade=t=in:st=0:d=1.5[aout]';
+  await execFileAsync('ffmpeg', [
+    '-y', '-i', videoPath, '-stream_loop', '-1', '-i', musicPath,
+    '-filter_complex', filterComplex,
+    '-map', '0:v:0', '-map', '[aout]',
+    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100',
+    '-shortest', '-movflags', '+faststart',
+    outPath,
+  ], { maxBuffer: 1024 * 1024 * 20 });
+}
+
+// SRT vaqt belgisini ("00:00:01,500") soniyaga aylantiradi.
+function srtVaqtSoniyaga(t) {
+  const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[,.](\d{3})/);
+  if (!m) return 0;
+  const [, h, mi, s, ms] = m;
+  return (+h) * 3600 + (+mi) * 60 + (+s) + (+ms) / 1000;
+}
+
+// Soniyani ASS vaqt formatiga ("0:00:01.50") aylantiradi.
+function soniyaAssVaqtga(sec) {
+  const s = Math.max(0, sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sRem = s % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${sRem.toFixed(2).padStart(5, '0')}`;
+}
+
+// whisper.cpp .srt chiqishini { boshlanish, tugash, matn }[] massiviga parse qiladi.
+function srtParseQil(srtMatn) {
+  const bloklar = srtMatn.split(/\r?\n\r?\n/).map((b) => b.trim()).filter(Boolean);
+  const natija = [];
+  for (const blok of bloklar) {
+    const qatorlar = blok.split(/\r?\n/);
+    const vaqtQator = qatorlar.find((q) => q.includes('-->'));
+    if (!vaqtQator) continue;
+    const [boshStr, tugashStr] = vaqtQator.split('-->');
+    const matn = qatorlar.slice(qatorlar.indexOf(vaqtQator) + 1).join(' ').trim();
+    if (!matn) continue;
+    natija.push({ bosh: srtVaqtSoniyaga(boshStr), tugash: srtVaqtSoniyaga(tugashStr), matn });
+  }
+  return natija;
+}
+
+// ASS matn maydonida maxsus belgilarni escape qiladi.
+function assEscape(s) {
+  return String(s || '').replace(/\\/g, '\\\\').replace(/\{/g, '\\{').replace(/\}/g, '\\}').replace(/\r?\n/g, '\\N');
+}
+
+// Whisper.cpp (nodejs-whisper, "tiny" ko'p-tilli model -- Render bepul 512MB
+// RAM cheklovi sabab) orqali videoning o'zbekcha nutqini SRT'ga transkripsiya
+// qiladi. Faqat gapirib ma'lumot berilayotgan (muzika kerak emas deb
+// topilgan) videolarda chaqiriladi. Xato bersa yoki nutq topilmasa, null
+// qaytaradi -- chaqiruvchi tomon subtitrsiz davom etadi.
+async function whisperSubtitrYarat(videoPath, tmpDir) {
+  try {
+    const model = process.env.WHISPER_MODEL || 'tiny';
+    await nodewhisper(videoPath, {
+      modelName: model,
+      autoDownloadModelName: model,
+      removeWavFileAfterTranscription: true,
+      whisperOptions: {
+        outputInSrt: true,
+        language: 'uz',
+        wordTimestamps: false,
+        splitOnWord: false,
+      },
+    });
+    const wavPath = videoPath.replace(/\.[^.]+$/, '.wav');
+    const srtPath = `${wavPath}.srt`;
+    if (!fs.existsSync(srtPath)) return null;
+    const segmentlar = srtParseQil(fs.readFileSync(srtPath, 'utf8'));
+    fs.rmSync(srtPath, { force: true });
+    return segmentlar.length ? segmentlar : null;
+  } catch (e) {
+    return null; // whisper ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+  }
+}
+
+// Whisper segmentlaridan video o'lchamiga ANIQ mos (PlayResX/Y = video
+// width/height) ASS fayl yasab, "ass" filtri bilan kuydiradi. `subtitles`
+// filtri + force_style/original_size juftligi libass'da PlayRes-video
+// o'lcham nomuvofiqligi tufayli matnni noto'g'ri joy/o'lchamda chiqarishi
+// aniqlangani uchun (sinovda tasdiqlangan), shu usul o'rniga PlayRes'ni
+// video o'lchamiga ANIQ moslab, stilni ASS fayl ichida beramiz.
+async function srtVideogaKuydir(videoPath, segmentlar, outPath) {
+  if (!segmentlar || !segmentlar.length) return false;
+  const { width, height } = await ffmpegOlchamOl(videoPath);
+  const fontSize = Math.round(width * 0.052);
+  const marginV = Math.round(height * 0.11);
+  const marginLR = Math.round(width * 0.055);
+  const assQatorlar = segmentlar.map((s) =>
+    `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(s.matn)}`
+  ).join('\n');
+  const assMatn =
+    `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nScaledBorderAndShadow: yes\n\n` +
+    `[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n` +
+    `Style: Default,Arial,${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,4,2,2,${marginLR},${marginLR},${marginV},1\n\n` +
+    `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${assQatorlar}\n`;
+  const assPath = outPath.replace(/\.mp4$/, '.ass');
+  fs.writeFileSync(assPath, assMatn, 'utf8');
+  try {
+    await execFileAsync('ffmpeg', [
+      '-y', '-i', videoPath,
+      '-vf', `ass=${assPath}`,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p',
+      '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+      '-c:a', 'copy', '-movflags', '+faststart',
+      outPath,
+    ], { maxBuffer: 1024 * 1024 * 20 });
+    return true;
+  } finally {
+    fs.rmSync(assPath, { force: true });
+  }
+}
+
+// Tayyor videoni Supabase Storage'ning ochiq ("public-media") bucket'iga
+// yuklaydi -- Instagram Graph API video kontentni FAQAT ochiq URL orqali
+// qabul qiladi. mijoz-bot.js'dagi supabasePublicUpload bilan bir xil bucket.
+async function supabaseVideoUpload(env, videoPath) {
+  const bucket = 'public-media';
+  const objPath = `instagram-video/${Date.now()}-reel.mp4`;
+  const buffer = fs.readFileSync(videoPath);
+  const upload = async () => fetch(`${env.SUPABASE_URL}/storage/v1/object/${bucket}/${objPath}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'video/mp4',
+      'x-upsert': 'true',
+    },
+    body: buffer,
+  });
+  let res = await upload();
+  if (res.status === 404 || res.status === 400) {
+    await fetch(`${env.SUPABASE_URL}/storage/v1/bucket`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: bucket, name: bucket, public: true }),
+    }).catch(() => {});
+    res = await upload();
+  }
+  if (!res.ok) throw new Error(`Supabase video yuklash xato: ${res.status}`);
+  return `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${objPath}`;
+}
+
+async function igFetch(path, params) {
+  const url = new URL(`https://graph.facebook.com/v21.0/${path}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString(), { method: 'POST', signal: AbortSignal.timeout(20000) });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error) {
+    throw new Error(`Instagram API xato: ${(data && data.error && data.error.message) || res.status}`);
+  }
+  return data;
+}
+
+// Container tayyor (FINISHED) bo'lguncha kutadi -- Reels/Story video
+// qayta ishlash odatda 30s-2min oladi, 5 daqiqadan keyin vaqt tugaydi deb
+// hisoblanadi.
+async function igContainerKutish(containerId, token) {
+  const max = 30; // 30 x 10s = 5 daqiqa
+  for (let i = 0; i < max; i++) {
+    await new Promise((r) => setTimeout(r, 10000));
+    const url = new URL(`https://graph.facebook.com/v21.0/${containerId}`);
+    url.searchParams.set('fields', 'status_code');
+    url.searchParams.set('access_token', token);
+    const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+    const data = await res.json().catch(() => null);
+    if (data && data.status_code === 'FINISHED') return true;
+    if (data && (data.status_code === 'ERROR' || data.status_code === 'EXPIRED')) return false;
+  }
+  return false;
+}
+
+// Tayyor videoni Instagram Reels sifatida avtomatik post qiladi. Admin
+// Senarist taklifini allaqachon TASDIQLAGAN (media_taklif approve bosqichi)
+// -- xuddi shu taklifdan kelib chiqqan foto-postlar (instagramPost,
+// mijoz-bot.js) qanday qo'shimcha so'ramasdan avtomatik chiqsa, video ham
+// shu bir xil, allaqachon-tasdiqlangan oqimga ergashadi. Sozlanmagan yoki
+// xato bo'lsa -- jim o'tkaziladi, asosiy Telegram oqimini to'xtatmaydi.
+async function instagramReelsPost(env, videoUrl, caption) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return null;
+  const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  const container = await igFetch(`${igId}/media`, {
+    media_type: 'REELS',
+    video_url: videoUrl,
+    caption: (caption || '').slice(0, 2200),
+    share_to_feed: 'true',
+    access_token: token,
+  });
+  const tayyor = await igContainerKutish(container.id, token);
+  if (!tayyor) throw new Error('Reels container FINISHED holatiga yetmadi (timeout/xato)');
+  await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
+  return true;
+}
+
+// Tayyor videoni Instagram Story sifatida avtomatik post qiladi (24 soatlik,
+// caption qabul qilmaydi -- Graph API Stories matn/caption maydonini
+// qo'llab-quvvatlamaydi).
+async function instagramStoryPost(env, videoUrl) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return null;
+  const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  const container = await igFetch(`${igId}/media`, {
+    media_type: 'STORIES',
+    video_url: videoUrl,
+    access_token: token,
+  });
+  const tayyor = await igContainerKutish(container.id, token);
+  if (!tayyor) throw new Error('Story container FINISHED holatiga yetmadi (timeout/xato)');
+  await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
+  return true;
+}
+
 async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
@@ -515,6 +764,45 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
 
     await bosqich(`FFmpeg kesmoqda va birlashtirmoqda (${qaror.segmentlar.length} segment)...`);
     await ffmpegKesibBirlashtir(inputPath, qaror.segmentlar, outputPath, tmpDir);
+
+    // Fon muzika -- faqat AI "kerak" deb topgan (gapirib ma'lumot berilmayotgan,
+    // sof vizual) videolarda qo'shiladi. Mos kayfiyat papkasida trek bo'lmasa
+    // (hali to'ldirilmagan), jim o'tkazib yuboriladi -- xato bermaydi.
+    if (qaror.muzika_kerak) {
+      try {
+        await bosqich("Fon muzika qo'shilmoqda...");
+        const musicPath = muzikaTanla(qaror.muzika_kayfiyat);
+        if (musicPath) {
+          const bilanMuzikaPath = path.join(tmpDir, 'output-music.mp4');
+          await ffmpegMuzikaQosh(outputPath, musicPath, bilanMuzikaPath);
+          fs.renameSync(bilanMuzikaPath, outputPath);
+        }
+      } catch (e) {
+        // muzika ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+      }
+    }
+
+    // Subtitr (Whisper) -- faqat AI "gapirib ma'lumot berilayotgan" (muzika
+    // kerak emas) deb topgan videolarda, asl ovoz mavjud bo'lsa ishga
+    // tushadi: odam ovozsiz (feed'da) ko'rsa ham tushunsin. Xato bersa yoki
+    // nutq aniqlanmasa, video subtitrsiz o'zgarishsiz qoladi.
+    if (!qaror.muzika_kerak) {
+      try {
+        const audioBor = await ffmpegAudioBormi(outputPath);
+        if (audioBor) {
+          await bosqich('Subtitr (nutq) aniqlanmoqda...');
+          const segmentlar = await whisperSubtitrYarat(outputPath, tmpDir);
+          if (segmentlar) {
+            await bosqich('Subtitr videoga kuydirilmoqda...');
+            const bilanSubtitrPath = path.join(tmpDir, 'output-subtitr.mp4');
+            const bajarildi = await srtVideogaKuydir(outputPath, segmentlar, bilanSubtitrPath);
+            if (bajarildi) fs.renameSync(bilanSubtitrPath, outputPath);
+          }
+        }
+      } catch (e) {
+        // subtitr ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+      }
+    }
 
     // Sarlavhani video ustiga "kuydirish" -- feed'da avtomatik o'ynaganda
     // odam birdaniga nima haqida ekanini bilsin. Xato bersa, original video
@@ -574,6 +862,25 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor -- ${sarlavha}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
+
+    // Instagram Reels + Story -- sozlanmagan bo'lsa (INSTAGRAM_ACCESS_TOKEN/
+    // INSTAGRAM_BUSINESS_ACCOUNT_ID yo'q) jim o'tkaziladi. Qo'shimcha
+    // tasdiq SO'RALMAYDI -- admin buni allaqachon Senarist taklifini
+    // tasdiqlaganda (bitta "✅ Tasdiqlash" bosilganda) ruxsat bergan, xuddi
+    // foto-postlar (instagramPost, mijoz-bot.js) qanday avtomatik chiqsa.
+    if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        await bosqich('Instagram Reels/Story uchun yuklanmoqda...');
+        const videoUrl = await supabaseVideoUpload(env, outputPath);
+        const igCaption = `${sarlavha}\n\n${qaror.izoh || ''}\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
+        await instagramReelsPost(env, videoUrl, igCaption);
+        await instagramStoryPost(env, videoUrl);
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, '📸 Instagram Reels va Story\'ga avtomatik joylandi.');
+      } catch (e) {
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+          `⚠️ Instagram Reels/Story joylashda xato: ${String((e && e.message) || e)}`);
+      }
+    }
 
     // YouTube Shorts -- sozlanmagan yoki xato bo'lsa jim o'tkaziladi.
     try {
