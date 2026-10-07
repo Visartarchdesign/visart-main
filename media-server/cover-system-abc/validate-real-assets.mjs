@@ -30,8 +30,8 @@ try {
 
 // ---------------- TEST B — FLAGSHIP PERSON ----------------
 const inputsB = {
-  personAssetPath: '/home/claude/visart-main/media-server/cover-system-abc/dev-assets/person-approved-v1.png', // background-removed only (rembg, alpha-channel edit) — face pixels untouched
-  sceneImagePath: `${ASSETS}/int-02.jpg`, // real Visart interior render
+  personAssetPath: '/home/claude/visart-main/assets/person/doston-architect-v1.png', // approved reference photo, background-removed only (rembg + alpha cleanup) — RGB/face pixels untouched
+  sceneImagePath: `${ASSETS}/int-09.jpg`, // real Visart interior render
 };
 try {
   assertRealAssets('B', inputsB);
@@ -40,10 +40,10 @@ try {
     headline: ['LOYIHA NECHA', 'BOSQICH?'],
     accent: '#D4AD67',
     subtitle: "TO'LIQ LOYIHA YO'LI",
-    personaPreset: 'fullBody',
+    personaPreset: 'editorial',
   });
-  fs.writeFileSync('B-real.png', buf);
-  results.B = { status: 'OK', assets: inputsB, preset: 'fullBody' };
+  fs.writeFileSync('B-final.png', buf);
+  results.B = { status: 'OK', assets: inputsB, preset: 'editorial' };
   console.log('[B] OK');
 } catch (e) {
   results.B = { status: 'FAILED', reason: e.message };
@@ -74,9 +74,10 @@ try {
 // ---------------- GRID PREVIEW ----------------
 const TILE = 480;
 const tiles = [];
+const OUT_FILE = { A: 'A-real.png', B: 'B-final.png', C: 'C-real.png' };
 for (const key of ['A', 'B', 'C']) {
   if (results[key].status === 'OK') {
-    tiles.push(await sharp(`${key}-real.png`).resize(TILE, Math.round(TILE * 1920 / 1080), { fit: 'cover' }).png().toBuffer());
+    tiles.push(await sharp(OUT_FILE[key]).resize(TILE, Math.round(TILE * 1920 / 1080), { fit: 'cover' }).png().toBuffer());
   } else {
     const failSvg = `<svg width="${TILE}" height="${Math.round(TILE * 1920 / 1080)}">
       <rect width="100%" height="100%" fill="#1C1C1C"/>
