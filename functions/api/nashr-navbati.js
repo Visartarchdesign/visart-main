@@ -113,6 +113,25 @@ async function bajarFacebookPhoto(env, payload) {
   });
 }
 
+async function bajarFacebookVideo(env, payload) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.FACEBOOK_PAGE_ID) throw new Error('Facebook sozlanmagan');
+  const { video_url: videoUrl, cover_url: coverUrl, caption } = payload;
+  if (!videoUrl) throw new Error("payload.video_url bo'sh");
+  const pageId = env.FACEBOOK_PAGE_ID;
+  const token = await sahifaTokeni(pageId, env.INSTAGRAM_ACCESS_TOKEN);
+  const form = new FormData();
+  form.append('file_url', videoUrl);
+  form.append('description', (caption || '').slice(0, 5000));
+  form.append('access_token', token);
+  if (coverUrl) {
+    const r = await fetch(coverUrl, { signal: AbortSignal.timeout(15000) });
+    if (r.ok) form.append('thumb', new Blob([await r.arrayBuffer()], { type: 'image/jpeg' }), 'cover.jpg');
+  }
+  const res = await fetch(`https://graph-video.facebook.com/v21.0/${pageId}/videos`, { method: 'POST', body: form, signal: AbortSignal.timeout(25000) });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error) throw new Error(`Facebook video xato: ${(data && data.error && data.error.message) || res.status}`);
+}
+
 async function bajarInstagramStory(env, payload) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) throw new Error('Instagram sozlanmagan');
   const { video_url: videoUrl } = payload;
@@ -145,6 +164,8 @@ export async function onRequestGet({ request, env }) {
     try {
       if (q.turi === 'facebook_photo') {
         await bajarFacebookPhoto(env, q.payload);
+      } else if (q.turi === 'facebook_video') {
+        await bajarFacebookVideo(env, q.payload);
       } else if (q.turi === 'instagram_story') {
         await bajarInstagramStory(env, q.payload);
       } else {
