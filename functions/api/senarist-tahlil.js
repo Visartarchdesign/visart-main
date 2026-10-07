@@ -146,10 +146,19 @@ async function tgDownloadBase64(token, filePath) {
   return btoa(binary);
 }
 
+// Telegram rasm/thumbnail JPEG, PNG yoki WebP bo'lishi mumkin -- Claude API
+// media_type haqiqiy formatga mos bo'lishini talab qiladi (aks holda 400).
+function rasmMediaTuri(b64) {
+  if (b64.startsWith('iVBOR')) return 'image/png';
+  if (b64.startsWith('UklGR')) return 'image/webp';
+  if (b64.startsWith('R0lGOD')) return 'image/gif';
+  return 'image/jpeg';
+}
+
 async function claudeTahlil(env, items) {
   const content = [];
   for (const it of items) {
-    content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: it.base64 } });
+    content.push({ type: 'image', source: { type: 'base64', media_type: rasmMediaTuri(it.base64), data: it.base64 } });
     content.push({
       type: 'text',
       text: `[#${it.id}] turi: ${it.turi}${it.izoh ? `, izoh: ${it.izoh}` : ''}${it.media_group_id ? `, albom: ${it.media_group_id}` : ''}`,
