@@ -200,7 +200,8 @@ async function claudeTahlil(env, items) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content }] }),
-    signal: AbortSignal.timeout(30000),
+    // Bir nechta rasm/video-thumbnail tahlili (vision) 30s'dan uzoqroq ketishi mumkin.
+    signal: AbortSignal.timeout(55000),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
