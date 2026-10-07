@@ -93,7 +93,7 @@
 //   );
 //   create index if not exists nashr_navbati_holat_vaqt_idx on nashr_navbati (holat, nashr_vaqti);
 
-const MODEL = 'claude-sonnet-5';
+const MODEL = 'claude-sonnet-5-5';
 const KAM_MATERIAL_CHEGARA = 3; // shundan kam bo'lsa, kutamiz (keyingi safar yetadi)
 
 function json(data, status = 200) {
@@ -199,7 +199,7 @@ async function claudeTahlil(env, items) {
       'x-api-key': env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ model: MODEL, max_tokens: 900, messages: [{ role: 'user', content }] }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content }] }),
     signal: AbortSignal.timeout(30000),
   });
   if (!res.ok) {
@@ -210,7 +210,10 @@ async function claudeTahlil(env, items) {
   const textBlok = (data.content || []).find((b) => b.type === 'text');
   const text = textBlok ? textBlok.text : '';
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("Claude javobi JSON emas: " + text.slice(0, 200));
+  if (!match) {
+    const bloklar = (data.content || []).map((b) => b.type).join(',');
+    throw new Error(`Claude javobi JSON emas (stop=${data.stop_reason}, bloklar=${bloklar}): ` + text.slice(0, 200));
+  }
   return JSON.parse(match[0]);
 }
 
@@ -315,7 +318,7 @@ async function claudeMaslahatYoz(env, mavzu) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: 500, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),
       signal: AbortSignal.timeout(30000),
     });
     if (!res.ok) return null;
