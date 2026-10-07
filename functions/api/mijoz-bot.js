@@ -1291,6 +1291,27 @@ export async function onRequestPost({ request, env }) {
         await handleSenaristTasdiq(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('vnash:')) {
+        const [, nid, qaror] = data.split(':');
+        if (!isAdmin(env, cq.from && cq.from.id)) {
+          await answerCq(env, cq.id, { text: 'Ruxsat yo\'q' });
+          return json({ ok: true });
+        }
+        await removeKb(env, chatId, cq.message.message_id);
+        if (qaror === 'ok') {
+          await answerCq(env, cq.id, { text: 'Joylanmoqda...' });
+          await fetch(`${env.MEDIA_SERVER_URL}/nashr`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
+            body: JSON.stringify({ id: nid, adminChatId: chatId }),
+            signal: AbortSignal.timeout(55000),
+          }).catch(() => {});
+        } else {
+          await sbFetch(env, `nashr_navbati?id=eq.${nid}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
+          await answerCq(env, cq.id, { text: 'Bekor qilindi' });
+        }
+        return json({ ok: true });
+      }
       if (data.startsWith('montaj_retry:')) {
         const taklifId = data.split(':')[1];
         await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {

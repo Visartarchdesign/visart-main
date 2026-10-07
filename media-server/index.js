@@ -9,7 +9,7 @@
 
 import express from 'express';
 import { yasaOblojka } from './oblojka.js';
-import { bajarMontaj } from './montaj.js';
+import { bajarMontaj, bajarNashr } from './montaj.js';
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -59,6 +59,15 @@ app.post('/montaj', (req, res) => {
   }
   res.json({ ok: true, holat: 'boshlandi' });
   bajarMontaj({ env: process.env, aslFileId, adminChatId, title, taklifId, korsatma }).catch(() => {});
+});
+
+// POST /nashr -- admin "✅ Joylash" bosganda (Cloudflare bot chaqiradi)
+app.post('/nashr', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  const { id, adminChatId } = req.body || {};
+  if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
+  res.json({ ok: true, holat: 'boshlandi' });
+  bajarNashr({ env: process.env, id, adminChatId }).catch(() => {});
 });
 
 // VAQTINCHALIK: brauzerdan to'g'ridan-to'g'ri sinash uchun (qo'lda test).

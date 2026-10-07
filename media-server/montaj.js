@@ -969,63 +969,48 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     await bosqich('Telegramga yuklanmoqda...');
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor -- ${sarlavha}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
-
-    // Instagram Reels + Story -- sozlanmagan bo'lsa (INSTAGRAM_ACCESS_TOKEN/
-    // INSTAGRAM_BUSINESS_ACCOUNT_ID yo'q) jim o'tkaziladi. Qo'shimcha
-    // tasdiq SO'RALMAYDI -- admin buni allaqachon Senarist taklifini
-    // tasdiqlaganda (bitta "✅ Tasdiqlash" bosilganda) ruxsat bergan, xuddi
-    // foto-postlar (instagramPost, mijoz-bot.js) qanday avtomatik chiqsa.
-    // ESLATMA (O'zbekiston auditoriyasi tadqiqotiga asosan): darhol bitta
-    // Story (Reel bilan bir daqiqada -- "post'ni Story'ga ulash") chiqadi,
-    // SO'NG kun davomidagi ikkinchi touchpoint ("savol-javob" bosqichi, 21:30
-    // yoki ertangi 08:15) `nashr_navbati` navbatiga qo'yiladi -- worker
-    // (functions/api/nashr-navbati.js) o'z vaqtida chiqaradi. Ertalabki/
-    // tushlikdagi qo'shimcha bosqichlar (alohida kontent -- poll, teaser
-    // matni talab qiladi) hali qo'lda qo'shiladi.
-    if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID && env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+    // TASDIQ: tayyor video + qopqoq Supabase'ga yuklanadi, navbat jadvaliga
+    // "tasdiq_kutilmoqda" holatida yoziladi va adminga tugmalar yuboriladi.
+    // Instagram/Facebook/YouTube'ga FAQAT "✅ Joylash" bosilgandan keyin
+    // (bajarNashr) chiqadi.
+    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
       try {
-        await bosqich('Instagram Reels/Story uchun yuklanmoqda...');
         const videoUrl = await supabaseVideoUpload(env, outputPath);
-        const igCaption = `${sarlavha}\n\n${qaror.tavsif || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign ${qaror.hashtaglar || '#arxitektura #interyerdizayn #ToshkentDizayn #qurilish'}`;
         let coverUrl = null;
         if (qopqoqBuf) {
           try { coverUrl = await supabaseRasmUpload(env, qopqoqBuf); } catch (e) {
-            await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Reels qopqog'i yuklanmadi: ${String((e && e.message) || e).slice(0, 200)}`).catch(() => {});
+            await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Qopqoq yuklanmadi: ${String((e && e.message) || e).slice(0, 200)}`).catch(() => {});
           }
         }
-        await instagramReelsPost(env, videoUrl, igCaption, coverUrl);
-        if (env.FACEBOOK_PAGE_ID) {
-          try { await navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, igCaption); } catch (e) {
-            await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Facebook video navbatga qo'yilmadi: ${String((e && e.message) || e).slice(0, 200)}`).catch(() => {});
-          }
-        }
-        await instagramStoryPost(env, videoUrl);
-        await navbatgaQoshStory(env, videoUrl);
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, '📸 Instagram Reels va Story\'ga avtomatik joylandi (2-Story bosqichi rejalashtirildi).');
+        const caption = `${sarlavha}\n\n${qaror.tavsif || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign ${qaror.hashtaglar || '#arxitektura #interyerdizayn #ToshkentDizayn #qurilish'}`;
+        const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
+          method: 'POST',
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            turi: 'video_nashr',
+            holat: 'tasdiq_kutilmoqda',
+            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: qaror.tavsif || '' },
+            nashr_vaqti: new Date().toISOString(),
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!resp.ok) throw new Error(`navbat xato: ${resp.status} ${(await resp.text().catch(() => '')).slice(0, 150)}`);
+        const nid = (await resp.json())[0].id;
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"`,
+          { inline_keyboard: [[
+            { text: '✅ Joylash', callback_data: `vnash:${nid}:ok` },
+            { text: '❌ Bekor', callback_data: `vnash:${nid}:no` },
+          ]] });
       } catch (e) {
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-          `⚠️ Instagram Reels/Story joylashda xato: ${String((e && e.message) || e)}`);
+          `⚠️ Tasdiqqa tayyorlashda xato: ${String((e && e.message) || e)}`);
       }
-    }
-
-    // YouTube Shorts -- sozlanmagan yoki xato bo'lsa jim o'tkaziladi.
-    try {
-      if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) {
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "ℹ️ YouTube sozlanmagan (YOUTUBE_* env yo'q) -- o'tkazib yuborildi");
-        return true;
-      }
-      await bosqich('YouTube Shorts yuklanmoqda...');
-      const ytNatija = await youtubeUpload(env, outputPath, sarlavha, qaror.tavsif || '', qopqoqBuf);
-      if (ytNatija && ytNatija.url) {
-        const vaqtToshkent = new Date(ytNatija.nashrVaqti.getTime() + 5 * 60 * 60 * 1000);
-        const vaqtMatni = `${String(vaqtToshkent.getUTCDate()).padStart(2, '0')}.${String(vaqtToshkent.getUTCMonth() + 1).padStart(2, '0')} ${String(vaqtToshkent.getUTCHours()).padStart(2, '0')}:${String(vaqtToshkent.getUTCMinutes()).padStart(2, '0')}`;
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-          `📺 YouTube Shorts yuklandi, nashr vaqti rejalashtirildi: ${vaqtMatni} (Toshkent)\n${ytNatija.url}${ytNatija.thumbXato ? `\n⚠️ Qopqoq o'rnatilmadi: ${ytNatija.thumbXato}` : ''}`);
-      } else if (ytNatija && ytNatija.xato) {
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ YouTube yuklashda xato: ${ytNatija.xato}`);
-      }
-    } catch (e) {
-      await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ YouTube yuklashda xato: ${String((e && e.message) || e)}`);
     }
 
     return true;
@@ -1065,4 +1050,69 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
   await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
     `⚠️ Montajchi ${MAX_URINISH} urinishdan keyin ham xato berdi: ${String((oxirgiXato && oxirgiXato.message) || oxirgiXato)}`,
     replyMarkup);
+}
+
+
+// Admin "✅ Joylash" bosgandan keyin: Instagram Reels + Story, Facebook
+// (navbat) va YouTube Shorts'ga chiqaradi.
+export async function bajarNashr({ env, id, adminChatId }) {
+  const sb = (p, init = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/${p}`, {
+    ...init,
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  const xabar = (t) => tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, t).catch(() => {});
+  const rows = await (await sb(`nashr_navbati?id=eq.${id}&select=*`)).json();
+  const q = rows && rows[0];
+  if (!q || q.turi !== 'video_nashr') return xabar('⚠️ Nashr yozuvi topilmadi');
+  if (q.holat === 'bajarildi') return xabar('ℹ️ Bu video allaqachon joylangan');
+  const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif } = q.payload;
+  await sb(`nashr_navbati?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bajarildi' }) }).catch(() => {});
+
+  if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID) {
+    try {
+      await xabar('⏳ Instagram Reels/Story joylanmoqda...');
+      await instagramReelsPost(env, videoUrl, caption, coverUrl);
+      await instagramStoryPost(env, videoUrl);
+      await navbatgaQoshStory(env, videoUrl);
+      await xabar("📸 Instagram Reels va Story'ga joylandi (2-Story rejalashtirildi).");
+    } catch (e) {
+      await xabar(`⚠️ Instagram Reels/Story xato: ${String((e && e.message) || e)}`);
+    }
+  }
+  if (env.FACEBOOK_PAGE_ID) {
+    try {
+      await navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption);
+      await xabar('📘 Facebook video navbatga qo\'yildi (ertalabki oynada chiqadi).');
+    } catch (e) {
+      await xabar(`⚠️ Facebook navbat xato: ${String((e && e.message) || e)}`);
+    }
+  }
+  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) {
+    return xabar("ℹ️ YouTube sozlanmagan (YOUTUBE_* env yo'q) -- o'tkazib yuborildi");
+  }
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nashr-'));
+  try {
+    await xabar('⏳ YouTube Shorts yuklanmoqda...');
+    const vp = path.join(tmp, 'v.mp4');
+    fs.writeFileSync(vp, Buffer.from(await (await fetch(videoUrl)).arrayBuffer()));
+    const cb = coverUrl ? Buffer.from(await (await fetch(coverUrl)).arrayBuffer()) : null;
+    const yt = await youtubeUpload(env, vp, sarlavha, tavsif || '', cb);
+    if (yt && yt.url) {
+      const t = new Date(yt.nashrVaqti.getTime() + 5 * 3600 * 1000);
+      const p = (n) => String(n).padStart(2, '0');
+      await xabar(`📺 YouTube Shorts yuklandi, nashr: ${p(t.getUTCDate())}.${p(t.getUTCMonth() + 1)} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())} (Toshkent)\n${yt.url}${yt.thumbXato ? `\n⚠️ Qopqoq o'rnatilmadi: ${yt.thumbXato}` : ''}`);
+    } else if (yt && yt.xato) {
+      await xabar(`⚠️ YouTube xato: ${yt.xato}`);
+    }
+  } catch (e) {
+    await xabar(`⚠️ YouTube xato: ${String((e && e.message) || e)}`);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
