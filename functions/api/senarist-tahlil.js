@@ -93,7 +93,7 @@
 //   );
 //   create index if not exists nashr_navbati_holat_vaqt_idx on nashr_navbati (holat, nashr_vaqti);
 
-const MODEL = 'claude-sonnet-5-5';
+const MODEL = 'claude-sonnet-5';
 const KAM_MATERIAL_CHEGARA = 3; // shundan kam bo'lsa, kutamiz (keyingi safar yetadi)
 
 function json(data, status = 200) {
