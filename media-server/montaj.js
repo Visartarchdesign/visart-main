@@ -17,6 +17,7 @@ import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import sharp from 'sharp';
+import { qopqoqYarat } from './qopqoqlar.js';
 
 const execFileAsync = promisify(execFile);
 // "Flash Lite" tekin tarifda ancha yuqori kunlik limitga ega (500/kun,
@@ -131,9 +132,21 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
     "3) Birinchi saqlanadigan segment KUCHLI 'hook' bo'lishi kerak (eng jozibali, harakatli kadrdan boshlansin, hech qachon statik/sekin kadr bilan emas) -- tomoshabinni birinchi 1-2 soniyada ushlab qolish shart (bu 2026-yilgi algoritm standarti, oldingi 'sekin kirish' uslubi endi ishlamaydi).\n" +
     "4) AGAR butun xom material past sifatli bo'lsa (doim xira/silkingan, yorug'lik yomon, hech qanday jozibali/premium kadr yo'q, yoki foydali uzunlik 3 soniyadan kam qoladi) -- buni tan oling va \"munosib\": false qaytaring. Chalasifat video chiqarishdan ko'ra, UMUMAN chiqarmaslik afzal.\n" +
     "5) SARLAVHA: videoning ko'rgan mazmuniga (interyer uslubi, xona turi, material, yoritish, kayfiyat) ASOSLANGAN, 3-6 so'zdan iborat, DIQQATNI TORTUVCHI o'zbek tilidagi sarlavha yozing (masalan: \"Minimalizm Uyg'unligi\", \"Yorug' Zamonaviy Oshxona\", \"Hashamatli Mehmonxona Dizayni\") -- umumiy/bo'sh \"Interyer dizayni\" kabi klişelardan qoching, imlo xatosiz yozing.\n" +
-    (qoshimchaKorsatma ? `\n6) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
+    "6) QOPQOQ KATEGORIYASI: VISART DESIGN MASTER COVER SYSTEM'dan ushbu videoga ENG mos keladigan BITTA kategoriyani tanlang (raqam bilan):\n" +
+    "   1 = Interyer/Portfolio (umumiy chiroyli interyer namoyishi -- standart, aksariyat videolar uchun mos)\n" +
+    "   2 = Before/After (video ICHIDA aniq oldin/keyin farqi ko'rinsa -- FAQAT shunday bo'lsa tanlang)\n" +
+    "   3 = Xatolar/Educational (video xato/ogohlantirish/maslahat haqida bo'lsa)\n" +
+    "   4 = Process (loyihadan natijagacha jarayon ko'rsatilsa)\n" +
+    "   5 = Arxitektura (tashqi ko'rinish/exterior, uy maydoni haqida bo'lsa)\n" +
+    "   6 = Qurilish maslahati (qurilish jarayoni/maslahat)\n" +
+    "   7 = Narx/Budjet (narx/smeta/byudjet haqida gap bo'lsa)\n" +
+    "   8 = Material Comparison (ikki material/variant solishtirilsa)\n" +
+    "   Noaniq bo'lsa 1 ni tanlang. 2 va 8 FAQAT video ichida ikkita aniq farqli holat/kadr ko'ringanda tanlanishi mumkin (chunki bu ikkisi ikkita alohida kadr ishlatadi).\n" +
+    "7) AKSENT: sarlavha ichida (yoki alohida) rang bilan AJRATILISHI kerak bo'lgan QISQA so'z/raqam (masalan aniq m², narx, \"5 ta\" kabi) -- shart emas, bo'lmasa bo'sh qoldiring.\n" +
+    "8) RAQAM: agar videoda aniq ko'rsatish mumkin bo'lgan KATTA raqam bo'lsa (maydon m², xato soni, narx) -- shu raqamni alohida qaytaring (masalan \"180 m²\", \"5\"), aks holda bo'sh qoldiring. HECH QACHON o'ylab topilgan raqam yozmang -- faqat qoshimchaKorsatma/izohda aniq berilgan bo'lsa.\n" +
+    (qoshimchaKorsatma ? `\n9) ADMIN'NING MAXSUS KO'RSATMASI (bunga albatta amal qiling, boshqa qoidalardan ustun): "${qoshimchaKorsatma}"\n` : '') +
     "\nJAVOBNI FAQAT quyidagi JSON formatda qaytaring (boshqa hech narsa yozmang):\n" +
-    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
+    '{"munosib": true, "sarlavha": "<3-6 so\'zli diqqat tortuvchi sarlavha>", "kategoriya": <1-8>, "aksent": "<qisqa so\'z/raqam yoki bo\'sh>", "raqam": "<katta raqam yoki bo\'sh>", "segmentlar": [{"start": 0.0, "end": 12.5}, {"start": 15.0, "end": 40.0}], "izoh": "<qisqa, nega aynan shu kadrlar qoldirildi va nima olib tashlandi>"}\n' +
     'yoki material yetarli darajada bo\'lmasa:\n' +
     '{"munosib": false, "sabab": "<nega premium darajaga to\'g\'ri kelmaydi>"}';
 
@@ -182,14 +195,16 @@ async function geminiKesishQarori(apiKey, fileUri, mimeType, qoshimchaKorsatma) 
   throw oxirgiXato;
 }
 
-// Tayyor videodan eng jozibali o'rtaroq kadrni JPEG rasm sifatida ajratib
-// oladi (video uzunligining ~35% nuqtasidan) -- thumbnail asosi sifatida.
-async function ffmpegKadrOl(videoPath, outPath) {
+// Tayyor videodan bitta kadrni JPEG rasm sifatida ajratib oladi -- `nisbat`
+// (0..1) video uzunligining qaysi nuqtasidan olinishini belgilaydi.
+// Standart qopqoq uchun ~35% (eng jozibali o'rtaroq nuqta); before/after va
+// process shablonlari uchun ikkinchi, kech nuqtadagi kadr kerak bo'ladi.
+async function ffmpegKadrOl(videoPath, outPath, nisbat = 0.35) {
   const { stdout } = await execFileAsync('ffprobe', [
     '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', videoPath,
   ]);
   const davomiylik = parseFloat(stdout) || 3;
-  const vaqt = Math.max(0.2, davomiylik * 0.35);
+  const vaqt = Math.max(0.2, davomiylik * nisbat);
   await execFileAsync('ffmpeg', [
     '-y', '-ss', String(vaqt), '-i', videoPath, '-vframes', '1', '-q:v', '2', outPath,
   ]);
@@ -281,95 +296,6 @@ function ikkiQatorgaBol(matn, maxBelgiQator) {
     }
   }
   return qator2 ? [qator1, qator2] : [qator1];
-}
-
-// Video kadri + AI fon + sarlavha'ni birlashtirib, premium "magazine cover"
-// darajadagi qopqoq (cover/thumbnail) PNG yasaydi: yuqorida minimal
-// logotip belgisi, markazda oltin ramkali va soyali foto-karta (fon
-// ko'rinib turishi uchun KICHIKROQ), pastda aniq ierarxiyali matn paneli
-// (eyebrow teg + katta sarlavha + oltin chiziq). AI fon bo'lmasa (null),
-// oddiy qorong'i fonga tushadi -- har doim ishlashi kafolatlanadi.
-async function yasaPremiumQopqoq(frameBuf, aiFonBuf, title) {
-  const KENG = 1080;
-  const BALAND = 1920;
-
-  const fonLayer = aiFonBuf
-    ? await sharp(aiFonBuf).resize(KENG, BALAND, { fit: 'cover' }).png().toBuffer()
-    : await sharp({
-        create: { width: KENG, height: BALAND, channels: 4, background: { r: 21, g: 19, b: 15, alpha: 1 } },
-      }).png().toBuffer();
-
-  // Foto-karta -- endi kichikroq va markazga yaqinroq, AI fon atrofda
-  // ko'rinib tursin (aks holda "premium fon" yasashning ma'nosi qolmaydi).
-  const kartaKeng = 860;
-  const kartaBaland = 1180;
-  const kartaX = Math.round((KENG - kartaKeng) / 2);
-  const kartaY = 260;
-  const kartaRadius = 28;
-
-  const kartaMask = Buffer.from(
-    `<svg width="${kartaKeng}" height="${kartaBaland}"><rect x="0" y="0" width="${kartaKeng}" height="${kartaBaland}" rx="${kartaRadius}" fill="#fff"/></svg>`
-  );
-  const frameRounded = await sharp(frameBuf)
-    .resize(kartaKeng, kartaBaland, { fit: 'cover' })
-    .composite([{ input: kartaMask, blend: 'dest-in' }])
-    .png()
-    .toBuffer();
-
-  // Soft soya -- bir nechta yarim shaffof, bosqichma-bosqich kattalashuvchi
-  // qatlam (haqiqiy gaussian blur filtri ishlatmasdan, ishonchli chiqishi uchun)
-  const soyaSvg = Buffer.from(`
-    <svg width="${KENG}" height="${BALAND}" xmlns="http://www.w3.org/2000/svg">
-      <rect x="${kartaX - 22}" y="${kartaY - 4}" width="${kartaKeng + 44}" height="${kartaBaland + 44}" rx="42" fill="#000" opacity="0.12"/>
-      <rect x="${kartaX - 12}" y="${kartaY + 2}" width="${kartaKeng + 24}" height="${kartaBaland + 32}" rx="36" fill="#000" opacity="0.22"/>
-      <rect x="${kartaX - 4}" y="${kartaY + 10}" width="${kartaKeng + 8}" height="${kartaBaland + 18}" rx="32" fill="#000" opacity="0.3"/>
-    </svg>
-  `);
-
-  const footerY = kartaY + kartaBaland + 40; // 1480
-  const titleSafe = xmlEscape(title || 'Visart Design');
-  const qatorlar = ikkiQatorgaBol(titleSafe, 16);
-  const titleBaseY = footerY + 240;
-
-  const overlaySvg = Buffer.from(`
-    <svg width="${KENG}" height="${BALAND}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="top" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#000" stop-opacity="0.5"/>
-          <stop offset="100%" stop-color="#000" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="foot" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#0c0a08" stop-opacity="0"/>
-          <stop offset="22%" stop-color="#0c0a08" stop-opacity="0.94"/>
-          <stop offset="100%" stop-color="#0c0a08" stop-opacity="0.98"/>
-        </linearGradient>
-      </defs>
-
-      <rect x="0" y="0" width="${KENG}" height="220" fill="url(#top)"/>
-      <rect x="0" y="${footerY - 140}" width="${KENG}" height="${BALAND - (footerY - 140)}" fill="url(#foot)"/>
-
-      <!-- minimal logotip belgisi -->
-      <rect x="60" y="62" width="16" height="16" fill="#c9a876" transform="rotate(45 68 70)"/>
-      <text x="96" y="80" font-family="Georgia, 'Times New Roman', serif" font-size="28" font-weight="700" fill="#ffffff" letter-spacing="5">VISART DESIGN</text>
-
-      <!-- karta atrofida nozik oltin ramka -->
-      <rect x="${kartaX}" y="${kartaY}" width="${kartaKeng}" height="${kartaBaland}" rx="${kartaRadius}" fill="none" stroke="#c9a876" stroke-width="2.5" opacity="0.9"/>
-
-      <!-- pastki matn paneli -->
-      <text x="60" y="${footerY + 100}" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#c9a876" letter-spacing="5">PREMIUM INTERIOR</text>
-      <rect x="60" y="${footerY + 122}" width="110" height="5" fill="#c9a876"/>
-      ${qatorlar.map((q, i) => `<text x="60" y="${titleBaseY + i * 78}" font-family="Arial, sans-serif" font-size="68" font-weight="800" fill="#ffffff">${q}</text>`).join('')}
-    </svg>
-  `);
-
-  return sharp(fonLayer)
-    .composite([
-      { input: soyaSvg, left: 0, top: 0 },
-      { input: frameRounded, left: kartaX, top: kartaY },
-      { input: overlaySvg, left: 0, top: 0 },
-    ])
-    .png()
-    .toBuffer();
 }
 
 // YouTube: muddatsiz refresh_token'ni vaqtinchalik access_token'ga almashtiradi.
@@ -607,12 +533,35 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     // to'xtamaydi.
     let qopqoqBuf = null;
     try {
-      await bosqich('Premium qopqoq (AI fon) tayyorlanmoqda...');
+      await bosqich('Premium qopqoq tayyorlanmoqda...');
+      const kategoriya = qaror.kategoriya || 1;
       const framePath = path.join(tmpDir, 'frame.jpg');
-      await ffmpegKadrOl(outputPath, framePath);
+      await ffmpegKadrOl(outputPath, framePath, 0.35);
       const frameBuf = fs.readFileSync(framePath);
-      const aiFonBuf = await geminiPremiumFon(sarlavha);
-      qopqoqBuf = await yasaPremiumQopqoq(frameBuf, aiFonBuf, sarlavha);
+
+      // Before/After (2) va Process (4) shabloni ikkinchi, kech nuqtadagi
+      // kadrni talab qiladi -- faqat shu kategoriyalarda qo'shimcha olinadi.
+      let frameBuf2 = null;
+      if (kategoriya === 2 || kategoriya === 4) {
+        const framePath2 = path.join(tmpDir, 'frame2.jpg');
+        await ffmpegKadrOl(outputPath, framePath2, 0.85);
+        frameBuf2 = fs.readFileSync(framePath2);
+      }
+
+      // AI fon faqat "hero" shablonlarida ishlatiladi (qopqoqlar.js ichida
+      // o'zi e'tiborsiz qoldiradi, lekin oldindan so'rab vaqt tejamaymiz --
+      // 2/8 kategoriyada aiFonBuf shart emas).
+      const aiFonBuf = (kategoriya === 2 || kategoriya === 8) ? null : await geminiPremiumFon(sarlavha);
+
+      qopqoqBuf = await qopqoqYarat({
+        rasmBuf: frameBuf,
+        rasmBuf2: frameBuf2,
+        aiFonBuf,
+        kategoriya,
+        headline: sarlavha,
+        accentSoz: qaror.aksent || '',
+        raqam: qaror.raqam || '',
+      });
     } catch (e) {
       qopqoqBuf = null; // qopqoq ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
     }
