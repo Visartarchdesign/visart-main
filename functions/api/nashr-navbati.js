@@ -73,12 +73,28 @@ async function igContainerKutish(containerId, token) {
   return false;
 }
 
+// Sahifaga post uchun System User tokeni emas, SAHIFA tokeni kerak
+// (GET /{page-id}?fields=access_token). Xato bo'lsa -- sabab aniq ko'rinadi
+// (noto'g'ri FACEBOOK_PAGE_ID yoki sahifa System User'ga biriktirilmagan).
+async function sahifaTokeni(pageId, token) {
+  const url = new URL(`https://graph.facebook.com/v21.0/${pageId}`);
+  url.searchParams.set('fields', 'access_token,name');
+  url.searchParams.set('access_token', token);
+  const res = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error) {
+    throw new Error(`Sahifa tokeni olinmadi (FACEBOOK_PAGE_ID=${pageId}): ${(data && data.error && data.error.message) || res.status}`);
+  }
+  if (!data.access_token) throw new Error(`Sahifa tokeni yo'q ("${data.name}") -- sahifa System User'ga Full control bilan biriktirilmagan`);
+  return data.access_token;
+}
+
 async function bajarFacebookPhoto(env, payload) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.FACEBOOK_PAGE_ID) throw new Error('Facebook sozlanmagan');
   const { urls, caption } = payload;
   if (!urls || !urls.length) throw new Error("payload.urls bo'sh");
   const pageId = env.FACEBOOK_PAGE_ID;
-  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  const token = await sahifaTokeni(pageId, env.INSTAGRAM_ACCESS_TOKEN);
   const fbCaption = (caption || '').slice(0, 5000);
 
   if (urls.length === 1) {
