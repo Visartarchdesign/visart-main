@@ -23,6 +23,23 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// ---------- PRODUCTION / REAL-ASSET VALIDATION ----------
+// Call this before rendering when dev placeholders must NOT be allowed
+// (production runs, real-asset QA previews). Throws naming the exact
+// missing input instead of silently falling back.
+const REQUIRED_INPUTS = {
+  A: ['heroImagePath'],
+  B: ['personAssetPath', 'sceneImagePath'],
+  C: ['blueprintImagePath', 'projectImagePath'],
+};
+
+function assertRealAssets(family, inputs = {}) {
+  const missing = REQUIRED_INPUTS[family].filter((key) => !inputs[key] || !fs.existsSync(inputs[key]));
+  if (missing.length) {
+    throw new Error(`FAILED: Family ${family} is missing required external asset(s): ${missing.join(', ')}. No placeholder was used.`);
+  }
+}
+
 function logoMatnSvg(textColor = WARM_WHITE) {
   const tx = LOGO_X + LOGO_W + 18;
   return `<text x="${tx}" y="${LOGO_Y + LOGO_H / 2 + 7}" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="2" fill="${textColor}">VISART DESIGN</text>`;
@@ -48,9 +65,48 @@ function warnDev(label) {
   console.warn(`[DEV PLACEHOLDER] ${label} — not a production asset. Supply the real external image path.`);
 }
 
-async function loadImage(imagePath, w, h, fit = 'cover') {
+async function loadImage(imagePath, w, h, fit = 'cover', position = 'center') {
   if (!imagePath || !fs.existsSync(imagePath)) return null;
-  return sharp(imagePath).resize(w, h, { fit, position: 'center' }).png().toBuffer();
+  return sharp(imagePath).resize(w, h, { fit, position }).png().toBuffer();
+}
+
+// Detects the real content bounding box of a technical drawing (ink/lines)
+// against a near-white sheet background and crops to it, so a scanned/exported
+// blueprint's page margin or title-block whitespace doesn't eat half the frame.
+// This is a composition/cropping decision — it never alters pixels, only the crop.
+async function autoCropToContent(imagePath, { bg = [255, 255, 255], threshold = 18, edgeInset = 0.025 } = {}) {
+  const img = sharp(imagePath);
+  const { data, info } = await img.raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info;
+  // ignore a thin margin at the true page edge first: scanned/exported sheets
+  // usually have a full-bleed frame/border line there, which would otherwise
+  // get picked up as "content" and defeat the whole crop.
+  const insetX = Math.round(width * edgeInset);
+  const insetY = Math.round(height * edgeInset);
+  let minX = width, maxX = 0, minY = height, maxY = 0, found = false;
+  const step = 5;
+  for (let y = insetY; y < height - insetY; y += step) {
+    for (let x = insetX; x < width - insetX; x += step) {
+      const idx = (y * width + x) * channels;
+      const dr = Math.abs(data[idx] - bg[0]);
+      const dg = Math.abs(data[idx + 1] - bg[1]);
+      const db = Math.abs(data[idx + 2] - bg[2]);
+      if (dr > threshold || dg > threshold || db > threshold) {
+        found = true;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (!found) return sharp(imagePath).png().toBuffer();
+  const pad = Math.round(Math.min(width, height) * 0.02);
+  const left = Math.max(0, minX - pad);
+  const top = Math.max(0, minY - pad);
+  const w2 = Math.min(width - left, maxX - minX + pad * 2);
+  const h2 = Math.min(height - top, maxY - minY + pad * 2);
+  return sharp(imagePath).extract({ left, top, width: w2, height: h2 }).png().toBuffer();
 }
 
 // drawn architecture-line placeholder (dev-only stand-in for a real hero/scene photo)
@@ -321,9 +377,20 @@ async function renderFamilyB({ personAssetPath, sceneImagePath, headline = ['SAR
 //   gradient (transparent top -> opaque bottom), i.e. a blueprint->reality transition
 //   -> top/bottom scrims -> text -> logo
 // ============================================================
-async function renderFamilyC({ blueprintImagePath, projectImagePath, headline = ['SARLAVHA', 'AKSENT'], accent = DEEP_GOLD, subtitle = '', metadata = '' } = {}) {
-  const blueprintBuf = await loadImage(blueprintImagePath, KENG, BALAND, 'cover') || await devBlueprintPlaceholder();
-  const projectBufRaw = await loadImage(projectImagePath, KENG, BALAND, 'cover') || await devProjectPlaceholder();
+async function renderFamilyC({ blueprintImagePath, projectImagePath, headline = ['SARLAVHA', 'AKSENT'], accent = DEEP_GOLD, subtitle = '', metadata = '', blueprintPosition = 'center', projectPosition = 'center', blueprintAutoCrop = true } = {}) {
+  // technical sheets (scanned/exported CAD sheets) often carry a page margin or
+  // title-block whitespace around the actual drawing — auto-crop to the drawing's
+  // content bounding box first so that whitespace doesn't dominate the frame.
+  let blueprintSource = blueprintImagePath;
+  let blueprintBuf;
+  if (blueprintImagePath && fs.existsSync(blueprintImagePath) && blueprintAutoCrop) {
+    const cropped = await autoCropToContent(blueprintImagePath);
+    blueprintBuf = await sharp(cropped).resize(KENG, BALAND, { fit: 'cover', position: blueprintPosition }).png().toBuffer();
+  } else {
+    blueprintBuf = await loadImage(blueprintImagePath, KENG, BALAND, 'cover', blueprintPosition);
+  }
+  blueprintBuf = blueprintBuf || await devBlueprintPlaceholder();
+  const projectBufRaw = await loadImage(projectImagePath, KENG, BALAND, 'cover', projectPosition) || await devProjectPlaceholder();
 
   // vertical reveal mask: transparent top, opaque bottom (alpha comes straight from SVG opacity)
   const maskSvg = `<svg width="${KENG}" height="${BALAND}">
@@ -367,7 +434,7 @@ async function renderFamilyC({ blueprintImagePath, projectImagePath, headline = 
     .png().toBuffer();
 }
 
-export { renderFamilyA, renderFamilyB, renderFamilyC };
+export { renderFamilyA, renderFamilyB, renderFamilyC, assertRealAssets };
 
 // ============================================================
 // CLI self-preview — only runs when this file is executed directly
