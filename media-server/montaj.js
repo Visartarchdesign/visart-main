@@ -655,6 +655,19 @@ async function supabaseVideoUpload(env, videoPath) {
   return `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${objPath}`;
 }
 
+async function supabaseRasmUpload(env, buf) {
+  const bucket = 'public-media';
+  const objPath = `instagram-video/${Date.now()}-cover.jpg`;
+  const jpg = await sharp(buf).jpeg({ quality: 90 }).toBuffer();
+  const res = await fetch(`${env.SUPABASE_URL}/storage/v1/object/${bucket}/${objPath}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+    body: jpg,
+  });
+  if (!res.ok) throw new Error(`Supabase qopqoq yuklash xato: ${res.status}`);
+  return `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${objPath}`;
+}
+
 async function igFetch(path, params) {
   const url = new URL(`https://graph.facebook.com/v21.0/${path}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -690,7 +703,7 @@ async function igContainerKutish(containerId, token) {
 // mijoz-bot.js) qanday qo'shimcha so'ramasdan avtomatik chiqsa, video ham
 // shu bir xil, allaqachon-tasdiqlangan oqimga ergashadi. Sozlanmagan yoki
 // xato bo'lsa -- jim o'tkaziladi, asosiy Telegram oqimini to'xtatmaydi.
-async function instagramReelsPost(env, videoUrl, caption) {
+async function instagramReelsPost(env, videoUrl, caption, coverUrl) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return null;
   const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
   const token = env.INSTAGRAM_ACCESS_TOKEN;
@@ -699,6 +712,7 @@ async function instagramReelsPost(env, videoUrl, caption) {
     video_url: videoUrl,
     caption: (caption || '').slice(0, 2200),
     share_to_feed: 'true',
+    ...(coverUrl ? { cover_url: coverUrl } : {}),
     access_token: token,
   });
   const tayyor = await igContainerKutish(container.id, token);
@@ -901,6 +915,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       });
     } catch (e) {
       qopqoqBuf = null; // qopqoq ixtiyoriy -- asosiy video yuborishni to'xtatmaydi
+      await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Qopqoq yaratilmadi: ${String((e && e.message) || e).slice(0, 300)}`).catch(() => {});
     }
 
     if (qopqoqBuf) {
@@ -929,7 +944,13 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
         await bosqich('Instagram Reels/Story uchun yuklanmoqda...');
         const videoUrl = await supabaseVideoUpload(env, outputPath);
         const igCaption = `${sarlavha}\n\n${qaror.tavsif || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign ${qaror.hashtaglar || '#arxitektura #interyerdizayn #ToshkentDizayn #qurilish'}`;
-        await instagramReelsPost(env, videoUrl, igCaption);
+        let coverUrl = null;
+        if (qopqoqBuf) {
+          try { coverUrl = await supabaseRasmUpload(env, qopqoqBuf); } catch (e) {
+            await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Reels qopqog'i yuklanmadi: ${String((e && e.message) || e).slice(0, 200)}`).catch(() => {});
+          }
+        }
+        await instagramReelsPost(env, videoUrl, igCaption, coverUrl);
         await instagramStoryPost(env, videoUrl);
         await navbatgaQoshStory(env, videoUrl);
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, '📸 Instagram Reels va Story\'ga avtomatik joylandi (2-Story bosqichi rejalashtirildi).');
