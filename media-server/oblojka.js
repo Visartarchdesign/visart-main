@@ -20,9 +20,18 @@ function escapeXml(s) {
   }[c]));
 }
 
+// Telegram rasm/thumbnail JPEG, PNG yoki WebP bo'lishi mumkin -- noto'g'ri
+// media_type bilan SVG <image> uni ko'rsatolmay, natija BO'SH chiqadi.
+function rasmMediaTuri(b64) {
+  if (b64.startsWith('iVBOR')) return 'image/png';
+  if (b64.startsWith('UklGR')) return 'image/webp';
+  if (b64.startsWith('R0lGOD')) return 'image/gif';
+  return 'image/jpeg';
+}
+
 function toDataUri(photoBase64) {
   if (photoBase64.startsWith('data:')) return photoBase64;
-  return `data:image/jpeg;base64,${photoBase64}`;
+  return `data:${rasmMediaTuri(photoBase64)};base64,${photoBase64}`;
 }
 
 // Matnni so'z bo'yicha taxminan 2 qatorga bo'ladi (chiroyli sig'dirish uchun)
