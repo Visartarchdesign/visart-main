@@ -1362,12 +1362,14 @@ async function fetchLivePricing() {
   }
 }
 
-function estimateText(pricing, xizmatCode, maydon) {
+function estimateText(pricing, xizmatCode, maydon, hujjat) {
   const yoq = "Menejer tez orada aniq narxni aytib beradi.";
   if (!pricing) return "Hozircha narx ma'lumotini olib bo'lmadi — menejer sizga aniq narxni ayta oladi.";
   const f = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   if (xizmatCode === 'arch' && pricing.architecture && pricing.architecture.ratePerSotix) {
-    return `Taxminiy narx (Standart, 1 qavat): ${f(pricing.architecture.ratePerSotix * maydon)} so'm. Aniq narx menejer bilan kelishiladi.`;
+    const dk = hujjat ? ((pricing.architecture.addons || []).find((a) => a.id === 'docs') || {}).flat || 0 : 0;
+    const asos = pricing.architecture.ratePerSotix * maydon;
+    return `Taxminiy narx (Standart, 1 qavat): ${f(asos + dk)} so'm${dk ? ` (loyiha ${f(asos)} + hujjatlashtirish ${f(dk)})` : ''}. Aniq narx menejer bilan kelishiladi.`;
   }
   if (xizmatCode === 'interior' && pricing.interior && pricing.interior.packages) {
     const r = pricing.interior.packages.map((x) => x.rate * maydon);
@@ -1435,6 +1437,13 @@ async function handleText(env, chatId, dialog, text) {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'maydon_xato'));
       return;
     }
+    if (dialog.xizmat_turi === 'arch') {
+      await upsertDialog(env, chatId, { step: `dok:${m2}` });
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
+        til === 'ru' ? 'Нужна ли оформление документации (согласования, разрешения)?' : "Hujjatlashtirish (ruxsatnoma, kelishuvlar) ham kerakmi?",
+        { inline_keyboard: [[{ text: til === 'ru' ? '✅ Да' : '✅ Ha', callback_data: 'dk:1' }, { text: til === 'ru' ? '❌ Нет' : "❌ Yo'q", callback_data: 'dk:0' }]] });
+      return;
+    }
     await finishDialog(env, chatId, dialog, m2);
     return;
   }
@@ -1447,6 +1456,46 @@ async function handleText(env, chatId, dialog, text) {
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'qm'));
 }
 
+// ── ADMIN PANEL ──
+async function adminPanel(env, chatId) {
+  await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '🛠 <b>Visart admin panel</b>', { inline_keyboard: [
+    [{ text: '🆕 Oxirgi lidlar', callback_data: 'ap:lid' }, { text: '📊 Bugun / hafta', callback_data: 'ap:stat' }],
+    [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
+    [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
+  ] });
+}
+
+async function adminPanelCb(env, cq, data) {
+  const chatId = cq.message.chat.id;
+  if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return; }
+  await answerCq(env, cq.id);
+  const send = (x, kb) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, x, kb);
+  const amal = data.split(':')[1];
+  const q = async (path) => (await sbFetch(env, path).catch(() => null)) || [];
+  if (amal === 'mijoz') { await menyuKorsat(env, H, chatId, false); return; }
+  if (amal === 'id') { await send(`Chat ID: <code>${chatId}</code>`); return; }
+  if (amal === 'lid') {
+    const r = await q('lidlar?select=ism,telefon,xizmat_turi,maydon_m2,created_at&manba=eq.telegram_mijoz_bot&order=created_at.desc&limit=8');
+    await send(r.length ? '🆕 <b>Oxirgi lidlar</b>\n\n' + r.map((x) => `• ${escH(x.ism)} · ${escH(x.telefon)} · ${escH(x.xizmat_turi)} ${x.maydon_m2 || ''}\n  <i>${String(x.created_at || '').slice(0, 16).replace('T', ' ')}</i>`).join('\n') : 'Lidlar yo\'q.');
+    return;
+  }
+  if (amal === 'stat') {
+    const d1 = new Date(Date.now() - 864e5).toISOString(), d7 = new Date(Date.now() - 7 * 864e5).toISOString();
+    const [a, b] = await Promise.all([q(`lidlar?select=id&created_at=gte.${d1}`), q(`lidlar?select=id&created_at=gte.${d7}`)]);
+    await send(`📊 Lidlar: oxirgi 24 soat — <b>${a.length}</b>, 7 kun — <b>${b.length}</b>`);
+    return;
+  }
+  if (amal === 'ob') {
+    const r = await q('obyektlar?select=nom,holat,mijoz_ism&order=id.desc&limit=12');
+    await send(r.length ? '🏗 <b>Obyektlar</b>\n\n' + r.map((x) => `• ${escH(x.nom)} — ${escH(x.holat || '—')}${x.mijoz_ism ? ' (' + escH(x.mijoz_ism) + ')' : ''}`).join('\n') : 'Obyekt topilmadi.');
+    return;
+  }
+  if (amal === 'nav') {
+    const r = await q('nashr_navbati?select=turi,holat&order=id.desc&limit=10');
+    await send(r.length ? '🗂 <b>Navbat (oxirgi 10)</b>\n\n' + r.map((x) => `• ${escH(x.turi)} — ${escH(x.holat)}`).join('\n') : 'Navbat bo\'sh.');
+  }
+}
+
 async function handleXizmatTanlandi(env, chatId, dialog, xizmatCode) {
   const label = (XIZMAT_VARIANTLARI.find((x) => x[0] === xizmatCode) || [, xizmatCode])[1];
   await upsertDialog(env, chatId, { step: 'maydon', xizmat_turi: xizmatCode, xizmat_label: label });
@@ -1455,7 +1504,7 @@ async function handleXizmatTanlandi(env, chatId, dialog, xizmatCode) {
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `${t(til, 'tanlandi')}: ${til === 'ru' ? XIZMAT_RU[xizmatCode] || label : label}.\n\n${savol}`);
 }
 
-async function finishDialog(env, chatId, dialog, maydon) {
+async function finishDialog(env, chatId, dialog, maydon, hujjat) {
   await upsertDialog(env, chatId, { step: 'tugallandi', maydon_m2: maydon });
 
   // 1) Lid sifatida Supabase'dagi YANGI `lidlar` jadvaliga yoziladi (mavjud
@@ -1480,7 +1529,7 @@ async function finishDialog(env, chatId, dialog, maydon) {
 
   // 2) Narx taxmini (saytning jonli /api/content dan)
   const pricing = await fetchLivePricing();
-  const narxMatni = estimateText(pricing, dialog.xizmat_turi, maydon);
+  const narxMatni = estimateText(pricing, dialog.xizmat_turi, maydon, hujjat);
 
   const til = (await getProfil(env, H, chatId)).til;
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
@@ -1491,7 +1540,7 @@ async function finishDialog(env, chatId, dialog, maydon) {
   const birlik = dialog.xizmat_turi === 'arch' ? 'sotix' : 'm²';
   for (const mid of menejerlar(env)) {
     await tgSend(env.MIJOZ_BOT_TOKEN, mid,
-      `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}\n📐 ${maydon} ${birlik}\n💬 <a href="tg://user?id=${chatId}">Mijozga Telegramda yozish</a>` +
+      `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}\n📐 ${maydon} ${birlik}${dialog.xizmat_turi === 'arch' ? `\n📄 Hujjatlashtirish: ${hujjat ? 'ha' : "yo'q"}` : ''}\n💬 <a href="tg://user?id=${chatId}">Mijozga Telegramda yozish</a>` +
       (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!')).catch(() => {});
   }
 }
@@ -1623,6 +1672,15 @@ export async function onRequestPost({ request, env }) {
         await handleSenaristTasdiq(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('dk:')) {
+        await answerCq(env, cq.id);
+        const cid = cq.message.chat.id;
+        const dlg = await getDialog(env, cid);
+        const mm = dlg && String(dlg.step).startsWith('dok:') ? parseFloat(String(dlg.step).slice(4)) : 0;
+        if (mm > 0) { await removeKb(env, cid, cq.message.message_id); await finishDialog(env, cid, dlg, mm, data === 'dk:1'); }
+        return json({ ok: true });
+      }
+      if (data.startsWith('ap:')) { await adminPanelCb(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('menu:')) { await handleMenu(env, H, cq, data); return json({ ok: true }); }
       if (data.startsWith('nx')) { await handleNarx(env, H, cq, data); return json({ ok: true }); }
       if (data.startsWith('lq')) { await handleLq(env, H, cq, data); return json({ ok: true }); }
@@ -1802,6 +1860,11 @@ export async function onRequestPost({ request, env }) {
 
     if (msg.text === '/id') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Sizning chat ID: <code>${chatId}</code>`);
+      return json({ ok: true });
+    }
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) &&
+        (msg.text === '/start' || msg.text === '/admin')) {
+      await adminPanel(env, chatId);
       return json({ ok: true });
     }
     if (msg.text === '/start' || msg.text === '/menu') {
