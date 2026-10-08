@@ -209,7 +209,12 @@ async function handle({ request, env }) {
     }
   }
 
-  return json({ ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar });
+  return json({
+    ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
+    // diagnostika: nima uchun yuborilmagani ko'rinsin
+    navbatda: { moliya: moliya.length, obyekt: Object.values(obyektlar).reduce((a, b) => a + b.length, 0) },
+    moliya_guruh_sozlangan: !!env.MOLIYA_GROUP_CHAT_ID,
+  });
 }
 
 export async function onRequestGet(context) {
