@@ -47,7 +47,7 @@
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
 import { keyingiToshkent } from '../_lib/botAvto.js';
-import { guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
+import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
@@ -163,7 +163,8 @@ async function handleObyektBuyrugi(env, msg) {
       prefer: 'resolution=merge-duplicates,return=minimal',
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: chatId }]),
     });
-    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Bu guruh obyekt №${obyektId} uchun MIJOZ guruhi. Bu yerga faqat tasdiqlangan yangiliklar yuboriladi, bot foto/videolarga savol bermaydi.`);
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Bu guruh obyekt №${obyektId} uchun MIJOZ guruhi sifatida bog'landi.`);
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, TANISH_MIJOZ);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚠️ Bog'lashda xato yuz berdi, qayta urinib ko'ring.");
   }
@@ -201,9 +202,8 @@ async function handleUstalarBuyrugi(env, msg) {
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: chatId }]),
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-      `✅ Bu guruh obyekt №${obyektId} USTALAR guruhi sifatida bog'landi.\n\n` +
-      "Hurmatli ustalar! Har kungi mehnatingiz uchun oldindan rahmat — xalol ishingiz juda qadrlanadi. 🙏\n\n" +
-      "Bajargan ishingiz bo'yicha video yoki rasmni shu yerga tashlab turing, biz ko'rib, mijozga yetkazamiz. Charchamang! 💪");
+      `✅ Bu guruh obyekt №${obyektId} USTALAR guruhi sifatida bog'landi.`);
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, TANISH_USTA);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚠️ Bog'lashda xato yuz berdi, qayta urinib ko'ring.");
   }
@@ -1700,9 +1700,7 @@ async function handleGuruhMaster(env, cq, data) {
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: Number(guruhId) }]),
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `✅ Tayyor: guruh «${nom}» obyektiga ${rol === 'm' ? 'MIJOZLAR' : 'USTALAR'} guruhi sifatida ulandi.`);
-    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm'
-      ? "Assalomu alaykum! 👋 Men <b>Visart Design</b> yordamchi botiman. Loyihangiz bo'yicha muhim yangiliklar — to'lov tasdig'i, bosqich yakunlanishi va boshqalarni shu yerga yetkazib turaman. 🏗️"
-      : "Hurmatli ustalar! Har kungi mehnatingiz uchun oldindan rahmat — xalol ishingiz juda qadrlanadi. 🙏\n\nBajargan ishingiz bo'yicha video yoki rasmni shu yerga tashlab turing, biz ko'rib, mijozga yetkazamiz. Charchamang! 💪");
+    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm' ? TANISH_MIJOZ : TANISH_USTA);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `⚠️ Bog'lashda xato: ${String((e && e.message) || e).slice(0, 200)}`);
   }

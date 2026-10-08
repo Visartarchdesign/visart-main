@@ -238,3 +238,30 @@ export async function maslahatNavbatiniTekshir(env) {
   await sb(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ turi: 'maslahat_yarat', payload: {}, nashr_vaqti: keyingiToshkent(10, 0), holat: 'kutilmoqda' }]) }).catch(() => {});
 }
 export const keyingiHafta = () => keyingiToshkent(10, 7);
+
+// ── Obyekt guruhlariga bog'langanda tanishtiruv (mijozlar / ustalar) ──
+export const TANISH_MIJOZ =
+  "Assalomu alaykum, hurmatli mijozimiz! 👋\n\n" +
+  "Sizni <b>Visart Design</b> oilasida ko'rib turganimizdan juda xursandmiz. Men — jamoamizning raqamli yordamchisi <b>Visart Design boti</b>man. Maqsadim — loyihangiz jarayonini siz uchun shaffof va qulay qilish. ✨\n\n" +
+  "<b>Men nima qilaman:</b>\n" +
+  "🏗 <b>Obyekt holati</b> — ish qaysi bosqichda ekanini yetkazib turaman\n" +
+  "🎥 <b>Kunlik hisobot</b> — ustalar bajargan ishning foto va videolari (jamoamiz tekshirib tasdiqlagandan so'ng) shu yerga keladi\n" +
+  "💳 <b>To'lovlar</b> — to'lov tasdig'i va keyingi bosqich haqida eslatmalar\n" +
+  "✅ <b>Bosqich yakuni</b> — ish tugaganda xabar beraman va fikringizni so'rayman\n" +
+  "💬 <b>Savollar</b> — shaxsiy chatda (@visart_design_bot) obyektingiz holati, muddat va smeta bo'yicha javob beraman\n\n" +
+  "Bu guruhga faqat muhim va tasdiqlangan xabarlar yuboriladi — ortiqcha shovqin bo'lmaydi. 🤝\n" +
+  "Savolingiz bo'lsa, menejerimiz doim aloqada. Birgalikda orzuingizdagi makonni yaratamiz! 🏡";
+
+export const TANISH_USTA =
+  "Assalomu alaykum, hurmatli ustalar! 👷‍♂️🙏\n\n" +
+  "Men — <b>Visart Design</b> jamoasining yordamchi botiman. Har kungi mehnatingiz uchun oldindan rahmat: sizning xalol ishingiz loyihamizning asosi! 💪\n\n" +
+  "<b>Bu guruhda qanday ishlaymiz:</b>\n" +
+  "1️⃣ Bajargan ishingizning <b>video yoki rasmini</b> shu yerga tashlang\n" +
+  "2️⃣ Bot so'raydi — <b>qaysi ish turi</b> (elektr, santexnika, pardoz va h.k.) — tugmani bosing\n" +
+  "3️⃣ Jamoamiz ko'rib chiqadi, to'g'ri bo'lsa <b>mijozga yuboriladi</b>\n" +
+  "4️⃣ Natija (yuborildi / qayta yuborish kerak) shu yerda xabar qilinadi\n\n" +
+  "<b>Eslatma:</b>\n" +
+  "• Faqat shu obyektga tegishli ish hisobotini yuboring\n" +
+  "• Video/rasm aniq va yorug' bo'lsin — mijoz ko'radi\n" +
+  "• Kuniga bir marta umumiy hisobot ham yetarli\n\n" +
+  "Charchamang, ishingizga omad! 🛠✨";
