@@ -1,3 +1,4 @@
+import { saytXabar, lidQabulqiluvchilar, sozlanganmi } from '../_lib/tgNotify.js';
 // Cloudflare Pages Function — /api/contact
 // Har bir ariza: 1) bazaga (leads jadvali) yoziladi — admin panelda "Murojaatlar" bo'limida ko'rinadi;
 // 2) Telegram botga yuboriladi (TELEGRAM_BOT_TOKEN va TELEGRAM_CHAT_ID sozlangan bo'lsa).
@@ -37,24 +38,15 @@ export async function onRequestPost({ request, env }) {
       } catch (e) { /* jadval hali yaratilmagan bo'lishi mumkin — Telegram orqali davom etamiz */ }
     }
 
-    const token = env.TELEGRAM_BOT_TOKEN;
-    const chatId = env.TELEGRAM_CHAT_ID;
-    if (token && chatId) {
+    if (sozlanganmi(env)) {
       const text =
-        `🆕 Yangi ariza — Visart Design\n\n` +
+        `🆕 Yangi ariza — Visart Design (sayt)\n\n` +
         `👤 Ism: ${name}\n` +
         `📞 Telefon: ${phone}\n` +
         `🛠 Xizmat: ${service || '—'}\n` +
         `📝 Loyiha: ${message || '—'}\n` +
         `🌐 Til: ${lang || '—'}`;
-      try {
-        const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chatId, text }),
-        });
-        sent = tgRes.ok;
-      } catch (e) { sent = false; }
+      sent = await saytXabar(env, lidQabulqiluvchilar(env), text);
     }
 
     if (!saved && !sent) return respond({ ok: false, error: 'not_delivered' }, 502);

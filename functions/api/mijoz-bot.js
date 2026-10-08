@@ -1493,6 +1493,7 @@ async function adminPanel(env, chatId) {
     [{ text: '🆕 Oxirgi lidlar', callback_data: 'ap:lid' }, { text: '📊 Bugun / hafta', callback_data: 'ap:stat' }],
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
     [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
+    [{ text: '🌐 Sayt murojaatlari', callback_data: 'ap:sayt' }],
     [{ text: '➕ Admin qo\'shish', callback_data: 'ap:add' }, { text: '👥 Adminlar', callback_data: 'ap:list' }],
   ] });
 }
@@ -1523,6 +1524,14 @@ async function adminPanelCb(env, cq, data) {
     const id = Number(data.split(':')[2]);
     if (id) await sbFetch(env, `bot_adminlar?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
     await send("🗑 Admin o'chirildi.");
+    return;
+  }
+  if (amal === 'sayt') {
+    try {
+      const r = await env.DB.prepare('SELECT name, phone, service, created_at FROM leads ORDER BY id DESC LIMIT 8').all();
+      const rows = (r && r.results) || [];
+      await send(rows.length ? '🌐 <b>Sayt murojaatlari</b>\n\n' + rows.map((x) => `• ${escH(x.name)} · ${escH(x.phone)} · ${escH(x.service || '—')}\n  <i>${escH(String(x.created_at || '').slice(0, 16))}</i>`).join('\n') : 'Murojaatlar yo\'q.');
+    } catch (e) { await send("Sayt murojaatlari bazasiga ulanib bo'lmadi (D1 'DB' bog'lanmagan)."); }
     return;
   }
   if (amal === 'mijoz') { await menyuKorsat(env, H, chatId, false); return; }
