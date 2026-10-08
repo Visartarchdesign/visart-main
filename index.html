@@ -874,10 +874,10 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
           <div class="calc-options calc-2" id="calcArchType" style="max-width:420px"></div>
         </div>
         <div class="calc-group">
-          <span class="calc-label"><span data-lang="uz" class="lang-active">Bino maydoni (m²)</span><span data-lang="ru">Площадь здания (м²)</span></span>
+          <span class="calc-label"><span id="calcArchAreaLabel"></span></span>
           <div class="calc-area">
             <input type="range" id="calcArchAreaRange" aria-label="Bino maydoni (m²) / Площадь здания (м²)" min="50" max="1000" step="10" value="200">
-            <div class="calc-area-val"><span id="calcArchAreaVal">200</span> m²</div>
+            <div class="calc-area-val"><span id="calcArchAreaVal">200</span> <span id="calcArchAreaUnit">m²</span></div>
           </div>
         </div>
         <div class="calc-group">
@@ -888,7 +888,7 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
           <span class="calc-label"><span data-lang="uz" class="lang-active">Qo'shimcha xizmatlar</span><span data-lang="ru">Дополнительные услуги</span></span>
           <div class="calc-addons" id="calcArchAddons"></div>
         </div>
-        <div class="calc-tier-note" id="calcArchScopeNote"><span data-lang="uz" class="lang-active">Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m² gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</span><span data-lang="ru">Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м². При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.</span></div>
+        <div class="calc-tier-note" id="calcArchScopeNote"><span data-lang="uz" class="lang-active">Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m³ gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</span><span data-lang="ru">Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м³. При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.</span></div>
       </div>
 
       <div id="calcInteriorGroup" style="display:none">
@@ -1624,6 +1624,11 @@ function renderCalc(){
   if(archAreaRange)archAreaRange.value=calcState.archArea;
   const archAreaVal=document.getElementById('calcArchAreaVal');
   if(archAreaVal)archAreaVal.textContent=calcState.archArea;
+  const non=calcState.archType==='non';
+  const aLbl=document.getElementById('calcArchAreaLabel');
+  if(aLbl)aLbl.textContent=non?(lang==='uz'?'Bino hajmi (m³)':'Объём здания (м³)'):(lang==='uz'?'Bino maydoni (m²)':'Площадь здания (м²)');
+  const aUnit=document.getElementById('calcArchAreaUnit');
+  if(aUnit)aUnit.textContent=non?'m³':'m²';
 
   const sotixRange=document.getElementById('calcSotixRange');
   if(sotixRange)sotixRange.value=calcState.sotix;
@@ -1834,7 +1839,7 @@ function sendCalcToContact(){
   if(msgEl){
     if(calcState.service==='arch'){
       const floor=PRICING.architecture.floors.find(f=>f.id===calcState.archFloors);
-      msgEl.value=`${svcLabel}, ${calcState.archType==='non'?'noturar bino':'turar joy'} ${calcState.archArea} m², ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — ${archOver()?'narx maydoniga qarab hisoblanadi':'taxminiy '+resultTxt}`;
+      msgEl.value=`${svcLabel}, ${calcState.archType==='non'?'noturar bino '+calcState.archArea+' m³':'turar joy '+calcState.archArea+' m²'}, ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — ${archOver()?'narx maydoniga qarab hisoblanadi':'taxminiy '+resultTxt}`;
     }else if(calcState.service==='interior'){
       const pkg=PRICING.interior.packages.find(p=>p.id===calcState.interiorPackage);
       msgEl.value=`${svcLabel} (${pkg?pkg[lang]:''}), ${calcState.area} m² — taxminiy ${resultTxt}`;

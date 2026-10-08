@@ -98,8 +98,8 @@ const T = {
   },
 };
 
-const ARX_UZ = "Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m² gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.";
-const ARX_RU = "Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м². При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.";
+const ARX_UZ = "Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m³ gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.";
+const ARX_RU = "Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м³. При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.";
 const ARX_FEE = 4000000, ARX_MAX_RES = 500, ARX_MAX_NON = 300;
 const arxKey = (v) => { const [a, b] = String(v).split('-'); return { sotix: Number(a) || 0, non: b === 'n' }; };
 export const t = (til, key) => (T[til] || T.uz)[key] !== undefined ? (T[til] || T.uz)[key] : T.uz[key];
@@ -261,7 +261,9 @@ export async function handleNarx(env, h, cq, data) {
   }
   if (p[0] === 'nxy') {                 // nxy:<sotix>:<r|n> — bino turi tanlandi, maydonni so'raymiz
     await h.upsertDialog(env, chatId, { step: `nx:arxm2:${p[1]}-${p[2]}` });
-    await tg(til === 'ru' ? 'Какова <b>площадь здания</b> (м²)? Напишите число, например: 200' : "<b>Bino maydoni</b> necha m²? (raqam yozing, masalan: 200)");
+    const nn = p[2] === 'n';
+    await tg(nn ? (til === 'ru' ? 'Какой <b>объём здания</b> (м³)? Напишите число, например: 250' : "<b>Bino hajmi</b> necha m³? (raqam yozing, masalan: 250)")
+      : (til === 'ru' ? 'Какова <b>площадь здания</b> (м²)? Напишите число, например: 200' : "<b>Bino maydoni</b> necha m²? (raqam yozing, masalan: 200)"));
     return;
   }
   if (p[0] === 'nxf') {
@@ -320,8 +322,8 @@ export async function narxMaydonMatn(env, h, chatId, dialog, text) {
     const non = key.endsWith('-n');
     if (n_ > (non ? ARX_MAX_NON : ARX_MAX_RES)) {
       await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, til === 'ru'
-        ? `📐 Для ${non ? 'нежилых зданий свыше 300' : 'жилых домов свыше 500'} м² стоимость рассчитывается отдельно, в зависимости от площади и проекта. Оставьте заявку — менеджер подготовит расчёт.`
-        : `📐 ${non ? 'Noturar binolar uchun 300 m²' : 'Turar joylar uchun 500 m²'} dan oshgan maydonda narx maydoni va loyihaga qarab alohida hisoblanadi. Ariza qoldiring — menejer hisob-kitobni tayyorlaydi.`,
+        ? `📐 Для ${non ? 'нежилых зданий свыше 300 м³' : 'жилых домов свыше 500 м²'} стоимость рассчитывается отдельно, в зависимости от площади и проекта. Оставьте заявку — менеджер подготовит расчёт.`
+        : `📐 ${non ? 'Noturar binolar uchun 300 m³' : 'Turar joylar uchun 500 m²'} dan oshgan hajm/maydonda narx maydoni va loyihaga qarab alohida hisoblanadi. Ariza qoldiring — menejer hisob-kitobni tayyorlaydi.`,
         { inline_keyboard: [[{ text: t(til, 'b_ariza'), callback_data: 'menu:ariza' }, { text: t(til, 'qayta'), callback_data: 'menu:narx' }]] });
     } else {
       await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'q_qavat'), { inline_keyboard: [(pr.architecture.floors || []).map((f) => ({ text: nom(f, til), callback_data: `nxf:${key}:${f.id}` }))] });

@@ -107,7 +107,7 @@ export async function guruhCb(env, cq, data) {
     const st = ((pr && pr.styles) || []).find((x) => x.id === id) || { mult: 1, uz: 'Standart' };
     let natija = '', tl = '', tolov = DEF_DIZAYN;
     if (sv === 'arx') {
-      natija = `🏛 Arxitektura, ${n} sotix · ${nom(st)}\n💰 ~ <b>${fmt(arch.ratePerSotix * n * (st.mult || 1))} so'm</b> (1 qavat)\n<i>Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m² gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</i>`;
+      natija = `🏛 Arxitektura, ${n} sotix · ${nom(st)}\n💰 ~ <b>${fmt(arch.ratePerSotix * n * (st.mult || 1))} so'm</b> (1 qavat)\n<i>Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m³ gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</i>`;
       tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture) : '';
       tolov = stages(pr.designPaymentStages, DEF_DIZAYN);
     } else if (sv === 'int') {
@@ -186,7 +186,7 @@ export async function guruhBuyruq(env, msg) {
   const d = await sayt(); const pr = d && d.pricing;
   if (!pr) { await tg(env, chatId, "Hozir narxni olib bo'lmadi. Botda aniq narx: ", botKb); return true; }
   if (/^arx/.test(tur) && pr.architecture) {
-    await tg(env, chatId, `🏛 Arxitektura loyiha, ${v} sotix:\n~ <b>${fmt(pr.architecture.ratePerSotix * v)} so'm</b> (Standart, 1 qavat)\n<i>Taxminiy. Hujjatlashtirish alohida. Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m² gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</i>`, botKb);
+    await tg(env, chatId, `🏛 Arxitektura loyiha, ${v} sotix:\n~ <b>${fmt(pr.architecture.ratePerSotix * v)} so'm</b> (Standart, 1 qavat)\n<i>Taxminiy. Hujjatlashtirish alohida. Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m³ gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</i>`, botKb);
   } else if ((!tur || /^int/.test(tur)) && pr.interior && pr.interior.packages) {
     const r = pr.interior.packages.map((x) => x.rate * v);
     await tg(env, chatId, `🛋 Interyer dizayn, ${v} m²:\n~ <b>${fmt(Math.min(...r))} – ${fmt(Math.max(...r))} so'm</b> (paketga qarab)\n<i>Taxminiy narx.</i>`, botKb);
