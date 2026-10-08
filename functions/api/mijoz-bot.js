@@ -47,7 +47,7 @@
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
 import { keyingiToshkent } from '../_lib/botAvto.js';
-import { guruhSalom, guruhBuyruq, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
+import { guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
@@ -1763,6 +1763,7 @@ export async function onRequestPost({ request, env }) {
         await obyektTelBilan(env, H, Number(mchat), prof.tel, prof.til);
         return json({ ok: true });
       }
+      if (data.startsWith('gk:')) { await guruhCb(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('gm:')) {
         if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
         const [, amal, gid] = data.split(':');

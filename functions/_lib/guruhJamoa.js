@@ -40,10 +40,100 @@ const TAYYOR_MASLAHAT = [
   "💡 <b>Shkaf va saqlash joyi</b>\nShiftgacha shkaf qo'ying: changga joy qolmaydi, saqlash hajmi 20–30% ko'proq bo'ladi.",
 ];
 
+const BANNER = `${SAYT}/assets/bot-welcome.png`;
+const SALOM_MATN = "<b>Visart Design</b> — arxitektura, interyer dizayn va remont (pod klyuch). Toshkent.\n\nPastdagi tugmalar orqali narxni hisoblang, ish bosqichlari va to'lov tartibi bilan tanishing. 👇";
+const ASOSIY_KB = { inline_keyboard: [
+  [{ text: '💰 Smeta hisoblash', callback_data: 'gk:s' }, { text: '📋 Ish bosqichlari', callback_data: 'gk:b' }],
+  [{ text: "💳 To'lov bosqichlari", callback_data: 'gk:t' }, { text: '🛠 Xizmatlar', callback_data: 'gk:x' }],
+  [{ text: '🖼 Loyihalar', url: `${SAYT}/#projects` }, { text: '🌐 Tarmoqlar', callback_data: 'gk:o' }],
+  [{ text: '📝 Ariza qoldirish', url: `https://t.me/${BOT}?start=guruh` }],
+] };
+
 export async function guruhSalom(env, chat) {
   await sb(env, 'bot_guruhlar', { method: 'POST', prefer: 'resolution=ignore-duplicates,return=minimal', body: JSON.stringify([{ chat_id: chat.id, nom: chat.title || '' }]) }).catch(() => {});
-  await tg(env, chat.id,
-    "Salom! Men <b>Visart Design</b> boti — arxitektura, interyer va remont bo'yicha yordamchiman. 👋\n\nBuyruqlar:\n/narx 80 interyer — taxminiy narx\n/loyiha — loyiha namunasi\n/maslahat — foydali maslahat\n/obuna — haftalik maslahat (guruh admini)\n\nO'zim gapirmayman, faqat so'ralganda javob beraman.", botKb);
+  const r = await api(env, 'sendPhoto', { chat_id: chat.id, photo: BANNER, caption: SALOM_MATN, parse_mode: 'HTML', reply_markup: ASOSIY_KB });
+  if (!r || !r.ok) await tg(env, chat.id, SALOM_MATN, ASOSIY_KB);
+}
+
+// ── Guruh menyusi (bitta xabar joyida almashadi, guruhni to'ldirmaydi) ──
+const BOSQICH = "📋 <b>Ish bosqichlari</b>\n\n<b>01 Konsultatsiya</b> — orzu-istak, byudjet va muddatni birga aniqlaymiz.\n<b>02 Konsept va 3D dizayn</b> — 3D ko'rinishni tayyorlab, birga tasdiqlaymiz.\n<b>03 Ishchi hujjatlar</b> — chizmalar, smeta va hisob-kitoblar.\n<b>04 Qurilish nazorati</b> — obyektga muntazam borib, loyihaga mosligini tekshiramiz.\n<b>05 Topshirish</b> — birga ko'rib chiqib, kalitni topshiramiz.";
+const DEF_DIZAYN = [[40, 'Shartnoma imzolanganda (oldindan)'], [30, 'Dizayn konsepsiyasi tasdiqlanganda'], [30, "Loyiha to'liq topshirilganda"]];
+const DEF_TK = [[30, 'Shartnoma imzolanganda'], [30, 'Qurilish ishlari yakunlanganda'], [30, 'Pardozlash bosqichida'], [10, 'Obyekt topshirilganda']];
+const stages = (arr, def) => (arr && arr.length ? arr.map((x) => [x.pct, x.uz]) : def);
+const lines = (arr) => arr.map(([p, n], i) => `${i + 1}) <b>${p}%</b> — ${esc(n)}`).join('\n');
+
+export async function guruhCb(env, cq, data) {
+  const msg = cq.message;
+  await api(env, 'answerCallbackQuery', { callback_query_id: cq.id });
+  const p = data.split(':');           // gk:<amal>:...
+  const amal = p[1];
+  const d = await sayt(); const pr = d && d.pricing;
+  const back = [{ text: '⬅ Menyu', callback_data: 'gk:m' }];
+  let matn = SALOM_MATN, kb = ASOSIY_KB;
+  const arch = (pr && pr.architecture) || null;
+
+  if (amal === 'b') { matn = BOSQICH; kb = { inline_keyboard: [back] }; }
+  else if (amal === 't') {
+    matn = `💳 <b>To'lov bosqichlari</b>\n\n<b>Loyihalash (arxitektura / interyer):</b>\n${lines(stages(pr && pr.designPaymentStages, DEF_DIZAYN))}\n\n<b>Pod klyuch (qurilish):</b>\n${lines(stages(pr && pr.paymentStages, DEF_TK))}\n\n<i>Barcha ishlar shartnoma asosida.</i>`;
+    kb = { inline_keyboard: [back] };
+  } else if (amal === 'x') {
+    matn = "🛠 <b>Xizmatlarimiz</b>\n\n🏛 <b>Arxitektura loyihalash</b> — uy va binolar loyihasi\n🛋 <b>Interyer dizayn</b> — planirovka, 3D vizualizatsiya, ishchi chizmalar\n🔨 <b>Remont (pod klyuch)</b> — loyihadan topshirishgacha";
+    kb = { inline_keyboard: [
+      [{ text: 'Arxitektura', url: `${SAYT}/xizmatlar/arxitektura-loyihalash` }, { text: 'Interyer', url: `${SAYT}/xizmatlar/interyer-dizayn` }],
+      [{ text: 'Pod klyuch', url: `${SAYT}/xizmatlar/pod-klyuch` }], back] };
+  } else if (amal === 'o') {
+    const st = (d && d.settings) || {};
+    const h = (v, b) => { v = String(v || '').trim(); return v ? (/^https?:\/\//i.test(v) ? v : b + v.replace(/^@/, '')) : null; };
+    const rows = [['Instagram', h(st.instagram, 'https://instagram.com/')], ['Telegram kanal', h(st.telegram, 'https://t.me/')], ['YouTube', h(st.youtube, 'https://youtube.com/@')], ['Sayt', SAYT]]
+      .filter((x) => x[1]).map((x) => [{ text: x[0], url: x[1] }]);
+    matn = '🌐 Bizni kuzatib boring — yangi loyihalar va jarayonlar shu yerda 👇'; kb = { inline_keyboard: [...rows, back] };
+  } else if (amal === 's') {
+    matn = '💰 <b>Smeta hisoblash</b>\n\nQaysi xizmat uchun?';
+    kb = { inline_keyboard: [[{ text: '🏛 Arxitektura', callback_data: 'gk:a:arx' }, { text: '🛋 Interyer', callback_data: 'gk:a:int' }], [{ text: '🔨 Pod klyuch', callback_data: 'gk:a:tk' }], back] };
+  } else if (amal === 'a') {
+    const sv = p[2]; const pre = sv === 'arx' ? [4, 6, 8, 10, 12, 15] : [50, 80, 120, 150, 200, 300];
+    matn = `💰 <b>Smeta — ${{ arx: 'Arxitektura', int: 'Interyer', tk: 'Pod klyuch' }[sv]}</b>\n\nMaydonni tanlang (${sv === 'arx' ? 'sotix' : 'm²'}):`;
+    kb = { inline_keyboard: [pre.slice(0, 3).map((n) => ({ text: String(n), callback_data: `gk:r:${sv}:${n}` })), pre.slice(3).map((n) => ({ text: String(n), callback_data: `gk:r:${sv}:${n}` })), [{ text: '⬅ Orqaga', callback_data: 'gk:s' }]] };
+  } else if (amal === 'r') {
+    const sv = p[2], n = Number(p[3]);
+    if (!pr || !arch) { matn = "Hozir narxni olib bo'lmadi."; kb = { inline_keyboard: [back] }; }
+    else {
+      const opts = sv === 'int' ? (pr.interior.packages || []).map((x) => [x.id, nom(x)]) : (pr.styles || []).map((x) => [x.id, nom(x)]);
+      matn = `💰 <b>Smeta</b> — ${n} ${sv === 'arx' ? 'sotix' : 'm²'}\n\n${sv === 'int' ? 'Qaysi paket?' : 'Uslub darajasi?'}`;
+      kb = { inline_keyboard: [opts.map(([id, nm]) => ({ text: nm, callback_data: `gk:f:${sv}:${n}:${id}` })), [{ text: '⬅ Orqaga', callback_data: `gk:a:${sv}` }]] };
+    }
+  } else if (amal === 'f') {
+    const sv = p[2], n = Number(p[3]), id = p[4];
+    const st = ((pr && pr.styles) || []).find((x) => x.id === id) || { mult: 1, uz: 'Standart' };
+    let natija = '', tl = '', tolov = DEF_DIZAYN;
+    if (sv === 'arx') {
+      natija = `🏛 Arxitektura, ${n} sotix · ${nom(st)}\n💰 ~ <b>${fmt(arch.ratePerSotix * n * (st.mult || 1))} so'm</b> (1 qavat)`;
+      tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture) : '';
+      tolov = stages(pr.designPaymentStages, DEF_DIZAYN);
+    } else if (sv === 'int') {
+      const pk = (pr.interior.packages || []).find((x) => x.id === id);
+      natija = `🛋 Interyer, ${n} m² · ${nom(pk)}\n💰 ~ <b>${fmt((pk ? pk.rate : 0) * n)} so'm</b>`;
+      const t0 = pr.timelines && pr.timelines.interior && pr.timelines.interior[id];
+      tl = t0 ? nom(t0) : '';
+      tolov = stages(pr.designPaymentStages, DEF_DIZAYN);
+    } else {
+      const tk = pr.turnkey;
+      const tier = tk.areaTiers.find((x) => n <= x.maxArea) || tk.areaTiers[tk.areaTiers.length - 1];
+      const mg = tk.managementTiers.find((x) => n <= x.maxArea) || tk.managementTiers[tk.managementTiers.length - 1];
+      let mn = 0, mx = 0;
+      for (const c of tk.components) { const t0 = tier[c.id]; if (t0) { mn += t0.min * (st.mult || 1) * n; mx += t0.max * (st.mult || 1) * n; } }
+      mn *= 1 + mg.pct; mx *= 1 + mg.pct; const k = pr.usdRate || 12700;
+      natija = `🔨 Pod klyuch, ${n} m² · ${nom(st)}\n💰 ~ <b>$${fmt(mn)} – $${fmt(mx)}</b> (≈ ${fmt(mn * k)} – ${fmt(mx * k)} so'm)`;
+      tl = Array.isArray(pr.timelines && pr.timelines.turnkey) ? pr.timelines.turnkey.map(nom).filter(Boolean).join(' / ') : '';
+      tolov = stages(pr.paymentStages, DEF_TK);
+    }
+    matn = `${natija}${tl ? `\n⏱ ${esc(tl)}` : ''}\n\n💳 <b>To'lov bosqichlari:</b>\n${lines(tolov)}\n\n<i>Taxminiy narx. Aniq narx — bepul konsultatsiyada.</i>`;
+    kb = { inline_keyboard: [[{ text: '📝 Ariza qoldirish', url: `https://t.me/${BOT}?start=guruh` }], [{ text: '🔁 Qayta hisoblash', callback_data: 'gk:s' }, ...back]] };
+  }
+
+  if (matn.length > 1000 && msg.photo) matn = matn.slice(0, 1000);
+  const body = { chat_id: msg.chat.id, message_id: msg.message_id, parse_mode: 'HTML', reply_markup: kb };
+  await api(env, msg.photo ? 'editMessageCaption' : 'editMessageText', msg.photo ? { ...body, caption: matn } : { ...body, text: matn, disable_web_page_preview: true });
 }
 
 async function guruhAdminmi(env, msg) {
@@ -56,11 +146,12 @@ async function guruhAdminmi(env, msg) {
 
 // true -- buyruq shu yerda ishlandi
 export async function guruhBuyruq(env, msg) {
-  const m = (msg.text || '').match(/^\/(narx|loyiha|maslahat|obuna|obunabekor)(?:@\w+)?(?:\s+(.*))?$/i);
+  const m = (msg.text || '').match(/^\/(narx|loyiha|maslahat|obuna|obunabekor|menu|start)(?:@\w+)?(?:\s+(.*))?$/i);
   if (!m) return false;
   const cmd = m[1].toLowerCase(), arg = (m[2] || '').trim();
   const chatId = msg.chat.id;
 
+  if (cmd === 'menu' || cmd === 'start') { await guruhSalom(env, msg.chat); return true; }
   if (cmd === 'obuna' || cmd === 'obunabekor') {
     if (!(await guruhAdminmi(env, msg))) { await tg(env, chatId, "Bu buyruq faqat guruh adminlari uchun."); return true; }
     await sb(env, 'bot_guruhlar', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: JSON.stringify([{ chat_id: chatId, nom: msg.chat.title || '', obuna: cmd === 'obuna' }]) }).catch(() => {});
