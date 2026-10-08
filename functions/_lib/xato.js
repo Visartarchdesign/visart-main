@@ -20,3 +20,24 @@ export async function xatoYoz(env, manba, xato) {
     }
   } catch (e) { /* jim */ }
 }
+
+// ── Cron monitoringi ──
+const shdr = (env) => ({ apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' });
+
+export async function yurakYoz(env, nom) {
+  try {
+    await fetch(`${env.SUPABASE_URL}/rest/v1/bot_yurak`, { method: 'POST', headers: { ...shdr(env), Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ nom, oxirgi: new Date().toISOString() }]), signal: AbortSignal.timeout(5000) });
+  } catch (e) { /* jim */ }
+}
+
+// nom oxirgi marta maxSoat soatdan oldin ishlagan bo'lsa admin'ga xabar. Jadval/qator yo'q bo'lsa jim.
+export async function yurakTekshir(env, nom, maxSoat) {
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/bot_yurak?nom=eq.${encodeURIComponent(nom)}&select=oxirgi`, { headers: shdr(env), signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return;
+    const rows = await r.json();
+    if (!rows || !rows[0]) return;
+    const soat = (Date.now() - new Date(rows[0].oxirgi).getTime()) / 3600e3;
+    if (soat > maxSoat) await xatoYoz(env, `cron-ishlamayapti:${nom}`, `"${nom}" cron ${soat.toFixed(1)} soatdan beri ishlamadi (kutilgan: har ${maxSoat} soatda). cron-job.org va secretni tekshiring.`);
+  } catch (e) { /* jim */ }
+}

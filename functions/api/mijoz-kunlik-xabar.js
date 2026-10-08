@@ -19,7 +19,7 @@
 //   (MIJOZ_BOT_TOKEN, MOLIYA_GROUP_CHAT_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY --
 //    visart-events.js/mijoz-bot.js'da allaqachon bor)
 
-import { xatoYoz } from '../_lib/xato.js';
+import { xatoYoz, yurakYoz, yurakTekshir } from '../_lib/xato.js';
 
 const MOLIYA_KEY = '__moliya__'; // kunlik_xabar_jurnali'da obyekt_id ustuniga moliya guruhi uchun sentinel
 
@@ -168,6 +168,8 @@ async function handle({ request, env }) {
     return json({ ok: false, error: 'unauthorized' }, 401);
   }
 
+  await yurakYoz(env, 'kunlik');
+  await yurakTekshir(env, 'nashr', 1);
   let rows;
   try {
     rows = await sbFetch(env, 'kunlik_hodisalar?yuborildi=eq.false&select=*&order=created_at.asc');

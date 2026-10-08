@@ -1,4 +1,4 @@
-import { xatoYoz } from '../_lib/xato.js';
+import { xatoYoz, yurakYoz, yurakTekshir } from '../_lib/xato.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
@@ -265,6 +265,9 @@ export async function onRequestGet({ request, env }) {
     return json({ error: 'Supabase sozlanmagan' }, 500);
   }
 
+  await yurakYoz(env, 'nashr');
+  // kunlik hisobot 20:00 (UTC 15:00) da ishlaydi; 21:00 dan keyin ham kecha ishlagan bo'lsa -- bugun ishlamagan
+  if (new Date().getUTCHours() >= 16) await yurakTekshir(env, 'kunlik', 23);
   const hozir = new Date().toISOString();
   const qatorlar = await sbFetch(
     env,
