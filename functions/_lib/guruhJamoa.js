@@ -260,6 +260,7 @@ export const TANISH_USTA =
   "2️⃣ Bot so'raydi — <b>qaysi ish turi</b> (elektr, santexnika, pardoz va h.k.) — tugmani bosing\n" +
   "3️⃣ Jamoamiz ko'rib chiqadi, to'g'ri bo'lsa <b>mijozga yuboriladi</b>\n" +
   "4️⃣ Natija (yuborildi / qayta yuborish kerak) shu yerda xabar qilinadi\n\n" +
+  "💬 <b>Guruh — umumiy muloqot joyi:</b> ish bo'yicha o'zaro fikr almashishingiz, savol berishingiz va bir-biringizga yordam berishingiz mumkin. Bot oddiy yozishmalarga aralashmaydi — faqat foto/video va natijalar bilan ishlaydi. Har bir hisobotning natijasini shu yerda kuzatib borasiz.\n\n" +
   "<b>Eslatma:</b>\n" +
   "• Faqat shu obyektga tegishli ish hisobotini yuboring\n" +
   "• Video/rasm aniq va yorug' bo'lsin — mijoz ko'radi\n" +
