@@ -98,6 +98,8 @@ const T = {
   },
 };
 
+const ARX_UZ = "Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m² gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.";
+const ARX_RU = "Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м². При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.";
 export const t = (til, key) => (T[til] || T.uz)[key] !== undefined ? (T[til] || T.uz)[key] : T.uz[key];
 const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const sumFmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -234,7 +236,7 @@ export async function handleNarx(env, h, cq, data) {
     addonlar.forEach((a, i) => { if (mask & (1 << i)) { jami += a.flat; qosh.push(`• ${esc(nom(a, til))}: +${sumFmt(a.flat)}`); } });
     const tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture, til) : '';
     const som = til === 'ru' ? 'сум' : "so'm";
-    await tg(`🏛 <b>${t(til, 's_arch').slice(2).trim()}</b>\n${sotix} ${til === 'ru' ? 'сот.' : 'sotix'} · ${nom(fl, til)} · ${nom(st, til)}\n\n• ${til === 'ru' ? 'Проект' : 'Loyiha'}: ${sumFmt(asos)}${qosh.length ? '\n' + qosh.join('\n') : ''}\n\n💰 ~ <b>${sumFmt(jami)} ${som}</b>${tl ? `\n⏱ ${esc(tl)}` : ''}${nota}`, kb2);
+    await tg(`🏛 <b>${t(til, 's_arch').slice(2).trim()}</b>\n${sotix} ${til === 'ru' ? 'сот.' : 'sotix'} · ${nom(fl, til)} · ${nom(st, til)}\n\n• ${til === 'ru' ? 'Проект' : 'Loyiha'}: ${sumFmt(asos)}${qosh.length ? '\n' + qosh.join('\n') : ''}\n\n💰 ~ <b>${sumFmt(jami)} ${som}</b>${tl ? `\n⏱ ${esc(tl)}` : ''}${nota}\n\n<i>${til === 'ru' ? ARX_RU : ARX_UZ}</i>`, kb2);
   };
 
   const addonKb = (sotix, fl, st, mask) => ({ inline_keyboard: [
@@ -263,7 +265,7 @@ export async function handleNarx(env, h, cq, data) {
     const st = stil(p[3]);
     const jami = pr.architecture.ratePerSotix * sotix * st.mult * fl.mult;
     const tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture, til) : '';
-    await tg(`🏛 <b>${t(til, 's_arch').slice(2).trim()}</b>\n${sotix} ${til === 'ru' ? 'сот.' : 'sotix'} · ${nom(fl, til)} · ${nom(st, til)}\n\n💰 ~ <b>${sumFmt(jami)} ${til === 'ru' ? 'сум' : "so'm"}</b>${tl ? `\n⏱ ${esc(tl)}` : ''}${nota}`, kb2);
+    await tg(`🏛 <b>${t(til, 's_arch').slice(2).trim()}</b>\n${sotix} ${til === 'ru' ? 'сот.' : 'sotix'} · ${nom(fl, til)} · ${nom(st, til)}\n\n💰 ~ <b>${sumFmt(jami)} ${til === 'ru' ? 'сум' : "so'm"}</b>${tl ? `\n⏱ ${esc(tl)}` : ''}${nota}\n\n<i>${til === 'ru' ? ARX_RU : ARX_UZ}</i>`, kb2);
   } else if (p[0] === 'nxi') {
     const m2 = Number(p[1]);
     const pk = (pr.interior.packages || []).find((x) => x.id === p[2]);

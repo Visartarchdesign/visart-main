@@ -109,7 +109,7 @@ export const SERVICES = [
         ['Hujjatlar', "Kerak bo'lsa ruxsatnoma uchun hujjatlarni rasmiylashtiramiz."],
       ],
       faq: [
-        ['Uy loyihasi narxi qanday hisoblanadi?', "Narx yer maydoni (sotix), qavatlar soni va tanlangan paketga (Standart, Premium, Lyuks) qarab hisoblanadi. Kalkulyatorda taxminiy narxni ko'rishingiz mumkin."],
+        ['Uy loyihasi narxi qanday hisoblanadi?', "Narx yer maydoni (sotix), qavatlar soni va tanlangan paketga (Standart, Premium, Lyuks) qarab hisoblanadi. Narx turar joylar uchun 500 m² gacha, noturar binolar uchun 300 m² gacha amal qiladi; maydon oshsa, narx loyihaga qarab alohida belgilanadi. Kalkulyatorda taxminiy narxni ko'rishingiz mumkin."],
         ['Loyiha qancha vaqtda tayyorlanadi?', "Odatda 15–25 kun — uchastka va murakkablikka qarab."],
         ['Tayyor loyihani o\'zgartirib berasizmi?', "Ha, mavjud loyihani tahlil qilib, planirovka yoki fasadni qayta ishlab beramiz."],
         ['Ruxsatnoma olishda yordam berasizmi?', "Ha, qurilish uchun zarur loyiha hujjatlarini tayyorlab beramiz. Batafsil — «Loyiha hujjatlari» xizmatida."],

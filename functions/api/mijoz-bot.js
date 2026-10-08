@@ -1416,7 +1416,7 @@ function estimateText(pricing, xizmatCode, maydon, hujjat) {
   if (xizmatCode === 'arch' && pricing.architecture && pricing.architecture.ratePerSotix) {
     const dk = hujjat ? ((pricing.architecture.addons || []).find((a) => a.id === 'docs') || {}).flat || 0 : 0;
     const asos = pricing.architecture.ratePerSotix * maydon;
-    return `Taxminiy narx (Standart, 1 qavat): ${f(asos + dk)} so'm${dk ? ` (loyiha ${f(asos)} + hujjatlashtirish ${f(dk)})` : ''}. Aniq narx menejer bilan kelishiladi.`;
+    return `Taxminiy narx (Standart, 1 qavat): ${f(asos + dk)} so'm${dk ? ` (loyiha ${f(asos)} + hujjatlashtirish ${f(dk)})` : ''}. Narx turar joy uchun 500 m² gacha, noturar bino uchun 300 m² gacha amal qiladi; katta maydonda narx loyihaga qarab belgilanadi. Aniq narx menejer bilan kelishiladi.`;
   }
   if (xizmatCode === 'interior' && pricing.interior && pricing.interior.packages) {
     const r = pricing.interior.packages.map((x) => x.rate * maydon);
