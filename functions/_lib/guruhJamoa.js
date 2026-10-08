@@ -151,6 +151,12 @@ export async function guruhBuyruq(env, msg) {
   const cmd = m[1].toLowerCase(), arg = (m[2] || '').trim();
   const chatId = msg.chat.id;
 
+  // Obyektga ulangan (ustalar / mijozlar) ishchi guruhlarda ommaviy menyu chiqmaydi
+  const [u, mj] = await Promise.all([
+    sb(env, `usta_guruhlar?telegram_chat_id=eq.${chatId}&select=obyekt_id&limit=1`).catch(() => []),
+    sb(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${chatId}&select=obyekt_id&limit=1`).catch(() => []),
+  ]);
+  if ((u && u.length) || (mj && mj.length)) return true;
   if (cmd === 'menu' || cmd === 'start') { await guruhSalom(env, msg.chat); return true; }
   if (cmd === 'obuna' || cmd === 'obunabekor') {
     if (!(await guruhAdminmi(env, msg))) { await tg(env, chatId, "Bu buyruq faqat guruh adminlari uchun."); return true; }
