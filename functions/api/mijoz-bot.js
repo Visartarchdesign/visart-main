@@ -1215,6 +1215,13 @@ async function handleUstaMaqsad(env, cq, data) {
 // xuddi shu media har bir adminning SHAXSIY chatiga (DM) nusxalanadi,
 // tasdiqlash tugmalari bilan -- faqat admin o'zi ko'radi va qaror qiladi
 // (ustalar adashib boshqa rasm/video yuborib qo'yishi mumkinligi uchun).
+async function obyektNomi(env, obyektId) {
+  try {
+    const o = await sbFetch(env, `obyektlar?id=eq.${encodeURIComponent(obyektId)}&select=nom`);
+    return (o && o[0] && o[0].nom) || String(obyektId);
+  } catch (e) { return String(obyektId); }
+}
+
 async function handleUstaKategoriya(env, cq, data) {
   const [, kasbCode, groupChatIdStr, msgIdStr] = data.split(':');
   const groupChatId = groupChatIdStr;
@@ -1236,6 +1243,8 @@ async function handleUstaKategoriya(env, cq, data) {
 
   const admins = adminIdlari(env);
   if (!admins.length) return; // ADMIN_TELEGRAM_IDS sozlanmagan -- yuboriladigan joy yo'q
+  const obNom = await obyektNomi(env, obyektId);
+  const ustaKim = cq.from ? `${cq.from.first_name || ''} ${cq.from.last_name || ''} ${cq.from.username ? '@' + cq.from.username : ''}`.trim() : '';
 
   const kb = {
     inline_keyboard: [[
@@ -1248,7 +1257,7 @@ async function handleUstaKategoriya(env, cq, data) {
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: adminId, text: `👷 Obyekt №${obyektId} — ${kasbLabel} ishi bo'yicha yangi video/foto:` }),
+      body: JSON.stringify({ chat_id: adminId, text: `👷 ${obNom} (№${obyektId}) — ${kasbLabel}${ustaKim ? `\n🧑‍🔧 Usta: ${ustaKim}` : ''}\nYangi video/foto:` }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
@@ -1287,6 +1296,15 @@ async function handleUstaTasdiq(env, cq, data) {
   }
 
   await removeKb(env, cq.message.chat.id, cq.message.message_id);
+
+  // Bir nechta admin bo'lsa: birinchi qaror yakuniy, qolganlariga "allaqachon ko'rib chiqilgan"
+  const kalit = `${groupChatId}:${origMsgId}`;
+  try {
+    const bor = await sbFetch(env, `nashr_navbati?turi=eq.usta_qaror&payload->>kalit=eq.${encodeURIComponent(kalit)}&select=id&limit=1`);
+    if (bor && bor.length) { await answerCq(env, cq.id, { text: "Bu allaqachon ko'rib chiqilgan.", show_alert: true }); return; }
+    await sbFetch(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{
+      turi: 'usta_qaror', payload: { kalit, amal, admin: cq.from && cq.from.id }, nashr_vaqti: new Date().toISOString(), holat: 'bajarildi' }]) });
+  } catch (e) { /* jadval xatosi -- qarorni to'xtatmaymiz */ }
 
   if (amal === 'uno') {
     await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '❌ Rad etildi — mijozga yuborilmadi. Ustalarga 1 soat davomida (30 va 60-daqiqada) eslatma boradi (yangi foto/video kelsa to\'xtaydi).');
@@ -1327,7 +1345,8 @@ async function handleUstaTasdiq(env, cq, data) {
       if (!clientChatId) {
         await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, "⚠️ Bu obyektning mijoz guruhi hali bog'lanmagan — yuborilmadi.");
       } else {
-        await tgSend(env.MIJOZ_BOT_TOKEN, clientChatId, `🎥 Bugungi ${kasbLabel} ustalar kunlik hisob videosi:`);
+        const obNom = await obyektNomi(env, obyektId);
+        await tgSend(env.MIJOZ_BOT_TOKEN, clientChatId, `🎥 ${htmlEscape(obNom)} — bugungi ${kasbLabel} ustalar kunlik hisob videosi:`);
         await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
