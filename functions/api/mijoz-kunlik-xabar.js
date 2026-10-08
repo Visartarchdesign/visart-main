@@ -206,10 +206,12 @@ async function handle({ request, env }) {
     }
   }
 
+  const sabab = {};
   for (const [obyektId, items] of Object.entries(obyektlar)) {
     const chatId = await findGuruhChatId(env, obyektId);
-    if (!chatId) continue; // guruh hali ro'yxatdan o'tmagan -- yuborilmaydi, keyingi kunga qoladi
+    if (!chatId) { sabab[obyektId] = 'mijoz_guruhi_bogalanmagan'; continue; } // keyingi kunga qoladi
     const natija = await tgSend(env.MIJOZ_BOT_TOKEN, chatId, digestMatni('📊 Kunlik hisobot', items, true));
+    if (!natija) sabab[obyektId] = `telegram_rad_etdi (chat ${chatId})`;
     if (natija) {
       await belgilaYuborildi(env, items.map((r) => r.id), sana);
       await jurnalgaYoz(env, { sana, guruh: 'obyekt', obyektKaliti: obyektId, chatId, messageId: natija.message_id });
@@ -221,6 +223,7 @@ async function handle({ request, env }) {
   return json({
     ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
     // diagnostika: nima uchun yuborilmagani ko'rinsin
+    sabab,
     navbatda: { moliya: moliya.length, obyekt: Object.values(obyektlar).reduce((a, b) => a + b.length, 0) },
   });
 }
