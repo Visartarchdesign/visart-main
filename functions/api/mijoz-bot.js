@@ -1194,7 +1194,7 @@ async function handleUstaKategoriya(env, cq, data) {
   const kasbLabel = kasbNomi(kasbCode);
 
   await removeKb(env, cq.message.chat.id, cq.message.message_id);
-  await tgSend(env.MIJOZ_BOT_TOKEN, groupChatId, `Rahmat! Kategoriya: ${kasbLabel}. Admin tasdig'ini kutamiz.`);
+  await tgSend(env.MIJOZ_BOT_TOKEN, groupChatId, `📨 Qabul qilindi (${kasbLabel}). Admin ko'rib chiqadi — natijani shu yerga yozaman.`);
   await answerCq(env, cq.id);
 
   let obyektId = null;
@@ -1241,6 +1241,12 @@ async function handleUstaKategoriya(env, cq, data) {
 // "uok:<kasb_kodi>:<ustalar_guruh_chat_id>:<asl_xabar_id>" yoki "uno:...".
 // Bu DM'da (admin'ning shaxsiy chatida) kelgan callback -- shuning uchun
 // guruh ID'si cq.message.chat.id'dan EMAS, data ichidan olinadi.
+function toshkentSana() {
+  const d = new Date(Date.now() + 5 * 3600 * 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getUTCDate())}.${p(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
+}
+
 async function handleUstaTasdiq(env, cq, data) {
   const [amal, kasbCode, groupChatIdStr, msgIdStr] = data.split(':');
   const groupChatId = groupChatIdStr;
@@ -1262,7 +1268,7 @@ async function handleUstaTasdiq(env, cq, data) {
       body: JSON.stringify({
         chat_id: groupChatId,
         reply_to_message_id: origMsgId,
-        text: "Hurmatli ustalar, yuborgan foto/videongiz rad etildi — iltimos, tekshirib qaytadan yuboring. 🙏",
+        text: `❌ Hurmatli ustalar, bugungi (${toshkentSana()}) ${kasbLabel} bo'yicha murojaatingiz rad etildi. Iltimos, ko'rib chiqib, foto/video hisobotni boshqatdan yuboring. 🙏`,
       }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
@@ -1286,6 +1292,16 @@ async function handleUstaTasdiq(env, cq, data) {
           signal: AbortSignal.timeout(10000),
         });
         await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '✅ Mijoz guruhiga yuborildi.');
+        await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: groupChatId,
+            reply_to_message_id: origMsgId,
+            text: `✅ Tasdiqlandi! Bugungi (${toshkentSana()}) ${kasbLabel} bo'yicha murojaatingiz ko'rib chiqildi va mijozga yetkazildi. Ish yopildi. Rahmat, charchamang! 💪`,
+          }),
+          signal: AbortSignal.timeout(10000),
+        }).catch(() => {});
       }
     } catch (e) {
       await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '⚠️ Yuborishda xato yuz berdi.');
