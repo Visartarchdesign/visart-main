@@ -158,6 +158,74 @@ async function bajarUstaEslatma(env, payload) {
   if (!res.ok) throw new Error(`Telegram ${res.status}`);
 }
 
+// ===== Avtomatik tozalash (Supabase bepul 1 GB Storage / 500 MB DB tejash) =====
+// - Storage ("public-media"): 7 kundan eski fayllar o'chiriladi (kutilayotgan
+//   navbat qatorlari ishlatayotgan fayllar bundan mustasno).
+// - nashr_navbati: 30 kundan eski tugagan (bajarildi/xato/bekor/muddati_otdi)
+//   qatorlar o'chiriladi; 3 kundan beri tasdiq kutayotgan videolar
+//   "muddati_otdi" bo'ladi.
+// Faqat soatiga 1 marta (cron */15 -- har soatning birinchi chaqiruvida) yoki
+// ?tozalash=1 bilan qo'lda ishlaydi.
+const STORAGE_MUDDAT_KUN = 7;
+const NAVBAT_MUDDAT_KUN = 30;
+const TASDIQ_MUDDAT_KUN = 3;
+
+async function storageRoyxat(env, prefix) {
+  const res = await fetch(`${env.SUPABASE_URL}/storage/v1/object/list/public-media`, {
+    method: 'POST',
+    headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prefix, limit: 1000, offset: 0, sortBy: { column: 'created_at', order: 'asc' } }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) return [];
+  const arr = await res.json().catch(() => []);
+  return (arr || []).filter((o) => o && o.name && o.id); // papkalarda id yo'q
+}
+
+async function tozalash(env) {
+  const hisobot = { storage_ochirildi: 0, navbat_ochirildi: 0, muddati_otdi: 0, xato: null };
+  try {
+    const kunMs = 24 * 3600 * 1000;
+    const tasdiqChegara = new Date(Date.now() - TASDIQ_MUDDAT_KUN * kunMs).toISOString();
+    const eskiTasdiq = await sbFetch(env,
+      `nashr_navbati?holat=eq.tasdiq_kutilmoqda&created_at=lt.${encodeURIComponent(tasdiqChegara)}`,
+      { method: 'PATCH', body: JSON.stringify({ holat: 'muddati_otdi' }) });
+    hisobot.muddati_otdi = (eskiTasdiq || []).length;
+
+    // Hali ishlatilishi mumkin bo'lgan fayllar: kutilayotgan/tasdiqdagi qatorlar payload'i
+    const faol = await sbFetch(env, 'nashr_navbati?holat=in.(kutilmoqda,tasdiq_kutilmoqda)&select=payload');
+    const faolMatn = JSON.stringify(faol || []);
+
+    const chegara = Date.now() - STORAGE_MUDDAT_KUN * kunMs;
+    const ochirish = [];
+    for (const papka of ['instagram', 'instagram-video']) {
+      for (const o of await storageRoyxat(env, papka)) {
+        const t = Date.parse(o.created_at || o.updated_at || '');
+        const yol = `${papka}/${o.name}`;
+        if (t && t < chegara && !faolMatn.includes(yol)) ochirish.push(yol);
+      }
+    }
+    if (ochirish.length) {
+      const res = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public-media`, {
+        method: 'DELETE',
+        headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefixes: ochirish }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (res.ok) hisobot.storage_ochirildi = ochirish.length;
+    }
+
+    const navbatChegara = new Date(Date.now() - NAVBAT_MUDDAT_KUN * kunMs).toISOString();
+    const o = await sbFetch(env,
+      `nashr_navbati?holat=in.(bajarildi,xato,bekor,muddati_otdi)&created_at=lt.${encodeURIComponent(navbatChegara)}`,
+      { method: 'DELETE' });
+    hisobot.navbat_ochirildi = (o || []).length;
+  } catch (e) {
+    hisobot.xato = String((e && e.message) || e);
+  }
+  return hisobot;
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
@@ -201,5 +269,10 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  return json({ ok: true, bajarildi: natijalar.length, natijalar });
+  let tozalashNatijasi = null;
+  if (url.searchParams.get('tozalash') === '1' || new Date().getUTCMinutes() < 15) {
+    tozalashNatijasi = await tozalash(env);
+  }
+
+  return json({ ok: true, bajarildi: natijalar.length, natijalar, tozalash: tozalashNatijasi });
 }
