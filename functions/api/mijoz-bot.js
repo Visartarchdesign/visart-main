@@ -1878,7 +1878,17 @@ export async function onRequestPost({ request, env }) {
       const botId = (env.MIJOZ_BOT_TOKEN || '').split(':')[0];
       const botQoshildimi = msg.new_chat_members.some((m) => String(m.id) === botId);
       if (botQoshildimi) {
-        await guruhMasteriBoshla(env, msg.chat);
+        if (isAdmin(env, msg.from && msg.from.id)) {
+          await guruhMasteriBoshla(env, msg.chat);   // faqat admin qo'shganda sozlash savoli
+        } else {
+          // Begona guruh: adminni bezovta qilmaymiz -- bir qator xabar va chiqib ketamiz
+          await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
+            "Salom! Men <b>Visart Design</b> jamoasining ichki boti, guruhlarda ishlamayman.\nNarx hisoblash, xizmatlar va ariza uchun menga shaxsiy chatda yozing: @visart_design_bot");
+          await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/leaveChat`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: msg.chat.id }), signal: AbortSignal.timeout(10000),
+          }).catch(() => {});
+        }
         return json({ ok: true });
       }
     }
