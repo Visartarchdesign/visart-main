@@ -870,6 +870,17 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
           </div>
         </div>
         <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Bino turi</span><span data-lang="ru">Тип здания</span></span>
+          <div class="calc-options calc-2" id="calcArchType" style="max-width:420px"></div>
+        </div>
+        <div class="calc-group">
+          <span class="calc-label"><span data-lang="uz" class="lang-active">Bino maydoni (m²)</span><span data-lang="ru">Площадь здания (м²)</span></span>
+          <div class="calc-area">
+            <input type="range" id="calcArchAreaRange" aria-label="Bino maydoni (m²) / Площадь здания (м²)" min="50" max="1000" step="10" value="200">
+            <div class="calc-area-val"><span id="calcArchAreaVal">200</span> m²</div>
+          </div>
+        </div>
+        <div class="calc-group">
           <span class="calc-label"><span data-lang="uz" class="lang-active">Qavatlar soni</span><span data-lang="ru">Количество этажей</span></span>
           <div class="calc-options calc-3" id="calcArchFloors"></div>
         </div>
@@ -1534,11 +1545,15 @@ const PRICING={
 let pricingState='loading'; // 'loading' | 'ready' | 'failed' — narx faqat serverdan kelgach ko'rsatiladi
 // Paketlar ichiga kiritilgan xizmatlar — alohida qo'shimcha sifatida ko'rsatilmaydi va hisoblanmaydi.
 const ARCH_BUNDLED=['workDrawings','3d','landscape'];
+const ARCH_NONRES_FEE=4000000, ARCH_MAX_RES=500, ARCH_MAX_NONRES=300;
+function archOver(){return calcState.archArea>(calcState.archType==='res'?ARCH_MAX_RES:ARCH_MAX_NONRES);}
 let calcState={
   service:'arch',
   style:'standard',
   sotix:6,
   archFloors:1,
+  archType:'res',
+  archArea:200,
   area:120,
   archAddons:[],
   interiorPackage:'full',
@@ -1598,6 +1613,17 @@ function renderCalc(){
     floorsWrap.innerHTML=PRICING.architecture.floors.map(f=>`<button type="button" class="calc-chip ${f.id===calcState.archFloors?'active':''}" data-floor="${f.id}">${f[lang]}</button>`).join('');
     floorsWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.archFloors=parseInt(b.dataset.floor,10);renderCalc();}));
   }
+
+  const typeWrap=document.getElementById('calcArchType');
+  if(typeWrap){
+    const TYPES=[{id:'res',uz:'Turar joy',ru:'Жилой дом'},{id:'non',uz:'Noturar bino',ru:'Нежилое здание'}];
+    typeWrap.innerHTML=TYPES.map(f=>`<button type="button" class="calc-chip ${f.id===calcState.archType?'active':''}" data-atype="${f.id}">${f[lang]}</button>`).join('');
+    typeWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.archType=b.dataset.atype;renderCalc();}));
+  }
+  const archAreaRange=document.getElementById('calcArchAreaRange');
+  if(archAreaRange)archAreaRange.value=calcState.archArea;
+  const archAreaVal=document.getElementById('calcArchAreaVal');
+  if(archAreaVal)archAreaVal.textContent=calcState.archArea;
 
   const sotixRange=document.getElementById('calcSotixRange');
   if(sotixRange)sotixRange.value=calcState.sotix;
@@ -1708,6 +1734,12 @@ function calcCompute(){
       const a=PRICING.architecture.addons.find(x=>x.id===id);
       if(a)total+=a.flat;
     });
+    if(calcState.archType==='non')total+=ARCH_NONRES_FEE;
+    if(archOver()){
+      calcState.total=0;
+      valEl.textContent=lang==='uz'?"Narx maydoniga qarab alohida hisoblanadi":"Стоимость рассчитывается отдельно, по площади";
+      return;
+    }
     calcState.total=total;
     valEl.textContent="~ "+(lang==='uz'?fmtUZS(total):fmtRUB(total));
     return;
@@ -1756,6 +1788,11 @@ function calcCompute(){
   }
 }
 
+document.getElementById('calcArchAreaRange')?.addEventListener('input',(e)=>{
+  calcState.archArea=parseInt(e.target.value,10);
+  const el=document.getElementById('calcArchAreaVal');if(el)el.textContent=calcState.archArea;
+  calcCompute();
+});
 document.getElementById('calcSotixRange')?.addEventListener('input',(e)=>{
   calcState.sotix=parseInt(e.target.value,10);
   const el=document.getElementById('calcSotixVal');
@@ -1797,7 +1834,7 @@ function sendCalcToContact(){
   if(msgEl){
     if(calcState.service==='arch'){
       const floor=PRICING.architecture.floors.find(f=>f.id===calcState.archFloors);
-      msgEl.value=`${svcLabel}, ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — taxminiy ${resultTxt}`;
+      msgEl.value=`${svcLabel}, ${calcState.archType==='non'?'noturar bino':'turar joy'} ${calcState.archArea} m², ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — ${archOver()?'narx maydoniga qarab hisoblanadi':'taxminiy '+resultTxt}`;
     }else if(calcState.service==='interior'){
       const pkg=PRICING.interior.packages.find(p=>p.id===calcState.interiorPackage);
       msgEl.value=`${svcLabel} (${pkg?pkg[lang]:''}), ${calcState.area} m² — taxminiy ${resultTxt}`;

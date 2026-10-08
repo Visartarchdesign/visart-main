@@ -100,6 +100,8 @@ const T = {
 
 const ARX_UZ = "Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m² gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.";
 const ARX_RU = "Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м². При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.";
+const ARX_FEE = 4000000, ARX_MAX_RES = 500, ARX_MAX_NON = 300;
+const arxKey = (v) => { const [a, b] = String(v).split('-'); return { sotix: Number(a) || 0, non: b === 'n' }; };
 export const t = (til, key) => (T[til] || T.uz)[key] !== undefined ? (T[til] || T.uz)[key] : T.uz[key];
 const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const sumFmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -228,11 +230,13 @@ export async function handleNarx(env, h, cq, data) {
 
   const ARCH_BUNDLED = ['workDrawings', '3d', 'landscape'];
   const addonlar = ((pr.architecture && pr.architecture.addons) || []).filter((a) => !ARCH_BUNDLED.includes(a.id));
-  const archNatija = async (sotix, floorId, styleId, mask) => {
+  const archNatija = async (key, floorId, styleId, mask) => {
+    const { sotix, non } = arxKey(key);
     const fl = (pr.architecture.floors || []).find((f) => String(f.id) === String(floorId)) || { mult: 1, uz: floorId, ru: floorId };
     const st = stil(styleId);
     const asos = pr.architecture.ratePerSotix * sotix * st.mult * fl.mult;
     let jami = asos; const qosh = [];
+    if (non) { jami += ARX_FEE; qosh.push(`• ${til === 'ru' ? 'Нежилое здание' : 'Noturar bino'}: +${sumFmt(ARX_FEE)}`); }
     addonlar.forEach((a, i) => { if (mask & (1 << i)) { jami += a.flat; qosh.push(`• ${esc(nom(a, til))}: +${sumFmt(a.flat)}`); } });
     const tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture, til) : '';
     const som = til === 'ru' ? 'сум' : "so'm";
@@ -246,7 +250,7 @@ export async function handleNarx(env, h, cq, data) {
 
   if (p[0] === 'nxa') {                 // nxa:<sotix>:<qavat>:<uslub>:<mask>:<amal>  (amal: tN = almashtirish, go = hisoblash)
     let mask = Number(p[4]) || 0;
-    if (p[5] === 'go') { await h.removeKb(env, chatId, cq.message.message_id); await archNatija(Number(p[1]), p[2], p[3], mask); return; }
+    if (p[5] === 'go') { await h.removeKb(env, chatId, cq.message.message_id); await archNatija(p[1], p[2], p[3], mask); return; }
     const i = Number(String(p[5]).slice(1)); if (i >= 0 && i < addonlar.length) mask ^= (1 << i);
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -255,15 +259,20 @@ export async function handleNarx(env, h, cq, data) {
     }).catch(() => {});
     return;
   }
+  if (p[0] === 'nxy') {                 // nxy:<sotix>:<r|n> — bino turi tanlandi, maydonni so'raymiz
+    await h.upsertDialog(env, chatId, { step: `nx:arxm2:${p[1]}-${p[2]}` });
+    await tg(til === 'ru' ? 'Какова <b>площадь здания</b> (м²)? Напишите число, например: 200' : "<b>Bino maydoni</b> necha m²? (raqam yozing, masalan: 200)");
+    return;
+  }
   if (p[0] === 'nxf') {
     await tg(t(til, 'q_uslub'), { inline_keyboard: [(pr.styles || []).map((x) => ({ text: nom(x, til), callback_data: `nxs:${p[1]}:${p[2]}:${x.id}` }))] });
   } else if (p[0] === 'nxs' && addonlar.length) {
     await tg(til === 'ru' ? 'Нужны дополнительные услуги? (отметьте и нажмите «Рассчитать»)' : "Qo'shimcha xizmatlar kerakmi? (belgilab, «Hisoblash»ni bosing)", addonKb(p[1], p[2], p[3], 0));
   } else if (p[0] === 'nxs') {
-    const sotix = Number(p[1]);
+    const { sotix, non } = arxKey(p[1]);
     const fl = (pr.architecture.floors || []).find((f) => String(f.id) === p[2]) || { mult: 1, uz: p[2], ru: p[2] };
     const st = stil(p[3]);
-    const jami = pr.architecture.ratePerSotix * sotix * st.mult * fl.mult;
+    const jami = pr.architecture.ratePerSotix * sotix * st.mult * fl.mult + (non ? ARX_FEE : 0);
     const tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture, til) : '';
     await tg(`🏛 <b>${t(til, 's_arch').slice(2).trim()}</b>\n${sotix} ${til === 'ru' ? 'сот.' : 'sotix'} · ${nom(fl, til)} · ${nom(st, til)}\n\n💰 ~ <b>${sumFmt(jami)} ${til === 'ru' ? 'сум' : "so'm"}</b>${tl ? `\n⏱ ${esc(tl)}` : ''}${nota}\n\n<i>${til === 'ru' ? ARX_RU : ARX_UZ}</i>`, kb2);
   } else if (p[0] === 'nxi') {
@@ -302,7 +311,21 @@ export async function narxMaydonMatn(env, h, chatId, dialog, text) {
   if (!pr || !pr.architecture) { await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'narx_yoq')); return; }
   const n_ = Math.round(n);
   if (tur === 'sotix') {
-    await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'q_qavat'), { inline_keyboard: [(pr.architecture.floors || []).map((f) => ({ text: nom(f, til), callback_data: `nxf:${n_}:${f.id}` }))] });
+    await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, til === 'ru' ? 'Тип здания?' : 'Bino turi?', { inline_keyboard: [[
+      { text: til === 'ru' ? '🏠 Жилой дом' : '🏠 Turar joy', callback_data: `nxy:${n_}:r` },
+      { text: til === 'ru' ? '🏢 Нежилое здание' : '🏢 Noturar bino', callback_data: `nxy:${n_}:n` },
+    ]] });
+  } else if (tur === 'arxm2') {
+    const key = dialog.step.split(':')[2] || '';
+    const non = key.endsWith('-n');
+    if (n_ > (non ? ARX_MAX_NON : ARX_MAX_RES)) {
+      await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, til === 'ru'
+        ? `📐 Для ${non ? 'нежилых зданий свыше 300' : 'жилых домов свыше 500'} м² стоимость рассчитывается отдельно, в зависимости от площади и проекта. Оставьте заявку — менеджер подготовит расчёт.`
+        : `📐 ${non ? 'Noturar binolar uchun 300 m²' : 'Turar joylar uchun 500 m²'} dan oshgan maydonda narx maydoni va loyihaga qarab alohida hisoblanadi. Ariza qoldiring — menejer hisob-kitobni tayyorlaydi.`,
+        { inline_keyboard: [[{ text: t(til, 'b_ariza'), callback_data: 'menu:ariza' }, { text: t(til, 'qayta'), callback_data: 'menu:narx' }]] });
+    } else {
+      await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'q_qavat'), { inline_keyboard: [(pr.architecture.floors || []).map((f) => ({ text: nom(f, til), callback_data: `nxf:${key}:${f.id}` }))] });
+    }
   } else if (tur === 'm2int') {
     await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'q_paket'), { inline_keyboard: (pr.interior.packages || []).map((x) => [{ text: `${nom(x, til)} — ${sumFmt(x.rate)}/m²`, callback_data: `nxi:${n_}:${x.id}` }]) });
   } else {
