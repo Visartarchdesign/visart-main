@@ -78,6 +78,8 @@ function sanaUz() {
 // usulda matn bo'yicha alohida qator sifatida ko'rsatiladi.
 function turiNomi(turi) {
   if (!turi) return 'Boshqa';
+  if (turi === 'xarajat_qoshildi') return 'Xarajatlar';
+  if (turi === 'tolov_qilindi') return "To'lovlar";
   // "zakaz" so'zi mijozga tushunarliroq "buyurtma" bilan almashtiriladi
   // (Moliya ilovasi `type` qanday nom yuborishidan qat'iy nazar).
   const nomalangan = turi.replace(/zakaz/gi, 'buyurtma');
