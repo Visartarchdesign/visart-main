@@ -1524,7 +1524,7 @@ async function adminPanel(env, chatId) {
     [{ text: '🆕 Oxirgi lidlar', callback_data: 'ap:lid' }, { text: '📊 Bugun / hafta', callback_data: 'ap:stat' }],
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
     [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
-    [{ text: '🌐 Sayt murojaatlari', callback_data: 'ap:sayt' }],
+    [{ text: '🌐 Sayt murojaatlari', callback_data: 'ap:sayt' }, { text: '🔗 Mijoz ulanishlari', callback_data: 'ap:ul' }],
     [{ text: '➕ Admin qo\'shish', callback_data: 'ap:add' }, { text: '👥 Adminlar', callback_data: 'ap:list' }],
   ] });
 }
@@ -1555,6 +1555,37 @@ async function adminPanelCb(env, cq, data) {
     const id = Number(data.split(':')[2]);
     if (id) await sbFetch(env, `bot_adminlar?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
     await send("🗑 Admin o'chirildi.");
+    return;
+  }
+  if (amal === 'ul' || amal === 'uo' || amal === 'ue' || amal === 'ud' || amal === 'uy') {
+    const oid = data.split(':').slice(2).join(':');
+    if (amal === 'ul') {
+      const r = await q('obyektlar?select=id,nom,mijoz_ism,mijoz_tel&order=id.desc&limit=20');
+      await send(r.length ? "🔗 <b>Mijoz ulanishlari</b>\nObyektni tanlang — raqamni o'zgartirish yoki ulanishni o'chirish mumkin:" : 'Obyekt topilmadi.',
+        r.length ? { inline_keyboard: r.map((o) => [{ text: `${o.nom || o.id} · ${o.mijoz_tel || 'ulanmagan'}`.slice(0, 48), callback_data: `ap:uo:${o.id}`.slice(0, 64) }]) } : undefined);
+      return;
+    }
+    const o = ((await q(`obyektlar?id=eq.${encodeURIComponent(oid)}&select=id,nom,mijoz_ism,mijoz_tel`))[0]);
+    if (!o) { await send('Obyekt topilmadi.'); return; }
+    if (amal === 'uo') {
+      await send(`🏗 <b>${escH(o.nom || o.id)}</b>\n👤 ${escH(o.mijoz_ism || '—')}\n📞 ${escH(o.mijoz_tel || 'ulanmagan')}`, { inline_keyboard: [
+        [{ text: "✏️ Raqamni o'zgartirish", callback_data: `ap:ue:${o.id}`.slice(0, 64) }],
+        ...(o.mijoz_tel ? [[{ text: "🗑 Ulanishni o'chirish", callback_data: `ap:ud:${o.id}`.slice(0, 64) }]] : []),
+      ] });
+      return;
+    }
+    if (amal === 'ue') {
+      await send(`✏️ <b>${escH(o.nom || o.id)}</b> uchun yangi mijoz raqamini shu xabarga REPLY qilib yozing (masalan: 998901234567).\n\n🔗${o.id}`, { force_reply: true, selective: true });
+      return;
+    }
+    if (amal === 'ud') {
+      await send(`❓ <b>${escH(o.nom || o.id)}</b> obyektidan ${escH(o.mijoz_tel)} raqami o'chirilsinmi? Mijoz obyekt holatini ko'rolmay qoladi.`, { inline_keyboard: [[
+        { text: "✅ Ha, o'chirish", callback_data: `ap:uy:${o.id}`.slice(0, 64) }, { text: '❌ Yo\'q', callback_data: 'ap:ul' }]] });
+      return;
+    }
+    await sbFetch(env, `obyektlar?id=eq.${encodeURIComponent(o.id)}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mijoz_tel: null }) }).catch(() => {});
+    await removeKb(env, chatId, cq.message.message_id);
+    await send(`🗑 ${escH(o.nom || o.id)}: mijoz raqami o'chirildi, ulanish bekor qilindi.`);
     return;
   }
   if (amal === 'sayt') {
@@ -1917,6 +1948,18 @@ export async function onRequestPost({ request, env }) {
       const tzkMatch = manba.match(/📎(\d+)/);
       if (tzkMatch) {
         await handleTezkorIzoh(env, msg.chat.id, tzkMatch[1], msg.text);
+        return json({ ok: true });
+      }
+      const ulMatch = manba.match(/🔗([A-Za-z0-9_-]+)/);
+      if (ulMatch) {
+        let d = msg.text.replace(/\D/g, '');
+        if (d.length === 9) d = '998' + d;
+        if (d.length < 11 || d.length > 13) { await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, "⚠️ Raqam noto'g'ri. Qayta urinib ko'ring: 998901234567 ko'rinishida (⬆️ xabarga reply qiling)."); return json({ ok: true }); }
+        const oid = ulMatch[1];
+        const boshqa = ((await sbFetch(env, 'obyektlar?select=id,nom,mijoz_tel&limit=1000').catch(() => [])) || [])
+          .filter((x) => x.id !== oid && String(x.mijoz_tel || '').replace(/\D/g, '').slice(-9) === d.slice(-9));
+        await sbFetch(env, `obyektlar?id=eq.${encodeURIComponent(oid)}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mijoz_tel: '+' + d }) }).catch(() => {});
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `✅ Raqam yangilandi: +${d}${boshqa.length ? `\n\nℹ️ Shu raqam boshqa obyektda ham bor: ${escH(boshqa.map((x) => x.nom || x.id).join(', '))} (mijoz ikkalasini ham ko'radi).` : ''}`);
         return json({ ok: true });
       }
       const taklifMatch = manba.match(/🆔(\d+)/);
