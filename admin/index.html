@@ -686,7 +686,7 @@ async function uploadFile(file){
   }
   const res = await fetch(API + '/admin/upload', { method:'POST', body: fd, credentials:'same-origin' });
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'upload_failed');
+  if (!data.ok) throw new Error(data.message || data.error || 'upload_failed');
   return data.url;
 }
 async function uploadToField(input, urlFieldId, previewId){
@@ -700,7 +700,7 @@ async function uploadToField(input, urlFieldId, previewId){
     if (document.getElementById('pSeoPct')) updateSeoScore();
     if (urlFieldId==='pThumbUrl') renderAltList();
     toast('Rasm yuklandi');
-  } catch(e){ toast('Rasm yuklashda xatolik', true); }
+  } catch(e){ toast('Rasm yuklashda xatolik: '+(e&&e.message||''), true); }
 }
 async function uploadGalleryFiles(input){
   const files = Array.from(input.files || []);

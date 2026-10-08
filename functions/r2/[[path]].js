@@ -2,7 +2,8 @@
 export async function onRequestGet({ params, env }) {
   if (!env.UPLOADS) return new Response('Not configured', { status: 500 });
   const segments = Array.isArray(params.path) ? params.path : [params.path];
-  const key = `uploads/${segments.join('/')}`;
+  const rest = segments[0] === 'uploads' ? segments.slice(1) : segments;
+  const key = `uploads/${rest.join('/')}`;
   const obj = await env.UPLOADS.get(key);
   if (!obj) return new Response('Not found', { status: 404 });
   const headers = new Headers();
