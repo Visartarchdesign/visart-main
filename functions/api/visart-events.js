@@ -251,6 +251,35 @@ async function tuzatishniQollash(env, { tuzatish_hodisa_id, matn, summa, umumiy_
   return json({ ok: tahrirlandi, tahrir: tahrirlandi ? 'xabar_tahrirlandi' : 'tahrir_xato' });
 }
 
+async function ochirishniQollash(env, { ochirish_hodisa_id }) {
+  const rows = await sbFetch(env, `kunlik_hodisalar?id=eq.${ochirish_hodisa_id}&select=*`);
+  const hodisa = rows && rows[0];
+  if (!hodisa) return json({ ok: true, ochirildi: 'allaqachon_yoq' });
+
+  await sbFetch(env, `kunlik_hodisalar?id=eq.${ochirish_hodisa_id}`, { method: 'DELETE', prefer: 'return=minimal' });
+  if (!hodisa.yuborildi) return json({ ok: true, ochirildi: 'navbatdan_olindi' });
+
+  const obyektKaliti = hodisa.guruh === 'moliya' ? MOLIYA_KEY : hodisa.obyekt_id;
+  const jurnalRows = await sbFetch(
+    env,
+    `kunlik_xabar_jurnali?sana=eq.${hodisa.yuborilgan_sana}&guruh=eq.${hodisa.guruh}&obyekt_id=eq.${encodeURIComponent(obyektKaliti)}&select=*`
+  );
+  const jurnal = jurnalRows && jurnalRows[0];
+  if (!jurnal) return json({ ok: false, error: 'jurnal_topilmadi' }, 404);
+
+  const filterQs =
+    hodisa.guruh === 'moliya'
+      ? `yuborilgan_sana=eq.${hodisa.yuborilgan_sana}&guruh=eq.moliya`
+      : `yuborilgan_sana=eq.${hodisa.yuborilgan_sana}&guruh=eq.obyekt&obyekt_id=eq.${encodeURIComponent(hodisa.obyekt_id)}`;
+  const qolgan = await sbFetch(env, `kunlik_hodisalar?${filterQs}&select=*&order=created_at.asc`);
+  const sarlavha = hodisa.guruh === 'moliya' ? '📊 Kunlik moliya hisoboti' : '📊 Kunlik hisobot';
+  const yangiMatn = qolgan && qolgan.length
+    ? digestMatni(sarlavha, jurnal.sana, qolgan, hodisa.guruh !== 'moliya')
+    : `${sarlavha} — ${jurnal.sana}\n\nBu kun uchun yozuvlar bekor qilindi.`;
+  const ok = await tgEdit(env.MIJOZ_BOT_TOKEN, jurnal.telegram_chat_id, jurnal.telegram_message_id, yangiMatn);
+  return json({ ok, ochirildi: ok ? 'xabar_tahrirlandi' : 'tahrir_xato' });
+}
+
 import { xatoYoz } from '../_lib/xato.js';
 
 export async function onRequestPost({ request, env }) {
@@ -262,6 +291,8 @@ export async function onRequestPost({ request, env }) {
 
     const body = await request.json().catch(() => null);
     if (!body) return json({ ok: false, error: 'bad_request' }, 400);
+
+    if (body.ochirish_hodisa_id) return await ochirishniQollash(env, { ochirish_hodisa_id: body.ochirish_hodisa_id });
 
     if (body.tuzatish_hodisa_id) {
       if (!body.matn) return json({ ok: false, error: 'matn_required' }, 400);
