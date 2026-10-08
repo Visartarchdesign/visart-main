@@ -41,7 +41,7 @@ const TAYYOR_MASLAHAT = [
 ];
 
 const BANNER = `${SAYT}/assets/bot-welcome.png`;
-const SALOM_MATN = "<b>Visart Design</b> — arxitektura, interyer dizayn va remont (pod klyuch). Toshkent.\n\nPastdagi tugmalar orqali narxni hisoblang, ish bosqichlari va to'lov tartibi bilan tanishing. 👇";
+const SALOM_MATN = "<b>Visart Design</b> — arxitektura, interyer dizayn va remont (pod klyuch). Toshkent.\n\nPastdagi tugmalar orqali narxni hisoblang, ish bosqichlari va to'lov tartibi bilan tanishing. 👇\n\n💡 Haftada bir marta foydali interyer maslahati yuboriladi. O'chirish: /obunabekor";
 const ASOSIY_KB = { inline_keyboard: [
   [{ text: '💰 Smeta hisoblash', callback_data: 'gk:s' }, { text: '📋 Ish bosqichlari', callback_data: 'gk:b' }],
   [{ text: "💳 To'lov bosqichlari", callback_data: 'gk:t' }, { text: '🛠 Xizmatlar', callback_data: 'gk:x' }],
@@ -50,7 +50,7 @@ const ASOSIY_KB = { inline_keyboard: [
 ] };
 
 export async function guruhSalom(env, chat) {
-  await sb(env, 'bot_guruhlar', { method: 'POST', prefer: 'resolution=ignore-duplicates,return=minimal', body: JSON.stringify([{ chat_id: chat.id, nom: chat.title || '' }]) }).catch(() => {});
+  await sb(env, 'bot_guruhlar', { method: 'POST', prefer: 'resolution=ignore-duplicates,return=minimal', body: JSON.stringify([{ chat_id: chat.id, nom: chat.title || '', obuna: true }]) }).catch(() => {});
   const r = await api(env, 'sendPhoto', { chat_id: chat.id, photo: BANNER, caption: SALOM_MATN, parse_mode: 'HTML', reply_markup: ASOSIY_KB });
   if (!r || !r.ok) await tg(env, chat.id, SALOM_MATN, ASOSIY_KB);
 }
