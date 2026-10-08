@@ -242,15 +242,15 @@ export const keyingiHafta = () => keyingiToshkent(10, 7);
 // ── Obyekt guruhlariga bog'langanda tanishtiruv (mijozlar / ustalar) ──
 export const TANISH_MIJOZ =
   "Assalomu alaykum, hurmatli mijozimiz! 👋\n\n" +
-  "Sizni <b>Visart Design</b> oilasida ko'rib turganimizdan juda xursandmiz. Men — jamoamizning raqamli yordamchisi <b>Visart Design boti</b>man. Maqsadim — loyihangiz jarayonini siz uchun shaffof va qulay qilish. ✨\n\n" +
+  "Sizni <b>Visart Design</b> oilasida ko'rganimizdan juda xursandmiz. Men — jamoamizning raqamli yordamchisi <b>Visart Design boti</b>man. Maqsadim — loyihangiz jarayonini siz uchun shaffof va qulay qilish. ✨\n\n" +
   "<b>Men nima qilaman:</b>\n" +
   "🏗 <b>Obyekt holati</b> — ish qaysi bosqichda ekanini yetkazib turaman\n" +
   "🎥 <b>Kunlik hisobot</b> — ustalar bajargan ishning foto va videolari (jamoamiz tekshirib tasdiqlagandan so'ng) shu yerga keladi\n" +
   "💳 <b>To'lovlar</b> — to'lov tasdig'i va keyingi bosqich haqida eslatmalar\n" +
   "✅ <b>Bosqich yakuni</b> — ish tugaganda xabar beraman va fikringizni so'rayman\n" +
   "💬 <b>Savollar</b> — shaxsiy chatda (@visart_design_bot) obyektingiz holati, muddat va smeta bo'yicha javob beraman\n\n" +
-  "Bu guruhga faqat muhim va tasdiqlangan xabarlar yuboriladi — ortiqcha shovqin bo'lmaydi. 🤝\n" +
-  "Savolingiz bo'lsa, menejerimiz doim aloqada. Birgalikda orzuingizdagi makonni yaratamiz! 🏡";
+  "Bu guruhga faqat muhim va tasdiqlangan xabarlar yuboriladi. 🤝\n" +
+  "Savolingiz bo'lsa, menejerimiz doim aloqada. Birgalikda orzuyingizdagi makonni yaratamiz! 🏡";
 
 export const TANISH_USTA =
   "Assalomu alaykum, hurmatli ustalar! 👷‍♂️🙏\n\n" +
