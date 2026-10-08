@@ -1222,6 +1222,18 @@ async function obyektNomi(env, obyektId) {
   } catch (e) { return String(obyektId); }
 }
 
+// Usta ismi Telegram nikidan emas, Moliya ilovasidagi `ustalar` jadvalidan (obyekt bo'yicha).
+// Ish turiga mos mutaxassislik bo'lsa shular, aks holda obyektdagi barcha ustalar.
+async function obyektUstalari(env, obyektId, kasbLabel) {
+  try {
+    const r = await sbFetch(env, `ustalar?obyekt_id=eq.${encodeURIComponent(obyektId)}&select=ism,mutaxassislik,holat`);
+    if (!r || !r.length) return '';
+    const k = String(kasbLabel || '').toLowerCase().replace(/[^a-zа-яё0-9ʻʼ'‘’ ]/gi, '').trim().split(' ')[0].slice(0, 5);
+    const mos = k ? r.filter(u => String(u.mutaxassislik || '').toLowerCase().includes(k)) : [];
+    return (mos.length ? mos : r).slice(0, 5).map(u => u.ism).filter(Boolean).join(', ');
+  } catch (e) { return ''; }
+}
+
 async function handleUstaKategoriya(env, cq, data) {
   const [, kasbCode, groupChatIdStr, msgIdStr] = data.split(':');
   const groupChatId = groupChatIdStr;
@@ -1244,7 +1256,7 @@ async function handleUstaKategoriya(env, cq, data) {
   const admins = adminIdlari(env);
   if (!admins.length) return; // ADMIN_TELEGRAM_IDS sozlanmagan -- yuboriladigan joy yo'q
   const obNom = await obyektNomi(env, obyektId);
-  const ustaKim = cq.from ? `${cq.from.first_name || ''} ${cq.from.last_name || ''} ${cq.from.username ? '@' + cq.from.username : ''}`.trim() : '';
+  const ustaKim = await obyektUstalari(env, obyektId, kasbLabel);
 
   const kb = {
     inline_keyboard: [[
@@ -1257,7 +1269,7 @@ async function handleUstaKategoriya(env, cq, data) {
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: adminId, text: `👷 ${obNom} (№${obyektId}) — ${kasbLabel}${ustaKim ? `\n🧑‍🔧 Usta: ${ustaKim}` : ''}\nYangi video/foto:` }),
+      body: JSON.stringify({ chat_id: adminId, text: `👷 ${obNom} (№${obyektId}) — ${kasbLabel}${ustaKim ? `\n🧑‍🔧 Obyektdagi usta(lar): ${ustaKim}` : ''}\nYangi video/foto:` }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
