@@ -151,7 +151,7 @@ async function bajarUstaEslatma(env, payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: payload.chat_id,
-      text: `⏰ Eslatma (${payload.k}/4): ${payload.kasb} bo'yicha hisobotingiz rad etilgan edi. Iltimos, ko'rib chiqib, foto/video hisobotni boshqatdan yuboring. 🙏`,
+      text: `⏰ Eslatma (${payload.k}/2): ${payload.kasb} bo'yicha hisobotingiz rad etilgan edi. Iltimos, ko'rib chiqib, foto/video hisobotni boshqatdan yuboring. 🙏`,
     }),
     signal: AbortSignal.timeout(10000),
   });
