@@ -59,8 +59,9 @@
 <script type="application/ld+json" id="faqLd">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Loyiha narxi nimaga bog'liq?", "acceptedAnswer": {"@type": "Answer", "text": "Narx maydon, uslub darajasi (Standart, Premium, Lyuks), qavatlar soni va tanlangan xizmatlar tarkibiga bog'liq. Saytdagi kalkulyator taxminiy narxni ko'rsatadi, aniq narx bepul konsultatsiyada belgilanadi."}}, {"@type": "Question", "name": "Loyiha qancha vaqtda tayyor bo'ladi?", "acceptedAnswer": {"@type": "Answer", "text": "Arxitektura loyihasi odatda 15–25 kun, interyer dizayn paketga qarab 10–35 kun davom etadi. Pod klyuch qurilish maydonga qarab 3 oydan 12 oygacha."}}, {"@type": "Question", "name": "To'lov qanday amalga oshiriladi?", "acceptedAnswer": {"@type": "Answer", "text": "Barcha ishlar shartnoma asosida bajariladi. Pod klyuch qurilishda to'lov 4 bosqichda: 30% — shartnomada, 30% — qurilish ishlaridan keyin, 30% — pardozlash bosqichida, 10% — topshirishda. Loyihalash xizmatlari bo'yicha to'lov tartibi shartnomada kelishiladi."}}, {"@type": "Question", "name": "Ruxsatnoma va hujjatlarni ham tayyorlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Kadastr, mygov.uz orqali olinadigan qurilish ruxsatnomalari va qurilishdan oldin kerak bo'ladigan boshqa rasmiy hujjatlarni tayyorlaymiz."}}, {"@type": "Question", "name": "Qurilish jarayonini nazorat qilasizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Mualliflik nazorati doirasida obyektga muntazam borib, ishlar loyihaga mos bajarilishini tekshiramiz. Pod klyuch xizmatda qurilishni to'liq o'zimiz olib boramiz."}}, {"@type": "Question", "name": "Toshkentdan tashqarida ham ishlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha, O'zbekiston bo'ylab va MDH davlatlarida loyihalar bajaramiz. Konsultatsiya va loyihani kelishish onlayn ham o'tkazilishi mumkin."}}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="image" id="heroPreload" href="/assets/hero.webp" fetchpriority="high">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="image" id="heroPreload" href="/assets/hero.webp" imagesrcset="/assets/hero-sm.webp 900w, /assets/hero.webp 1800w" imagesizes="100vw" fetchpriority="high">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
 :root{
   --gold:#A9895A;--gold-l:#C4A876;
@@ -678,7 +679,7 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
 <!-- HERO — full bleed, one photo, one line -->
 <section class="hero">
   <div class="hero-media">
-    <img id="heroImg" src="/assets/hero.webp" width="1800" height="1125" decoding="async" fetchpriority="high" alt="Visart Design — zamonaviy interyer dizayni, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
+    <img id="heroImg" src="/assets/hero.webp" srcset="/assets/hero-sm.webp 900w, /assets/hero.webp 1800w" sizes="100vw" width="1800" height="1125" decoding="async" fetchpriority="high" alt="Visart Design — zamonaviy interyer dizayni, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
   </div>
   <div class="wrap hero-inner">
     <div class="hero-line"><span data-lang="uz" class="lang-active">Arxitektura va interyer dizayn</span><span data-lang="ru">Архитектура и дизайн интерьера</span></div>
