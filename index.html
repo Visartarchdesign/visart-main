@@ -214,7 +214,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 /* ═══ SERVICES — minimal row ═══ */
 .services{padding:0 0 150px;background:var(--paper);position:relative;overflow:hidden}
 .services>.services-list{position:relative;z-index:1}
-.services-list{border-top:0.5px solid var(--line-dark);max-width:1240px;margin:0 auto}
+.services-list{border-top:0.5px solid var(--line-dark);max-width:1240px;margin:0 auto;padding:0 44px;box-sizing:border-box}
 .svc-row{position:relative;display:grid;grid-template-columns:50px 1fr 1fr 24px;gap:36px;padding:38px 0;border-bottom:0.5px solid var(--line-dark);align-items:center;transition:background-color .4s ease,padding-left .4s var(--ease)}
 .svc-row.svc-highlight{background-color:var(--gold-bg,#f4efe6)}
 .svc-arrow{order:3;width:20px;height:20px;color:var(--gold);opacity:0;transform:translateX(-8px);transition:opacity .3s var(--ease),transform .3s var(--ease)}
@@ -500,6 +500,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 }
 @media(max-width:600px){
   .wrap{padding:0 20px}
+  .services-list{padding:0 20px}
   .fb-caption,.hero-inner{padding-left:20px;padding-right:20px}
   .pmodal-body{padding:50px 20px 70px}
   .pmodal-hero-cap{left:20px;right:20px;bottom:40px}
