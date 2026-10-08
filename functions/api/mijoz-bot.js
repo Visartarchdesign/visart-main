@@ -1269,7 +1269,7 @@ async function handleUstaKategoriya(env, cq, data) {
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: adminId, text: `👷 ${obNom} (№${obyektId}) — ${kasbLabel}${ustaKim ? `\n🧑‍🔧 Obyektdagi usta(lar): ${ustaKim}` : ''}\nYangi video/foto:` }),
+      body: JSON.stringify({ chat_id: adminId, text: `👷 ${obNom} — ${kasbLabel}${ustaKim ? `\n🧑‍🔧 Ushbu obyektdagi usta(lar): ${ustaKim}` : ''}\nYangi video/foto:` }),
       signal: AbortSignal.timeout(10000),
     }).catch(() => {});
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/copyMessage`, {
