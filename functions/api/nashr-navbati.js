@@ -1,3 +1,4 @@
+import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
 // Kechiktirilgan-nashr navbatini (`nashr_navbati` jadvali) ishga tushiruvchi
@@ -278,6 +279,9 @@ export async function onRequestGet({ request, env }) {
         await bajarFacebookVideo(env, q.payload);
       } else if (q.turi === 'lid_followup') {
         await bajarLidFollowup(env, q.payload);
+      } else if (q.turi === 'maslahat_yarat') {
+        await maslahatYarat(env);
+        await sbFetch(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ turi: 'maslahat_yarat', payload: {}, nashr_vaqti: keyingiHafta(), holat: 'kutilmoqda' }]) }).catch(() => {});
       } else if (q.turi === 'lid_eslatma') {
         await lidEslatma(env, q.payload);
       } else if (q.turi === 'kunlik_xulosa') {
@@ -306,6 +310,7 @@ export async function onRequestGet({ request, env }) {
 
   await obyektKuzatuv(env).catch(() => {});
   await xulosaNavbatiniTekshir(env).catch(() => {});
+  await maslahatNavbatiniTekshir(env).catch(() => {});
 
   let tozalashNatijasi = null;
   if (url.searchParams.get('tozalash') === '1' || new Date().getUTCMinutes() < 15) {

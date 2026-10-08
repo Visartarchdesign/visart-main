@@ -47,6 +47,7 @@
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
 import { keyingiToshkent } from '../_lib/botAvto.js';
+import { guruhSalom, guruhBuyruq, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
@@ -1762,6 +1763,20 @@ export async function onRequestPost({ request, env }) {
         await obyektTelBilan(env, H, Number(mchat), prof.tel, prof.til);
         return json({ ok: true });
       }
+      if (data.startsWith('gm:')) {
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
+        const [, amal, gid] = data.split(':');
+        await removeKb(env, cq.message.chat.id, cq.message.message_id);
+        if (amal === 'ok') {
+          const n = await maslahatTarqat(env, gid);
+          await answerCq(env, cq.id, { text: n < 0 ? 'Allaqachon yuborilgan' : `✅ ${n} guruhga yuborildi` });
+        } else {
+          await sbFetch(env, `nashr_navbati?id=eq.${gid}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
+          await answerCq(env, cq.id, { text: amal === 're' ? '🔄 Yangisi tayyorlanmoqda' : '❌ Bekor qilindi' });
+          if (amal === 're') await maslahatYarat(env).catch(() => {});
+        }
+        return json({ ok: true });
+      }
       if (data.startsWith('ld:')) {
         if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
         const [, amal, ...tl] = data.split(':');
@@ -1881,13 +1896,7 @@ export async function onRequestPost({ request, env }) {
         if (isAdmin(env, msg.from && msg.from.id)) {
           await guruhMasteriBoshla(env, msg.chat);   // faqat admin qo'shganda sozlash savoli
         } else {
-          // Begona guruh: adminni bezovta qilmaymiz -- bir qator xabar va chiqib ketamiz
-          await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
-            "Salom! Men <b>Visart Design</b> jamoasining ichki boti, guruhlarda ishlamayman.\nNarx hisoblash, xizmatlar va ariza uchun menga shaxsiy chatda yozing: @visart_design_bot");
-          await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/leaveChat`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: msg.chat.id }), signal: AbortSignal.timeout(10000),
-          }).catch(() => {});
+          await guruhSalom(env, msg.chat);   // begona guruh: adminni bezovta qilmaymiz, jim foydali rejim
         }
         return json({ ok: true });
       }
@@ -1962,7 +1971,9 @@ export async function onRequestPost({ request, env }) {
     // qayta ishlanadi (admin tekshiruvi bilan) -- shaxsiy lid-dialog oqimi
     // guruhda ishlamaydi.
     if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
-      if (msg.text.startsWith('/obyekt')) {
+      if (await guruhBuyruq(env, msg)) {
+        /* /narx /loyiha /maslahat /obuna */
+      } else if (msg.text.startsWith('/obyekt')) {
         await handleObyektBuyrugi(env, msg);
       } else if (msg.text.startsWith('/ustalar')) {
         await handleUstalarBuyrugi(env, msg);
@@ -1989,11 +2000,11 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) &&
-        (msg.text === '/start' || msg.text === '/admin')) {
+        (msg.text === '/start' || msg.text === '/admin' || msg.text === '/start guruh')) {
       await adminPanel(env, chatId);
       return json({ ok: true });
     }
-    if (msg.text === '/start' || msg.text === '/menu') {
+    if (msg.text === '/start' || msg.text === '/menu' || msg.text === '/start guruh') {
       await menyuKorsat(env, H, chatId, msg.text === '/start');
       return json({ ok: true });
     }
