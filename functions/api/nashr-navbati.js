@@ -1,3 +1,4 @@
+import { obyektKuzatuv, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
 // Kechiktirilgan-nashr navbatini (`nashr_navbati` jadvali) ishga tushiruvchi
 // worker. mijoz-bot.js (Facebook post'ini ertalabki oynaga kechiktiradi) va
@@ -277,6 +278,11 @@ export async function onRequestGet({ request, env }) {
         await bajarFacebookVideo(env, q.payload);
       } else if (q.turi === 'lid_followup') {
         await bajarLidFollowup(env, q.payload);
+      } else if (q.turi === 'lid_eslatma') {
+        await lidEslatma(env, q.payload);
+      } else if (q.turi === 'kunlik_xulosa') {
+        await kunlikXulosa(env);
+        await sbFetch(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ turi: 'kunlik_xulosa', payload: {}, nashr_vaqti: keyingiToshkent(9, 0), holat: 'kutilmoqda' }]) }).catch(() => {});
       } else if (q.turi === 'usta_eslatma') {
         await bajarUstaEslatma(env, q.payload);
       } else if (q.turi === 'instagram_story') {
@@ -297,6 +303,9 @@ export async function onRequestGet({ request, env }) {
       natijalar.push({ id: q.id, holat: 'xato', xato: String((e && e.message) || e) });
     }
   }
+
+  await obyektKuzatuv(env).catch(() => {});
+  await xulosaNavbatiniTekshir(env).catch(() => {});
 
   let tozalashNatijasi = null;
   if (url.searchParams.get('tozalash') === '1' || new Date().getUTCMinutes() < 15) {

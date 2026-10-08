@@ -46,6 +46,7 @@
 // `lidlar` jadvali ishlatiladi (mavjud tizimga tegmaydi) — pastdagi SQL'ni
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
+import { keyingiToshkent } from '../_lib/botAvto.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
@@ -1592,8 +1593,18 @@ async function finishDialog(env, chatId, dialog, maydon, hujjat) {
   for (const mid of menejerlar(env)) {
     await tgSend(env.MIJOZ_BOT_TOKEN, mid,
       `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}\n📐 ${maydon} ${birlik}${dialog.xizmat_turi === 'arch' ? `\n📄 Hujjatlashtirish: ${hujjat ? 'ha' : "yo'q"}` : ''}\n💬 <a href="tg://user?id=${chatId}">Mijozga Telegramda yozish</a>` +
-      (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!')).catch(() => {});
+      (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!'),
+      { inline_keyboard: [[{ text: "✅ Bog'landim", callback_data: `ld:ok:${dialog.telefon}`.slice(0, 64) }, { text: '❌ Qiziqmaydi', callback_data: `ld:no:${dialog.telefon}`.slice(0, 64) }]] }).catch(() => {});
   }
+  // Ish vaqtidan tashqari (Toshkent 09–21) bo'lsa mijozga ayting; 2 soatdan keyin javobsiz lid eslatmasi
+  const soat = new Date(Date.now() + 5 * 3600 * 1000).getUTCHours();
+  const tun = soat < 9 || soat >= 21;
+  if (tun) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, til === 'ru' ? '🌙 Сейчас нерабочее время. Свяжемся с вами утром, после 9:00.' : "🌙 Hozir ish vaqtidan tashqari. Ertalab soat 9:00 dan keyin siz bilan bog'lanamiz.");
+  }
+  await sbFetch(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{
+    turi: 'lid_eslatma', payload: { chat_id: chatId, ism: dialog.ism, telefon: dialog.telefon },
+    nashr_vaqti: tun ? keyingiToshkent(11) : new Date(Date.now() + 2 * 3600 * 1000).toISOString(), holat: 'kutilmoqda' }]) }).catch(() => {});
 }
 
 // ── GURUHNI BOG'LASH MASTERI ──
@@ -1722,6 +1733,28 @@ export async function onRequestPost({ request, env }) {
       }
       if (data.startsWith('stak:')) {
         await handleSenaristTasdiq(env, cq, data);
+        return json({ ok: true });
+      }
+      if (data.startsWith('ld:')) {
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
+        const [, amal, ...tl] = data.split(':');
+        const tel = tl.join(':');
+        const holat = amal === 'ok' ? 'boglandi' : 'qiziqmadi';
+        await sbFetch(env, `lidlar?telefon=eq.${encodeURIComponent(tel)}&holat=eq.yangi_lid`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat }) }).catch(() => {});
+        await removeKb(env, cq.message.chat.id, cq.message.message_id);
+        await answerCq(env, cq.id, { text: amal === 'ok' ? "✅ Belgilandi: bog'langan" : '❌ Belgilandi: qiziqmaydi' });
+        return json({ ok: true });
+      }
+      if (data.startsWith('rt:')) {
+        const [, oid, n] = data.split(':');
+        await removeKb(env, chatId, cq.message.message_id);
+        await answerCq(env, cq.id, { text: '🙏' });
+        const prof = await getProfil(env, H, chatId);
+        await tgSend(env.MIJOZ_BOT_TOKEN, chatId, prof.til === 'ru' ? 'Спасибо за оценку! 🙏' : 'Bahoyingiz uchun rahmat! 🙏');
+        const kim = cq.from ? `${cq.from.first_name || ''} ${cq.from.username ? '@' + cq.from.username : ''}`.trim() : chatId;
+        for (const mid of menejerlar(env)) {
+          await tgSend(env.MIJOZ_BOT_TOKEN, mid, `${Number(n) <= 3 ? '⚠️' : '⭐'} Mijoz bahosi: <b>${escH(n)}/5</b>\n🏗 Obyekt: ${escH(oid)}\n👤 ${escH(kim)}\n💬 <a href="tg://user?id=${chatId}">Telegramda yozish</a>`);
+        }
         return json({ ok: true });
       }
       if (data.startsWith('dk:')) {
