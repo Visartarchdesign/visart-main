@@ -1360,26 +1360,38 @@ async function fetchLivePricing() {
 }
 
 function estimateText(pricing, xizmatCode, maydon) {
+  const yoq = "Menejer tez orada aniq narxni aytib beradi.";
   if (!pricing) return "Hozircha narx ma'lumotini olib bo'lmadi — menejer sizga aniq narxni ayta oladi.";
-  const svc = (pricing.services || []).find((s) => s.id === xizmatCode);
-  if (!svc) return "Menejer tez orada aniq narxni aytib beradi.";
-  if (svc.areaBased && svc.rate) {
-    const total = Math.round(svc.rate * maydon);
-    return `Taxminiy narx (Standart tarif): ${total.toLocaleString('ru-RU')} so'm (${maydon} m² × ${svc.rate.toLocaleString('ru-RU')} so'm/m²). Aniq narx va tarif (Premium/Lyuks) menejer bilan kelishiladi.`;
+  const f = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  if (xizmatCode === 'interior' && pricing.interior && pricing.interior.packages) {
+    const r = pricing.interior.packages.map((x) => x.rate * maydon);
+    return `Taxminiy narx: ${f(Math.min(...r))} – ${f(Math.max(...r))} so'm (paketga qarab: Standart–Lyuks). Aniq narx menejer bilan kelishiladi.`;
   }
-  if (svc.flat) {
-    return `Taxminiy narx: ${svc.flat.toLocaleString('ru-RU')} so'm. Aniq narx menejer bilan kelishiladi.`;
+  if (xizmatCode === 'turnkey' && pricing.turnkey) {
+    const tk = pricing.turnkey;
+    const tier = tk.areaTiers.find((t) => maydon <= t.maxArea) || tk.areaTiers[tk.areaTiers.length - 1];
+    const mg = tk.managementTiers.find((t) => maydon <= t.maxArea) || tk.managementTiers[tk.managementTiers.length - 1];
+    let mn = 0, mx = 0;
+    for (const c of tk.components) { const t = tier[c.id]; if (t) { mn += t.min * maydon; mx += t.max * maydon; } }
+    const k = pricing.usdRate || 12700;
+    return `Taxminiy narx (Standart uslub): $${f(mn * (1 + mg.pct))} – $${f(mx * (1 + mg.pct))} (≈ ${f(mn * (1 + mg.pct) * k)} – ${f(mx * (1 + mg.pct) * k)} so'm). Aniq narx menejer bilan kelishiladi.`;
   }
-  return "Menejer tez orada aniq narxni aytib beradi.";
+  return yoq;
 }
 
 async function handleText(env, chatId, dialog, text) {
   const step = dialog ? dialog.step : 'ism';
 
   if (!dialog) {
-    await upsertDialog(env, chatId, { step: 'ism' });
-    await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-      "Assalomu alaykum! Visart Design'ga xush kelibsiz. 👋\n\nLoyihangiz bo'yicha bir necha savol beraman, so'ng menejerimiz siz bilan bog'lanadi.\n\nIsmingiz nima?");
+    await menyuKorsat(env, chatId, true);
+    return;
+  }
+  if (step === 'menu') {
+    await menyuKorsat(env, chatId, false);
+    return;
+  }
+  if (String(step).startsWith('nx:')) {
+    await narxMaydonMatn(env, chatId, dialog, text);
     return;
   }
 
@@ -1469,6 +1481,165 @@ async function finishDialog(env, chatId, dialog, maydon) {
     await tgSend(env.MIJOZ_BOT_TOKEN, env.MANAGER_CHAT_ID,
       `🆕 Yangi lid (Telegram bot)\n\n👤 ${dialog.ism}\n📞 ${dialog.telefon}\n🛠 ${dialog.xizmat_label || dialog.xizmat_turi}\n📐 ${maydon} m²\n💬 Chat: ${chatId}` +
       (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!'));
+  }
+}
+
+// ── MIJOZ MENYUSI (shaxsiy chat): narx hisoblash, xizmatlar, tarmoqlar, aloqa ──
+const SAYT = 'https://visartdesign.uz';
+
+function sumFmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+
+function menyuKb() {
+  return { inline_keyboard: [
+    [{ text: '💰 Narxni hisoblash', callback_data: 'menu:narx' }, { text: '🛠 Xizmatlar', callback_data: 'menu:xiz' }],
+    [{ text: '🖼 Loyihalarimiz', url: `${SAYT}/#projects` }, { text: '🌐 Ijtimoiy tarmoqlar', callback_data: 'menu:soc' }],
+    [{ text: '📞 Aloqa', callback_data: 'menu:aloqa' }, { text: '📝 Ariza qoldirish', callback_data: 'menu:ariza' }],
+  ] };
+}
+
+async function menyuKorsat(env, chatId, salom) {
+  await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
+    (salom ? "Assalomu alaykum! <b>Visart Design</b>ga xush kelibsiz. 👋\nArxitektura, interyer dizayn va remont (pod klyuch) — Toshkent.\n\n" : '') +
+    'Nima qiziqtiradi?', menyuKb());
+}
+
+async function saytMalumot(env) {
+  try {
+    const res = await fetch(`${SAYT}/api/content`, { signal: AbortSignal.timeout(6000) });
+    const d = await res.json();
+    return d && d.ok ? d : null;
+  } catch (e) { return null; }
+}
+
+function havola(v, baza) {
+  v = String(v || '').trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  return baza + v.replace(/^@/, '');
+}
+
+async function handleMenu(env, cq, data) {
+  const chatId = cq.message.chat.id;
+  const amal = data.split(':')[1];
+  await answerCq(env, cq.id);
+  if (amal === 'narx') {
+    const d = await saytMalumot(env);
+    if (!d || !d.pricing || !d.pricing.architecture) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "Hozir narxlarni yuklab bo'lmadi. Ariza qoldiring — menejer aniq narxni aytadi.", { inline_keyboard: [[{ text: '📝 Ariza qoldirish', callback_data: 'menu:ariza' }]] });
+      return;
+    }
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Qaysi xizmat narxini hisoblaymiz?', { inline_keyboard: [
+      [{ text: '🏛 Arxitektura loyihalash', callback_data: 'nx:arch' }],
+      [{ text: '🛋 Interyer dizayn', callback_data: 'nx:int' }],
+      [{ text: "🔨 Remont (pod klyuch)", callback_data: 'nx:tk' }],
+    ] });
+  } else if (amal === 'xiz') {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
+      "<b>Xizmatlarimiz</b>\n\n🏛 <b>Arxitektura loyihalash</b> — uy va binolar loyihasi, 15–25 kun\n🛋 <b>Interyer dizayn</b> — planirovka, 3D vizualizatsiya, ishchi chizmalar\n🔨 <b>Remont (pod klyuch)</b> — dizayndan topshirishgacha to'liq qurilish\n📄 <b>Loyiha hujjatlari va nazorat</b> — ruxsatnoma, kadastr, mualliflik nazorati\n\nBatafsil — saytda:", { inline_keyboard: [
+        [{ text: 'Arxitektura', url: `${SAYT}/xizmatlar/arxitektura-loyihalash` }, { text: 'Interyer', url: `${SAYT}/xizmatlar/interyer-dizayn` }],
+        [{ text: 'Pod klyuch', url: `${SAYT}/xizmatlar/pod-klyuch` }, { text: 'Hujjatlar', url: `${SAYT}/xizmatlar/loyiha-hujjatlari` }],
+        [{ text: '💰 Narxni hisoblash', callback_data: 'menu:narx' }],
+      ] });
+  } else if (amal === 'soc' || amal === 'aloqa') {
+    const d = await saytMalumot(env);
+    const st = (d && d.settings) || {};
+    const row = [];
+    const ig = havola(st.instagram, 'https://instagram.com/');
+    const yt = havola(st.youtube, 'https://youtube.com/@');
+    const tg = havola(st.telegram, 'https://t.me/');
+    const tgp = havola(st.telegram_personal, 'https://t.me/');
+    if (amal === 'soc') {
+      if (ig) row.push({ text: 'Instagram', url: ig });
+      if (tg) row.push({ text: 'Telegram kanal', url: tg });
+      if (yt) row.push({ text: 'YouTube', url: yt });
+      row.push({ text: 'Sayt', url: SAYT });
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "Bizni kuzatib boring — yangi loyihalar va jarayonlar shu yerda 👇", { inline_keyboard: row.map((b) => [b]) });
+    } else {
+      if (tgp) row.push({ text: '💬 Menejerga yozish', url: tgp });
+      const matn = ['<b>Aloqa</b>', st.phone ? `📞 ${st.phone}` : '', st.email ? `✉️ ${st.email}` : '',
+        st.address && st.address.uz ? `📍 ${st.address.uz}` : ''].filter(Boolean).join('\n');
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, matn || "Aloqa ma'lumoti hozir mavjud emas.", row.length ? { inline_keyboard: row.map((b) => [b]) } : undefined);
+    }
+  } else if (amal === 'ariza') {
+    await upsertDialog(env, chatId, { step: 'ism', ism: null, telefon: null, xizmat_turi: null, maydon_m2: null });
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Ariza uchun bir necha savol beraman.\n\nIsmingiz nima?');
+  }
+}
+
+// Narx hisoblash. Oqim: xizmat -> (maydon matn bilan) -> variantlar tugmalari -> natija.
+// Formulalar sayt kalkulyatori bilan bir xil (pricing_json).
+async function handleNarx(env, cq, data) {
+  const chatId = cq.message.chat.id;
+  const p = data.split(':');            // nx:arch | nx:int | nx:tk | nxf:.. | nxs:.. | nxi:.. | nxt:..
+  await answerCq(env, cq.id);
+  const tg = (t, kb) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, t, kb);
+  if (p[0] === 'nx') {
+    const q = { arch: ['sotix', 'Yer maydoni necha <b>sotix</b>? (raqam yozing, masalan: 6)'],
+                int: ['m2int', 'Interyer maydoni necha <b>m²</b>? (masalan: 85)'],
+                tk: ['m2tk', 'Remont qilinadigan maydon necha <b>m²</b>? (masalan: 100)'] }[p[1]];
+    if (!q) return;
+    await upsertDialog(env, chatId, { step: `nx:${q[0]}` });
+    await tg(q[1]);
+    return;
+  }
+  const d = await saytMalumot(env);
+  const pr = d && d.pricing;
+  if (!pr || !pr.architecture) { await tg("Narxlarni olib bo'lmadi, keyinroq urinib ko'ring."); return; }
+  const stil = (id) => (pr.styles || []).find((x) => x.id === id) || { mult: 1, uz: 'Standart' };
+  const kb2 = { inline_keyboard: [[{ text: '📝 Ariza qoldirish', callback_data: 'menu:ariza' }, { text: '🔁 Qayta hisoblash', callback_data: 'menu:narx' }]] };
+  const nota = "\n\n<i>Bu taxminiy narx. Aniq narx — bepul konsultatsiyada.</i>";
+
+  if (p[0] === 'nxf') {                 // nxf:<sotix>:<qavat>  -> uslub tanlash
+    await tg('Uslub darajasi?', { inline_keyboard: [(pr.styles || []).map((x) => ({ text: x.uz, callback_data: `nxs:${p[1]}:${p[2]}:${x.id}` }))] });
+  } else if (p[0] === 'nxs') {          // arxitektura natijasi
+    const sotix = Number(p[1]);
+    const fl = (pr.architecture.floors || []).find((f) => String(f.id) === p[2]) || { mult: 1, uz: p[2] };
+    const st = stil(p[3]);
+    const jami = pr.architecture.ratePerSotix * sotix * st.mult * fl.mult;
+    await tg(`🏛 <b>Arxitektura loyihalash</b>\n${sotix} sotix · ${fl.uz} · ${st.uz}\n\n💰 ~ <b>${sumFmt(jami)} so'm</b>\n⏱ ${(pr.timelines && pr.timelines.architecture && pr.timelines.architecture.uz) || ''}${nota}`, kb2);
+  } else if (p[0] === 'nxi') {          // nxi:<m2>:<paket>
+    const m2 = Number(p[1]);
+    const pk = (pr.interior.packages || []).find((x) => x.id === p[2]);
+    if (!pk) return;
+    const feats = (pk.includes || []).map((f) => `• ${(pr.interior.features && pr.interior.features[f] && pr.interior.features[f].uz) || f}`).join('\n');
+    await tg(`🛋 <b>Interyer dizayn — ${pk.uz}</b>\n${m2} m²\n\n💰 ~ <b>${sumFmt(pk.rate * m2)} so'm</b> (${sumFmt(pk.rate)} so'm/m²)\n\nKiradi:\n${feats}${nota}`, kb2);
+  } else if (p[0] === 'nxt') {          // nxt:<m2>:<uslub>  -> pod klyuch
+    const m2 = Number(p[1]);
+    const st = stil(p[2]);
+    const tk = pr.turnkey;
+    const tier = tk.areaTiers.find((t) => m2 <= t.maxArea) || tk.areaTiers[tk.areaTiers.length - 1];
+    const mg = tk.managementTiers.find((t) => m2 <= t.maxArea) || tk.managementTiers[tk.managementTiers.length - 1];
+    let mn = 0, mx = 0; const qator = [];
+    for (const c of tk.components) {
+      const t = tier[c.id]; if (!t) continue;
+      mn += t.min * st.mult * m2; mx += t.max * st.mult * m2;
+      qator.push(`• ${c.uz}: $${Math.round(t.min * st.mult)}–${Math.round(t.max * st.mult)}/m²`);
+    }
+    mn *= 1 + mg.pct; mx *= 1 + mg.pct;
+    const kurs = pr.usdRate || 12700;
+    await tg(`🔨 <b>Remont (pod klyuch)</b>\n${m2} m² · ${st.uz}\n\n${qator.join('\n')}\n• Boshqaruv: +${Math.round(mg.pct * 100)}%\n\n💰 ~ <b>$${sumFmt(mn)} – $${sumFmt(mx)}</b>\n≈ ${sumFmt(mn * kurs)} – ${sumFmt(mx * kurs)} so'm${nota}`, kb2);
+  }
+}
+
+// Narx hisoblashda maydon raqami matn bilan yuborilganda.
+async function narxMaydonMatn(env, chatId, dialog, text) {
+  const n = parseFloat(String(text).replace(',', '.').replace(/[^\d.]/g, ''));
+  const tur = dialog.step.split(':')[1];
+  if (!n || n <= 0 || n > 100000) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Iltimos, faqat raqam yozing (masalan: 85).');
+    return;
+  }
+  await upsertDialog(env, chatId, { step: 'menu' });
+  const d = await saytMalumot(env);
+  const pr = d && d.pricing;
+  if (!pr || !pr.architecture) { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "Narxlarni olib bo'lmadi, keyinroq urinib ko'ring."); return; }
+  const n_ = Math.round(n);
+  if (tur === 'sotix') {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Necha qavatli?', { inline_keyboard: [(pr.architecture.floors || []).map((f) => ({ text: f.uz, callback_data: `nxf:${n_}:${f.id}` }))] });
+  } else if (tur === 'm2int') {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Qaysi paket?', { inline_keyboard: (pr.interior.packages || []).map((x) => [{ text: `${x.uz} — ${sumFmt(x.rate)} so'm/m²`, callback_data: `nxi:${n_}:${x.id}` }]) });
+  } else {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Uslub darajasi?', { inline_keyboard: [(pr.styles || []).map((x) => ({ text: x.uz, callback_data: `nxt:${n_}:${x.id}` }))] });
   }
 }
 
@@ -1597,6 +1768,8 @@ export async function onRequestPost({ request, env }) {
         await handleSenaristTasdiq(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('menu:')) { await handleMenu(env, cq, data); return json({ ok: true }); }
+      if (data.startsWith('nx')) { await handleNarx(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('gset:') || data.startsWith('gobj:')) {
         await handleGuruhMaster(env, cq, data);
         return json({ ok: true });
@@ -1761,10 +1934,8 @@ export async function onRequestPost({ request, env }) {
     const chatId = msg.chat.id;
     const dialog = await getDialog(env, chatId);
 
-    if (msg.text === '/start') {
-      await upsertDialog(env, chatId, { step: 'ism', ism: null, telefon: null, xizmat_turi: null, maydon_m2: null });
-      await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-        "Assalomu alaykum! Visart Design'ga xush kelibsiz. 👋\n\nIsmingiz nima?");
+    if (msg.text === '/start' || msg.text === '/menu') {
+      await menyuKorsat(env, chatId, msg.text === '/start');
       return json({ ok: true });
     }
 
