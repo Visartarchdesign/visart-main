@@ -51,7 +51,7 @@ const T = {
     uslub: 'Uslub', ranglar: 'Ranglar', mater: 'Materiallar', mos: 'Shu uslubdagi loyihalarimiz:', mos_yoq: 'Loyihalarimizni saytda ko\'rishingiz mumkin:',
     // obyekt
     ob_tel: "Obyektingiz holatini ko'rish uchun telefon raqamingizni tasdiqlang (pastdagi tugma).", ob_tugma: '📱 Raqamni yuborish',
-    ob_topilmadi: "Bu raqam bo'yicha obyekt topilmadi. Menejerga yozing — tekshirib beradi.", ob_boshqa: "Bu raqam sizniki emas. Faqat o'z raqamingizni yuboring.",
+    ob_topilmadi: "⚠️ Bu raqam bo'yicha obyekt topilmadi.\n\nSabablari:\n• shartnomada boshqa raqam yozilgan bo'lishi mumkin (masalan, oila a'zosi yoki ikkinchi raqamingiz)\n• raqam bazamizda hali kiritilmagan yoki xato yozilgan\n\n<b>Nima qilish kerak:</b>\n1️⃣ Pastdagi tugmani bosing — so'rov menejerga boradi va u obyektingizni ulaydi\n2️⃣ Yoki shartnomada ko'rsatilgan raqam bilan Telegram'ga kirib, shu raqamni yuboring\n\nMenejer tez orada o'zi aloqaga chiqadi. 🙏", ob_boshqa: "Bu raqam sizniki emas. Faqat o'z raqamingizni yuboring.",
     ob_tanla: 'Qaysi obyekt?', ob_holat: 'Holat', ob_tugash: 'Tugash sanasi', ob_smeta: 'Smeta', ob_tolangan: "To'langan", ob_qoldiq: 'Qoldiq',
     ob_eslatma: "Batafsil ma'lumot — mijoz ilovasida.", ob_ilova: '📱 Ilovani ochish',
   },
@@ -92,7 +92,7 @@ const T = {
     foto_limit: 'Лимит анализа фото на сегодня исчерпан. Попробуйте завтра или напишите менеджеру.',
     uslub: 'Стиль', ranglar: 'Цвета', mater: 'Материалы', mos: 'Наши проекты в похожем стиле:', mos_yoq: 'Наши проекты можно посмотреть на сайте:',
     ob_tel: 'Чтобы увидеть статус объекта, подтвердите номер телефона (кнопка ниже).', ob_tugma: '📱 Отправить номер',
-    ob_topilmadi: 'Объект по этому номеру не найден. Напишите менеджеру — проверит.', ob_boshqa: 'Это не ваш номер. Отправьте только свой номер.',
+    ob_topilmadi: '⚠️ Объект по этому номеру не найден.\n\nВозможные причины:\n• в договоре указан другой номер (например, второй или номер родственника)\n• номер ещё не внесён в базу или записан с ошибкой\n\n<b>Что делать:</b>\n1️⃣ Нажмите кнопку ниже — запрос уйдёт менеджеру, он подключит ваш объект\n2️⃣ Или отправьте номер, указанный в договоре, из Telegram с этим номером\n\nМенеджер скоро свяжется с вами. 🙏', ob_boshqa: 'Это не ваш номер. Отправьте только свой номер.',
     ob_tanla: 'Какой объект?', ob_holat: 'Статус', ob_tugash: 'Срок завершения', ob_smeta: 'Смета', ob_tolangan: 'Оплачено', ob_qoldiq: 'Остаток',
     ob_eslatma: 'Подробности — в приложении клиента.', ob_ilova: '📱 Открыть приложение',
   },
