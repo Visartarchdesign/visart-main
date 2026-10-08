@@ -251,6 +251,8 @@ async function tuzatishniQollash(env, { tuzatish_hodisa_id, matn, summa, umumiy_
   return json({ ok: tahrirlandi, tahrir: tahrirlandi ? 'xabar_tahrirlandi' : 'tahrir_xato' });
 }
 
+import { xatoYoz } from '../_lib/xato.js';
+
 export async function onRequestPost({ request, env }) {
   try {
     const secret = request.headers.get('X-Visart-Secret');
@@ -307,6 +309,7 @@ export async function onRequestPost({ request, env }) {
 
     return json({ ok: false, error: 'unknown_group' }, 400);
   } catch (e) {
+    await xatoYoz(env, 'visart-events', e);
     return json({ ok: false, error: 'server_error' }, 500);
   }
 }

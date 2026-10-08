@@ -47,6 +47,7 @@
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
 import { keyingiToshkent } from '../_lib/botAvto.js';
+import { xatoYoz } from '../_lib/xato.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
 
@@ -2118,6 +2119,7 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: true });
   } catch (e) {
     // 500 qaytarsak Telegram bir necha marta qayta yuboradi (takroriy post xavfi) -- doim 200.
+    await xatoYoz(env, 'mijoz-bot', e);
     return json({ ok: true, error: 'server_error' });
   }
 }

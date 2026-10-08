@@ -1,3 +1,4 @@
+import { xatoYoz } from '../_lib/xato.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
@@ -300,6 +301,7 @@ export async function onRequestGet({ request, env }) {
       });
       natijalar.push({ id: q.id, holat: 'bajarildi' });
     } catch (e) {
+      await xatoYoz(env, `nashr-navbati:${q.turi}`, e);
       await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ holat: 'xato', xato_matni: String((e && e.message) || e).slice(0, 500) }),
@@ -308,9 +310,9 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  const kuzatuv = await obyektKuzatuv(env).catch((e) => ({ xato: String((e && e.message) || e) }));
-  await xulosaNavbatiniTekshir(env).catch(() => {});
-  await maslahatNavbatiniTekshir(env).catch(() => {});
+  const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
+  await xulosaNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'xulosa-navbati', e));
+  await maslahatNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'maslahat-navbati', e));
 
   let tozalashNatijasi = null;
   if (url.searchParams.get('tozalash') === '1' || new Date().getUTCMinutes() < 15) {

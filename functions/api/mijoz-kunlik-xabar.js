@@ -19,6 +19,8 @@
 //   (MIJOZ_BOT_TOKEN, MOLIYA_GROUP_CHAT_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY --
 //    visart-events.js/mijoz-bot.js'da allaqachon bor)
 
+import { xatoYoz } from '../_lib/xato.js';
+
 const MOLIYA_KEY = '__moliya__'; // kunlik_xabar_jurnali'da obyekt_id ustuniga moliya guruhi uchun sentinel
 
 function json(data, status = 200) {
@@ -170,6 +172,7 @@ async function handle({ request, env }) {
   try {
     rows = await sbFetch(env, 'kunlik_hodisalar?yuborildi=eq.false&select=*&order=created_at.asc');
   } catch (e) {
+    await xatoYoz(env, 'kunlik-xabar:supabase', e);
     return json({ ok: false, error: 'supabase_xato' }, 500);
   }
 
@@ -220,6 +223,9 @@ async function handle({ request, env }) {
     }
   }
 
+  const muammo = Object.entries(sabab);
+  if (muammo.length) await xatoYoz(env, 'kunlik-xabar:yuborilmadi', muammo.map(([k, v]) => `${k}: ${v}`).join('; '));
+  if (moliya.length && yuborilganHodisalar === 0 && !muammo.length) await xatoYoz(env, 'kunlik-xabar:moliya', 'moliya hisoboti hech kimga yetmadi');
   return json({
     ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
     // diagnostika: nima uchun yuborilmagani ko'rinsin
@@ -232,6 +238,7 @@ export async function onRequestGet(context) {
   try {
     return await handle(context);
   } catch (e) {
+    await xatoYoz(context.env, 'kunlik-xabar', e);
     return json({ ok: false, error: 'server_error' }, 500);
   }
 }
