@@ -209,7 +209,15 @@ async function handle({ request, env }) {
     }
   }
 
+  let tgXato = null;
+  if (moliya.length && env.MOLIYA_GROUP_CHAT_ID && yuborilganGuruhlar === 0) {
+    try {
+      const r = await (await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: env.MOLIYA_GROUP_CHAT_ID, text: '🔧 test' }) })).json();
+      tgXato = r.ok ? 'test_yuborildi' : r.description;
+    } catch (e) { tgXato = 'tarmoq_xato'; }
+  }
   return json({
+    tg_xato: tgXato,
     ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
     // diagnostika: nima uchun yuborilmagani ko'rinsin
     navbatda: { moliya: moliya.length, obyekt: Object.values(obyektlar).reduce((a, b) => a + b.length, 0) },
