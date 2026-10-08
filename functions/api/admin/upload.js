@@ -19,6 +19,14 @@ export async function onRequestPost({ request, env }) {
       httpMetadata: { contentType: file.type || 'image/jpeg' },
     });
 
+    // Telefon uchun kichik nusxa (<nom>-sm.webp)
+    const sm = formData.get('sm');
+    if (sm && typeof sm !== 'string' && key.endsWith('.webp')) {
+      await env.UPLOADS.put(key.replace(/\.webp$/, '-sm.webp'), sm.stream(), {
+        httpMetadata: { contentType: 'image/webp' },
+      });
+    }
+
     const publicBase = env.R2_PUBLIC_BASE || '';
     const url = publicBase ? `${publicBase.replace(/\/$/, '')}/${key}` : `/r2/${key}`;
     return json({ ok: true, url, key });

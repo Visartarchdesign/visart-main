@@ -1310,7 +1310,7 @@ function renderProjects(filter){
     return `
     <a href="${href}" class="proj-card reveal-scale" data-id="${p.id}" aria-label="${p.title[lang]} — ${cta}">
       <div class="proj-card-img">
-        <img src="${p.thumb}" alt="${(p.alts&&p.alts[p.hero]&&(p.alts[p.hero][lang]||p.alts[p.hero].uz))||p.title[lang]}" loading="lazy" decoding="async" onerror="this.src='${FALLBACKS[i%FALLBACKS.length]}'">
+        <img src="${p.thumb}"${smSrcset(p.thumb)} alt="${(p.alts&&p.alts[p.hero]&&(p.alts[p.hero][lang]||p.alts[p.hero].uz))||p.title[lang]}" loading="lazy" decoding="async" onerror="this.removeAttribute('srcset');this.onerror=function(){this.src='${FALLBACKS[i%FALLBACKS.length]}'};this.src=this.src">
         <span class="proj-card-badge">${BADGE_TXT[p.status][lang]}</span>
         <div class="proj-card-info">
           <h3>${p.title[lang]}</h3>
@@ -1867,6 +1867,9 @@ updateBpRail();
 // ═══ ADMIN PANELDAN DINAMIK KONTENT — mavjud bo'lsa hardcoded ma'lumotlarni almashtiradi.
 // Agar /api/content mavjud bo'lmasa yoki xatolik bersa, sayt yuqoridagi standart
 // (hardcoded) ma'lumotlar bilan to'liq ishlayveradi — hech narsa buzilmaydi. ═══
+function smSrcset(u){
+  return (typeof u==='string'&&/\/uploads\/[^\/]+\.webp$/.test(u))?` srcset="${u.replace(/\.webp$/,'-sm.webp')} 800w, ${u} 1920w" sizes="(max-width:700px) 100vw, 33vw"`:'';
+}
 async function loadDynamicContent(){
   try{
     const res=await fetch('/api/content');

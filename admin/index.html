@@ -674,6 +674,10 @@ async function uploadFile(file){
   const optimized = await optimizeImage(file);
   const fd = new FormData();
   fd.append('file', optimized);
+  if (optimized.type === 'image/webp') {
+    const sm = await optimizeImage(file, 800, 0.78);
+    if (sm.type === 'image/webp') fd.append('sm', sm);
+  }
   const res = await fetch(API + '/admin/upload', { method:'POST', body: fd, credentials:'same-origin' });
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'upload_failed');
