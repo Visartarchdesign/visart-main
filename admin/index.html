@@ -662,7 +662,7 @@ function optimizeImage(file, maxDim, quality){
       ctx.drawImage(img, 0, 0, width, height);
       // iOS Safari WebP kodlay olmaydi (PNG qaytaradi) — haqiqiy turini tekshirib, JPEG'ga o'tamiz
       const fin = (blob, type) => {
-        if (!blob || blob.type !== type || blob.size >= file.size) return null;
+        if (!blob || blob.type !== type || blob.size >= file.size * 1.5) return null;
         const ext = type === 'image/webp' ? '.webp' : '.jpg';
         return new File([blob], file.name.replace(/\.[^.]+$/, '') + ext, { type });
       };
