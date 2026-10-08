@@ -47,7 +47,7 @@
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
 import { keyingiToshkent } from '../_lib/botAvto.js';
-import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla } from '../_lib/mijozMenyu.js';
+import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
   ism: 'ism',
@@ -1733,6 +1733,33 @@ export async function onRequestPost({ request, env }) {
       }
       if (data.startsWith('stak:')) {
         await handleSenaristTasdiq(env, cq, data);
+        return json({ ok: true });
+      }
+      if (data === 'obr') {
+        await answerCq(env, cq.id);
+        const prof = await getProfil(env, H, chatId);
+        await removeKb(env, chatId, cq.message.message_id);
+        await tgSend(env.MIJOZ_BOT_TOKEN, chatId, prof.til === 'ru' ? 'Запрос отправлен менеджеру. Скоро подключим ваш объект. 🙏' : "So'rov menejerga yuborildi. Obyektingizni tez orada ulaymiz. 🙏");
+        const obs = (await sbFetch(env, 'obyektlar?select=id,nom,mijoz_tel,mijoz_ism&order=id.desc&limit=60').catch(() => [])) || [];
+        const bosh = obs.filter((o) => !String(o.mijoz_tel || '').replace(/\D/g, '')).concat(obs.filter((o) => String(o.mijoz_tel || '').replace(/\D/g, '')));
+        const kb = bosh.map((o) => [{ text: `${o.nom || o.id}${o.mijoz_ism ? ' · ' + o.mijoz_ism : ''}`.slice(0, 40), callback_data: `ol:${o.id}:${chatId}` }]).filter((r) => r[0].callback_data.length <= 64).slice(0, 10);
+        const kim = cq.from ? `${cq.from.first_name || ''} ${cq.from.username ? '@' + cq.from.username : ''}`.trim() : chatId;
+        for (const mid of menejerlar(env)) {
+          await tgSend(env.MIJOZ_BOT_TOKEN, mid, `🔗 Mijoz obyektini ulashni so'radi\n👤 ${escH(kim)}\n📞 ${prof.tel ? '+' + escH(prof.tel) : '—'}\n💬 <a href="tg://user?id=${chatId}">Telegramda yozish</a>\n\nQaysi obyekt shu mijozniki? (telefon unga yoziladi)`, { inline_keyboard: kb });
+        }
+        return json({ ok: true });
+      }
+      if (data.startsWith('ol:')) {
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
+        const [, oid, mchat] = data.split(':');
+        const prof = await getProfil(env, H, Number(mchat));
+        if (!prof.tel) { await answerCq(env, cq.id, { text: 'Mijoz raqami yo\'q' }); return json({ ok: true }); }
+        await sbFetch(env, `obyektlar?id=eq.${encodeURIComponent(oid)}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mijoz_tel: '+' + prof.tel }) }).catch(() => {});
+        await removeKb(env, cq.message.chat.id, cq.message.message_id);
+        await answerCq(env, cq.id, { text: '✅ Ulandi' });
+        await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, `✅ Obyekt ${escH(oid)} mijoz raqamiga (+${escH(prof.tel)}) ulandi.`);
+        await tgSend(env.MIJOZ_BOT_TOKEN, Number(mchat), prof.til === 'ru' ? '✅ Ваш объект подключён!' : '✅ Obyektingiz ulandi!');
+        await obyektTelBilan(env, H, Number(mchat), prof.tel, prof.til);
         return json({ ok: true });
       }
       if (data.startsWith('ld:')) {

@@ -460,9 +460,13 @@ export async function obyektKorsat(env, h, chatId, prof) {
   await obyektTelBilan(env, h, chatId, prof.tel, til);
 }
 
-async function obyektTelBilan(env, h, chatId, tel, til) {
+export async function obyektTelBilan(env, h, chatId, tel, til) {
   const list = await obyektlarTopish(env, h, tel);
-  if (!list.length) { await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'ob_topilmadi')); return; }
+  if (!list.length) {
+    await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'ob_topilmadi'),
+      { inline_keyboard: [[{ text: til === 'ru' ? '🔗 У меня есть объект — отправить запрос менеджеру' : "🔗 Obyektim bor — menejerga so'rov yuborish", callback_data: 'obr' }]] });
+    return;
+  }
   if (list.length === 1) {
     await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, await obyektMatni(env, h, list[0], til), { inline_keyboard: [[{ text: t(til, 'ob_ilova'), url: 'https://app.visartdesign.uz' }]] });
     return;
