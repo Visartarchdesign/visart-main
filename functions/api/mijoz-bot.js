@@ -119,6 +119,19 @@ function isAdmin(env, userId) {
   return ids.includes(String(userId));
 }
 
+// DB'dagi qo'shimcha adminlar (bot_adminlar) env ro'yxatiga qo'shiladi -- har so'rovda 1 ta so'rov.
+async function adminlarBilan(env) {
+  const root = env.ADMIN_TELEGRAM_IDS || '';
+  try {
+    const r = await sbFetch(env, 'bot_adminlar?select=chat_id&chat_id=not.is.null');
+    const ex = (r || []).map((x) => String(x.chat_id));
+    return { ...env, ROOT_ADMIN_IDS: root, ADMIN_TELEGRAM_IDS: [root, ...ex].filter(Boolean).join(',') };
+  } catch (e) {
+    return { ...env, ROOT_ADMIN_IDS: root };
+  }
+}
+const isRoot = (env, uid) => String(env.ROOT_ADMIN_IDS || '').split(',').map((x) => x.trim()).includes(String(uid));
+
 async function handleObyektBuyrugi(env, msg) {
   const chatId = msg.chat.id;
 
@@ -1457,11 +1470,28 @@ async function handleText(env, chatId, dialog, text) {
 }
 
 // ── ADMIN PANEL ──
+async function adminTaklifQabul(env, msg, tok) {
+  const chatId = msg.chat.id;
+  const r = await sbFetch(env, `bot_adminlar?token=eq.${tok}&chat_id=is.null&select=id,token_exp,qoshdi`).catch(() => null);
+  const row = r && r[0];
+  if (!row || new Date(row.token_exp) < new Date()) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "Havola eskirgan yoki ishlatilgan.");
+    return;
+  }
+  const ism = `${msg.from.first_name || ''} ${msg.from.username ? '@' + msg.from.username : ''}`.trim();
+  await sbFetch(env, `bot_adminlar?id=eq.${row.id}`, { method: 'PATCH', prefer: 'return=minimal',
+    body: JSON.stringify({ chat_id: chatId, ism, token: null }) });
+  await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "✅ Siz admin bo'ldingiz.");
+  await tgSend(env.MIJOZ_BOT_TOKEN, row.qoshdi, `✅ Yangi admin: ${escH(ism)} (<code>${chatId}</code>)`);
+  await adminPanel(env, chatId);
+}
+
 async function adminPanel(env, chatId) {
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '🛠 <b>Visart admin panel</b>', { inline_keyboard: [
     [{ text: '🆕 Oxirgi lidlar', callback_data: 'ap:lid' }, { text: '📊 Bugun / hafta', callback_data: 'ap:stat' }],
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
     [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
+    [{ text: '➕ Admin qo\'shish', callback_data: 'ap:add' }, { text: '👥 Adminlar', callback_data: 'ap:list' }],
   ] });
 }
 
@@ -1472,6 +1502,27 @@ async function adminPanelCb(env, cq, data) {
   const send = (x, kb) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, x, kb);
   const amal = data.split(':')[1];
   const q = async (path) => (await sbFetch(env, path).catch(() => null)) || [];
+  if (amal === 'add' || amal === 'list' || amal === 'del') {
+    if (!isRoot(env, cq.from.id)) { await send("Admin qo'shish/o'chirish faqat asosiy adminga ruxsat."); return; }
+    if (amal === 'add') {
+      const tok = [...crypto.getRandomValues(new Uint8Array(12))].map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+      await sbFetch(env, 'bot_adminlar', { method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify([{ token: tok, token_exp: new Date(Date.now() + 864e5).toISOString(), qoshdi: cq.from.id }]) });
+      await send(`➕ Yangi admin uchun havola (1 marta, 24 soat):\n\nhttps://t.me/visart_design_bot?start=adm_${tok}\n\nShu havolani yangi adminga yuboring — u bosib <b>Start</b> bossa admin bo'ladi.`);
+      return;
+    }
+    if (amal === 'list') {
+      const r = await q('bot_adminlar?select=id,chat_id,ism&chat_id=not.is.null&order=id.asc');
+      const rootList = String(env.ROOT_ADMIN_IDS || '').split(',').filter(Boolean).map((x) => `• <code>${x.trim()}</code> (asosiy)`);
+      await send('👥 <b>Adminlar</b>\n\n' + [...rootList, ...r.map((x) => `• ${escH(x.ism || '')} <code>${x.chat_id}</code>`)].join('\n'),
+        r.length ? { inline_keyboard: r.map((x) => [{ text: `🗑 ${(x.ism || x.chat_id)}`.slice(0, 40), callback_data: `ap:del:${x.id}` }]) } : undefined);
+      return;
+    }
+    const id = Number(data.split(':')[2]);
+    if (id) await sbFetch(env, `bot_adminlar?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
+    await send("🗑 Admin o'chirildi.");
+    return;
+  }
   if (amal === 'mijoz') { await menyuKorsat(env, H, chatId, false); return; }
   if (amal === 'id') { await send(`Chat ID: <code>${chatId}</code>`); return; }
   if (amal === 'lid') {
@@ -1639,6 +1690,7 @@ export async function onRequestPost({ request, env }) {
     const update = await request.json().catch(() => null);
     if (!update) return json({ ok: true });
     if (await takroriyUpdate(env, update.update_id)) return json({ ok: true });
+    env = await adminlarBilan(env);
 
     if (update.callback_query) {
       const cq = update.callback_query;
@@ -1858,6 +1910,10 @@ export async function onRequestPost({ request, env }) {
     const chatId = msg.chat.id;
     const dialog = await getDialog(env, chatId);
 
+    if (msg.chat.type === 'private' && /^\/start adm_[A-Za-z0-9]{8,}$/.test(msg.text || '')) {
+      await adminTaklifQabul(env, msg, msg.text.slice(11));
+      return json({ ok: true });
+    }
     if (msg.text === '/id') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Sizning chat ID: <code>${chatId}</code>`);
       return json({ ok: true });
