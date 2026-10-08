@@ -816,22 +816,85 @@ async function claudeTezkorMatn(env, korsatma) {
   }
 }
 
+function mediaMalumot(msg) {
+  if (msg.photo && msg.photo.length) return { turi: 'photo', fileId: msg.photo[msg.photo.length - 1].file_id, aslFileId: null };
+  if (msg.video) return { turi: 'video', fileId: (msg.video.thumbnail || msg.video.thumb || {}).file_id || null, aslFileId: msg.video.file_id };
+  if (msg.video_note) return { turi: 'video_note', fileId: (msg.video_note.thumbnail || msg.video_note.thumb || {}).file_id || null, aslFileId: msg.video_note.file_id };
+  if (msg.document && (msg.document.mime_type || '').startsWith('image/')) return { turi: 'photo', fileId: msg.document.file_id, aslFileId: null };
+  if (msg.document && (msg.document.mime_type || '').startsWith('video/')) return { turi: 'video', fileId: (msg.document.thumbnail || msg.document.thumb || {}).file_id || null, aslFileId: msg.document.file_id };
+  return null;
+}
+
+// Izohsiz media: avval "bazaga yoki hozir postmi?" deb so'raladi.
+async function tezkorSoraSavol(env, msg) {
+  if (msg.media_group_id) {
+    // Albom -- har rasm uchun so'ramaymiz, jimgina bazaga (Senarist uchun) saqlanadi.
+    const m = mediaMalumot(msg);
+    if (!m) return;
+    await sbFetch(env, 'media_arxiv', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify([{ telegram_chat_id: msg.chat.id, telegram_message_id: msg.message_id, turi: m.turi,
+        asl_file_id: m.aslFileId, file_id: m.fileId, media_group_id: msg.media_group_id }]),
+    }).catch(() => {});
+    return;
+  }
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: msg.chat.id,
+      reply_to_message_id: msg.message_id,
+      text: "Bu material nima uchun?",
+      reply_markup: { inline_keyboard: [[
+        { text: '📥 Bazaga (Senarist uchun)', callback_data: 'tzk:baza' },
+        { text: '⚡ Hozir post', callback_data: 'tzk:hozir' },
+      ]] },
+    }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
+async function handleTezkorTanlov(env, cq, data) {
+  const chatId = cq.message.chat.id;
+  if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return; }
+  const asl = cq.message.reply_to_message;
+  const m = asl && mediaMalumot(asl);
+  await removeKb(env, chatId, cq.message.message_id);
+  if (!m) { await answerCq(env, cq.id, { text: 'Material topilmadi' }); return; }
+  const baza = data === 'tzk:baza';
+  try {
+    const arx = await sbFetch(env, 'media_arxiv', {
+      method: 'POST', prefer: 'return=representation',
+      body: JSON.stringify([{ telegram_chat_id: chatId, telegram_message_id: asl.message_id, turi: m.turi,
+        asl_file_id: m.aslFileId, file_id: m.fileId, holat: baza ? 'yangi' : 'ishlangan' }]),
+    });
+    const aid = arx && arx[0] && arx[0].id;
+    if (baza) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `📥 Bazaga saqlandi (#${aid}). Senarist keyingi tahlilda ko'radi.`);
+    } else {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
+        `⚡ Izoh qoldiring: shu xabarga REPLY qilib nimani xohlasangiz yozing (masalan: "styajka tugadi, qisqa va ishonchli yoz").\n\n📎${aid}`);
+    }
+    await answerCq(env, cq.id, { text: baza ? 'Saqlandi' : 'Izoh yozing' });
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ Xato: ${String((e && e.message) || e)}`);
+  }
+}
+
+// "📎<arxiv_id>" xabariga reply qilingan izoh -- tezkor postni ishga tushiradi.
+async function handleTezkorIzoh(env, chatId, arxivId, korsatma) {
+  const rows = await sbFetch(env, `media_arxiv?id=eq.${arxivId}&select=*`).catch(() => null);
+  const r = rows && rows[0];
+  if (!r) { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '⚠️ Material topilmadi'); return; }
+  await tezkorIshlat(env, chatId, r.id, r.turi, korsatma);
+}
+
 async function handleTezkor(env, msg) {
   const chatId = msg.chat.id;
   const korsatma = (msg.caption || '').trim();
-  let turi, fileId, aslFileId = null;
-  if (msg.photo && msg.photo.length) {
-    turi = 'photo'; fileId = msg.photo[msg.photo.length - 1].file_id;
-  } else if (msg.video) {
-    turi = 'video'; fileId = (msg.video.thumbnail || msg.video.thumb || {}).file_id || null; aslFileId = msg.video.file_id;
-  } else if (msg.video_note) {
-    turi = 'video_note'; fileId = (msg.video_note.thumbnail || msg.video_note.thumb || {}).file_id || null; aslFileId = msg.video_note.file_id;
-  } else if (msg.document && (msg.document.mime_type || '').startsWith('image/')) {
-    turi = 'photo'; fileId = msg.document.file_id;
-  } else if (msg.document && (msg.document.mime_type || '').startsWith('video/')) {
-    turi = 'video'; fileId = (msg.document.thumbnail || msg.document.thumb || {}).file_id || null; aslFileId = msg.document.file_id;
-  } else return;
-
+  const m = mediaMalumot(msg);
+  if (!m) return;
+  const { turi, fileId, aslFileId } = m;
   try {
     const arx = await sbFetch(env, 'media_arxiv', {
       method: 'POST',
@@ -844,6 +907,14 @@ async function handleTezkor(env, msg) {
     const arxivId = arx && arx[0] && arx[0].id;
     if (!arxivId) throw new Error('arxivga yozilmadi');
 
+    await tezkorIshlat(env, chatId, arxivId, turi, korsatma);
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ Tezkor rejimda xato: ${String((e && e.message) || e)}`);
+  }
+}
+
+async function tezkorIshlat(env, chatId, arxivId, turi, korsatma) {
+  try {
     if (turi === 'photo') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '⚡ Tezkor rejim: matn tayyorlanmoqda...');
       const y = await claudeTezkorMatn(env, korsatma);
@@ -1401,6 +1472,10 @@ export async function onRequestPost({ request, env }) {
         await handleSenaristTasdiq(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('tzk:')) {
+        await handleTezkorTanlov(env, cq, data);
+        return json({ ok: true });
+      }
       if (data.startsWith('vnash:')) {
         const [, nid, qaror] = data.split(':');
         if (!isAdmin(env, cq.from && cq.from.id)) {
@@ -1452,6 +1527,11 @@ export async function onRequestPost({ request, env }) {
     // reply_to_message'ida) yashiringan "🆔<id>" belgisidan taklifId topiladi.
     if (msg.chat.type === 'private' && msg.reply_to_message && msg.text && isAdmin(env, msg.from && msg.from.id)) {
       const manba = msg.reply_to_message.text || msg.reply_to_message.caption || '';
+      const tzkMatch = manba.match(/📎(\d+)/);
+      if (tzkMatch) {
+        await handleTezkorIzoh(env, msg.chat.id, tzkMatch[1], msg.text);
+        return json({ ok: true });
+      }
       const taklifMatch = manba.match(/🆔(\d+)/);
       if (taklifMatch) {
         await tuzatishBajar(env, taklifMatch[1], msg.chat.id, msg.text);
@@ -1495,6 +1575,13 @@ export async function onRequestPost({ request, env }) {
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.caption || '').trim() &&
         (msg.photo || msg.video || msg.video_note || hujjatRasmYokiVideo)) {
       await handleTezkor(env, msg);
+      return json({ ok: true });
+    }
+
+    // Izohsiz media -- "bazaga yoki hozir postmi?" deb so'raydi.
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) &&
+        (msg.photo || msg.video || msg.video_note || hujjatRasmYokiVideo)) {
+      await tezkorSoraSavol(env, msg);
       return json({ ok: true });
     }
 
