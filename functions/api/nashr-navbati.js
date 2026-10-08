@@ -144,6 +144,29 @@ async function bajarInstagramStory(env, payload) {
   await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
 }
 
+async function bajarLidFollowup(env, payload) {
+  if (!env.MIJOZ_BOT_TOKEN) throw new Error('MIJOZ_BOT_TOKEN yoq');
+  // Mijoz arizadan keyin faol bo'lgan bo'lsa (menyu/narx/yozgan) -- eslatma kerak emas.
+  const d = await sbFetch(env, `mijoz_dialog?chat_id=eq.${payload.chat_id}&select=updated_at`).catch(() => null);
+  const oxirgi = d && d[0] && Date.parse(d[0].updated_at);
+  if (oxirgi && oxirgi > Date.parse(payload.yaratildi) + 10 * 60 * 1000) return;
+  const ru = payload.til === 'ru';
+  const ism = String(payload.ism || '').replace(/[<>&]/g, '');
+  const matn = payload.n === 1
+    ? (ru ? `Здравствуйте, ${ism}! Вчера вы оставляли заявку. Остались вопросы? Дадим бесплатную консультацию по проекту и стоимости.` : `Salom, ${ism}! Kecha ariza qoldirgan edingiz. Savollaringiz bormi? Loyiha va narx bo'yicha bepul konsultatsiya beramiz.`)
+    : (ru ? `${ism}, вам всё ещё нужна помощь с проектом? Напишите или позвоните в удобное время — будем рады помочь. 🙂` : `${ism}, loyihangiz bo'yicha hali ham yordam kerakmi? Qulay vaqtda yozing yoki qo'ng'iroq qiling — mamnuniyat bilan yordam beramiz. 🙂`);
+  const res = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: payload.chat_id, text: matn, reply_markup: { inline_keyboard: [[
+      { text: ru ? '💰 Рассчитать стоимость' : '💰 Narxni hisoblash', callback_data: 'menu:narx' },
+      { text: ru ? '📞 Контакты' : '📞 Aloqa', callback_data: 'menu:aloqa' },
+    ]] } }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Telegram ${res.status}`);
+}
+
 async function bajarUstaEslatma(env, payload) {
   if (!env.MIJOZ_BOT_TOKEN) throw new Error('MIJOZ_BOT_TOKEN yoq');
   const res = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
@@ -252,6 +275,8 @@ export async function onRequestGet({ request, env }) {
         await bajarFacebookPhoto(env, q.payload);
       } else if (q.turi === 'facebook_video') {
         await bajarFacebookVideo(env, q.payload);
+      } else if (q.turi === 'lid_followup') {
+        await bajarLidFollowup(env, q.payload);
       } else if (q.turi === 'usta_eslatma') {
         await bajarUstaEslatma(env, q.payload);
       } else if (q.turi === 'instagram_story') {
