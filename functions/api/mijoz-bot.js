@@ -1134,6 +1134,11 @@ async function handleUstaMedia(env, msg) {
   }
   if (!obyektId) return; // bu guruh ustalar guruhi sifatida ro'yxatdan o'tmagan
 
+  // Yangi foto/video keldi -- rad etishdan keyingi eslatmalar to'xtatiladi.
+  await sbFetch(env, `nashr_navbati?turi=eq.usta_eslatma&holat=eq.kutilmoqda&payload->>chat_id=eq.${chatId}`, {
+    method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'bekor' }),
+  }).catch(() => {});
+
   await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1261,7 +1266,22 @@ async function handleUstaTasdiq(env, cq, data) {
   await removeKb(env, cq.message.chat.id, cq.message.message_id);
 
   if (amal === 'uno') {
-    await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '❌ Rad etildi — mijozga yuborilmadi.');
+    await tgSend(env.MIJOZ_BOT_TOKEN, cq.message.chat.id, '❌ Rad etildi — mijozga yuborilmadi. Ustalarga 1 soat davomida har 15 daqiqada eslatma boradi (yangi foto/video kelsa to\'xtaydi).');
+    try {
+      // eski kutilayotgan eslatmalarni bekor qilib, yangisini rejalashtiramiz
+      await sbFetch(env, `nashr_navbati?turi=eq.usta_eslatma&holat=eq.kutilmoqda&payload->>chat_id=eq.${groupChatId}`, {
+        method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'bekor' }),
+      }).catch(() => {});
+      const now = Date.now();
+      await sbFetch(env, 'nashr_navbati', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify([1, 2, 3, 4].map((k) => ({
+          turi: 'usta_eslatma',
+          payload: { chat_id: String(groupChatId), reply_to: origMsgId, kasb: kasbLabel, k },
+          nashr_vaqti: new Date(now + k * 15 * 60 * 1000).toISOString(),
+        }))),
+      });
+    } catch (e) { /* eslatma ixtiyoriy */ }
     await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

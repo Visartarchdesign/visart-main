@@ -144,6 +144,20 @@ async function bajarInstagramStory(env, payload) {
   await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
 }
 
+async function bajarUstaEslatma(env, payload) {
+  if (!env.MIJOZ_BOT_TOKEN) throw new Error('MIJOZ_BOT_TOKEN yoq');
+  const res = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: payload.chat_id,
+      text: `⏰ Eslatma (${payload.k}/4): ${payload.kasb} bo'yicha hisobotingiz rad etilgan edi. Iltimos, ko'rib chiqib, foto/video hisobotni boshqatdan yuboring. 🙏`,
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`Telegram ${res.status}`);
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
@@ -166,6 +180,8 @@ export async function onRequestGet({ request, env }) {
         await bajarFacebookPhoto(env, q.payload);
       } else if (q.turi === 'facebook_video') {
         await bajarFacebookVideo(env, q.payload);
+      } else if (q.turi === 'usta_eslatma') {
+        await bajarUstaEslatma(env, q.payload);
       } else if (q.turi === 'instagram_story') {
         await bajarInstagramStory(env, q.payload);
       } else {
