@@ -481,6 +481,12 @@ export async function handleKontakt(env, h, msg) {
   await setProfil(env, h, chatId, { tel: raqam(c.phone_number) });
   await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, '✅', { remove_keyboard: true });
   await obyektTelBilan(env, h, chatId, c.phone_number, prof.til);
+  try {   // menejerga: mijoz obyekt holatini so'radi
+    const list = await obyektlarTopish(env, h, c.phone_number);
+    const kim = `${msg.from.first_name || ''} ${msg.from.last_name || ''} ${msg.from.username ? '@' + msg.from.username : ''}`.trim();
+    const xabar = `📊 Mijoz obyekt holatini so'radi\n\n👤 ${kim}\n📞 +${raqam(c.phone_number).replace(/^\+/, '')}\n🏗 ${list.length ? list.map((o) => o.nom || o.id).join(', ') : "obyekt topilmadi (raqam bazada yo'q)"}\n💬 <a href="tg://user?id=${chatId}">Telegramda yozish</a>`;
+    for (const mid of menejerlar(env)) await h.tgSend(env.MIJOZ_BOT_TOKEN, mid, xabar).catch(() => {});
+  } catch (e) { /* xabar muhim emas */ }
 }
 
 export async function handleObTanla(env, h, cq, data) {
