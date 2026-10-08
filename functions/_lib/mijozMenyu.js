@@ -5,6 +5,9 @@
 // jadval yo'q bo'lsa hammasi uz tilida, holatsiz ishlayveradi.
 
 export const SAYT = 'https://visartdesign.uz';
+// Lid xabarlari oluvchilar: MANAGER_CHAT_ID bo'lsa shu, bo'lmasa adminlar.
+export const menejerlar = (env) => env.MANAGER_CHAT_ID ? [env.MANAGER_CHAT_ID]
+  : String(env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean);
 
 const T = {
   uz: {
@@ -411,11 +414,11 @@ export async function handleMijozFoto(env, h, msg) {
       { inline_keyboard: rows });
 
     // menejerga: rasm + uslub (lid belgisi)
-    if (env.MANAGER_CHAT_ID) {
+    for (const mid of menejerlar(env)) {
       const kim = msg.from ? `${msg.from.first_name || ''} ${msg.from.last_name || ''} ${msg.from.username ? '@' + msg.from.username : ''}`.trim() : chatId;
       await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendPhoto`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: env.MANAGER_CHAT_ID, photo: fileId, caption: `📷 Mijoz reference yubordi\n👤 ${kim}\n🎨 ${uslub}; ${list(a.ranglar)}\n💬 Chat: ${chatId}`.slice(0, 1000) }),
+        body: JSON.stringify({ chat_id: mid, photo: fileId, caption: `📷 Mijoz reference yubordi\n👤 ${kim}\n🎨 ${uslub}; ${list(a.ranglar)}\n💬 Chat: ${chatId}`.slice(0, 1000) }),
         signal: AbortSignal.timeout(10000),
       }).catch(() => {});
     }

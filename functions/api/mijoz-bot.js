@@ -46,7 +46,7 @@
 // `lidlar` jadvali ishlatiladi (mavjud tizimga tegmaydi) — pastdagi SQL'ni
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
-import { t, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla } from '../_lib/mijozMenyu.js';
+import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
   ism: 'ism',
@@ -1366,6 +1366,9 @@ function estimateText(pricing, xizmatCode, maydon) {
   const yoq = "Menejer tez orada aniq narxni aytib beradi.";
   if (!pricing) return "Hozircha narx ma'lumotini olib bo'lmadi — menejer sizga aniq narxni ayta oladi.";
   const f = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  if (xizmatCode === 'arch' && pricing.architecture && pricing.architecture.ratePerSotix) {
+    return `Taxminiy narx (Standart, 1 qavat): ${f(pricing.architecture.ratePerSotix * maydon)} so'm. Aniq narx menejer bilan kelishiladi.`;
+  }
   if (xizmatCode === 'interior' && pricing.interior && pricing.interior.packages) {
     const r = pricing.interior.packages.map((x) => x.rate * maydon);
     return `Taxminiy narx: ${f(Math.min(...r))} – ${f(Math.max(...r))} so'm (paketga qarab: Standart–Lyuks). Aniq narx menejer bilan kelishiladi.`;
@@ -1437,8 +1440,8 @@ async function handleText(env, chatId, dialog, text) {
   }
 
   // step === 'tugallandi' -> erkin xabar, menejerga uzatiladi
-  if (env.MANAGER_CHAT_ID) {
-    await tgSend(env.MIJOZ_BOT_TOKEN, env.MANAGER_CHAT_ID,
+  for (const mid of menejerlar(env)) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, mid,
       `✉️ Mijozdan qo'shimcha xabar (chat ${chatId}, ${escH(dialog.ism || '—')}):\n${escH(text)}`);
   }
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'qm'));
@@ -1448,7 +1451,8 @@ async function handleXizmatTanlandi(env, chatId, dialog, xizmatCode) {
   const label = (XIZMAT_VARIANTLARI.find((x) => x[0] === xizmatCode) || [, xizmatCode])[1];
   await upsertDialog(env, chatId, { step: 'maydon', xizmat_turi: xizmatCode, xizmat_label: label });
   const til = (await getProfil(env, H, chatId)).til;
-  await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `${t(til, 'tanlandi')}: ${til === 'ru' ? XIZMAT_RU[xizmatCode] || label : label}.\n\n${t(til, 'maydon_q')}`);
+  const savol = xizmatCode === 'arch' ? (til === 'ru' ? 'Сколько соток участок?' : "Yer maydoni necha sotix?") : t(til, 'maydon_q');
+  await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `${t(til, 'tanlandi')}: ${til === 'ru' ? XIZMAT_RU[xizmatCode] || label : label}.\n\n${savol}`);
 }
 
 async function finishDialog(env, chatId, dialog, maydon) {
@@ -1482,13 +1486,13 @@ async function finishDialog(env, chatId, dialog, maydon) {
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
     `${t(til, 'qabul')(escH(dialog.ism))}\n\n${narxMatni}\n\n${t(til, 'tez')}`);
   await followUpQoy(env, H, chatId, dialog.ism, til);
-  await lidSavollarBoshla(env, H, chatId);
 
-  // 3) Menejerga xabar
-  if (env.MANAGER_CHAT_ID) {
-    await tgSend(env.MIJOZ_BOT_TOKEN, env.MANAGER_CHAT_ID,
-      `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}\n📐 ${maydon} m²\n💬 Chat: ${chatId}` +
-      (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!'));
+  // 3) Menejerga xabar (MANAGER_CHAT_ID yoki adminlar)
+  const birlik = dialog.xizmat_turi === 'arch' ? 'sotix' : 'm²';
+  for (const mid of menejerlar(env)) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, mid,
+      `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}\n📐 ${maydon} ${birlik}\n💬 <a href="tg://user?id=${chatId}">Mijozga Telegramda yozish</a>` +
+      (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!')).catch(() => {});
   }
 }
 
@@ -1796,6 +1800,10 @@ export async function onRequestPost({ request, env }) {
     const chatId = msg.chat.id;
     const dialog = await getDialog(env, chatId);
 
+    if (msg.text === '/id') {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Sizning chat ID: <code>${chatId}</code>`);
+      return json({ ok: true });
+    }
     if (msg.text === '/start' || msg.text === '/menu') {
       await menyuKorsat(env, H, chatId, msg.text === '/start');
       return json({ ok: true });
