@@ -1472,6 +1472,66 @@ async function finishDialog(env, chatId, dialog, maydon) {
   }
 }
 
+// ── GURUHNI BOG'LASH MASTERI ──
+// Bot guruhga qo'shilganda (yoki adminning guruhda /guruh yozishi bilan)
+// savollar FAQAT adminning shaxsiy chatiga ketadi -- guruh a'zolari
+// ko'rmaydi. 1) guruh nima uchun? 2) qaysi obyekt? 3) bog'lanadi.
+async function guruhMasteriBoshla(env, chat) {
+  const kb = { inline_keyboard: [
+    [{ text: '👥 Mijozlar guruhi (ilova yangiliklari)', callback_data: `gset:m:${chat.id}` }],
+    [{ text: '👷 Ustalar guruhi (kunlik hisobot)', callback_data: `gset:u:${chat.id}` }],
+  ] };
+  for (const adminId of adminIdlari(env)) {
+    await tgSendMessageKb(env, adminId, `➕ Bot «${chat.title || chat.id}» guruhiga qo'shildi.\nBu guruh nima uchun?`, kb);
+  }
+}
+
+async function handleGuruhMaster(env, cq, data) {
+  if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return; }
+  const dmChat = cq.message.chat.id;
+  const p = data.split(':');            // gset:<rol>:<guruh>  |  gobj:<rol>:<guruh>:<obyekt>
+  const rol = p[1], guruhId = p[2];
+  await answerCq(env, cq.id);
+  await removeKb(env, dmChat, cq.message.message_id);
+
+  if (p[0] === 'gset') {
+    let rows = null;
+    try { rows = await sbFetch(env, 'obyektlar?select=id,nom,mijoz_ism&order=sana.desc.nullslast&limit=30'); } catch (e) { rows = null; }
+    if (!rows || !rows.length) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, dmChat,
+        `⚠️ Obyektlar ro'yxatini olib bo'lmadi. Guruhning o'zida admin sifatida yozing:\n<code>/${rol === 'm' ? 'obyekt' : 'ustalar'} &lt;ID&gt;</code>`);
+      return;
+    }
+    const kb = { inline_keyboard: rows.map((r) => [{
+      text: `${(r.nom || r.id).slice(0, 34)}${r.mijoz_ism ? ' — ' + r.mijoz_ism.slice(0, 18) : ''}`,
+      callback_data: `gobj:${rol}:${guruhId}:${r.id}`.slice(0, 64),
+    }]) };
+    await tgSendMessageKb(env, dmChat, `Qaysi obyekt? (${rol === 'm' ? 'mijozlar' : 'ustalar'} guruhi)`, kb);
+    return;
+  }
+
+  // gobj -- bog'lash
+  const obyektId = p.slice(3).join(':');
+  try {
+    let nom = obyektId;
+    const o = await sbFetch(env, `obyektlar?id=eq.${encodeURIComponent(obyektId)}&select=nom`).catch(() => null);
+    if (o && o[0] && o[0].nom) nom = o[0].nom;
+    await sbFetch(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${guruhId}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+    await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${guruhId}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+    await sbFetch(env, rol === 'm' ? 'visart_loyiha_guruhlar' : 'usta_guruhlar', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates,return=minimal',
+      body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: Number(guruhId) }]),
+    });
+    await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `✅ Tayyor: guruh «${nom}» obyektiga ${rol === 'm' ? 'MIJOZLAR' : 'USTALAR'} guruhi sifatida ulandi.`);
+    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm'
+      ? "Assalomu alaykum! 👋 Men <b>Visart Design</b> yordamchi botiman. Loyihangiz bo'yicha muhim yangiliklar — to'lov tasdig'i, bosqich yakunlanishi va boshqalarni shu yerga yetkazib turaman. 🏗️"
+      : "Hurmatli ustalar! Har kungi mehnatingiz uchun oldindan rahmat — xalol ishingiz juda qadrlanadi. 🙏\n\nBajargan ishingiz bo'yicha video yoki rasmni shu yerga tashlab turing, biz ko'rib, mijozga yetkazamiz. Charchamang! 💪");
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `⚠️ Bog'lashda xato: ${String((e && e.message) || e).slice(0, 200)}`);
+  }
+}
+
 // Telegram bir xil update'ni qayta yuborishi mumkin (timeout/500). update_id
 // jadvalga yoziladi; allaqachon bor bo'lsa -- takroriy. Jadval yo'q bo'lsa
 // (migratsiya qilinmagan) ishlashda davom etadi.
@@ -1535,6 +1595,10 @@ export async function onRequestPost({ request, env }) {
       }
       if (data.startsWith('stak:')) {
         await handleSenaristTasdiq(env, cq, data);
+        return json({ ok: true });
+      }
+      if (data.startsWith('gset:') || data.startsWith('gobj:')) {
+        await handleGuruhMaster(env, cq, data);
         return json({ ok: true });
       }
       if (data.startsWith('tzk:')) {
@@ -1614,11 +1678,7 @@ export async function onRequestPost({ request, env }) {
       const botId = (env.MIJOZ_BOT_TOKEN || '').split(':')[0];
       const botQoshildimi = msg.new_chat_members.some((m) => String(m.id) === botId);
       if (botQoshildimi) {
-        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
-          "Assalomu alaykum! 👋 Men <b>Visart Design</b>ning rasmiy yordamchi botiman.\n\n" +
-          "Vazifam: shu guruhni loyihangizga bog'lash va loyiha davomidagi muhim yangiliklar — to'lov tasdig'i, bosqich yakunlanishi va boshqa yangiliklarni shu yerga avtomatik yetkazib turish.\n\n" +
-          "Admin tez orada guruhni loyihangizga bog'laydi.\n\n" +
-          "Visart jamoasi bilan ishlayotganingiz uchun minnatdorchilik bildiramiz — loyihangiz davomida doim aloqadamiz! 🏗️");
+        await guruhMasteriBoshla(env, msg.chat);
         return json({ ok: true });
       }
     }
@@ -1687,6 +1747,8 @@ export async function onRequestPost({ request, env }) {
         await handleObyektBuyrugi(env, msg);
       } else if (msg.text.startsWith('/ustalar')) {
         await handleUstalarBuyrugi(env, msg);
+      } else if (msg.text.startsWith('/guruh') && isAdmin(env, msg.from && msg.from.id)) {
+        await guruhMasteriBoshla(env, msg.chat);
       } else if (msg.text.startsWith('/chatid')) {
         // Yordamchi buyruq: shu guruhning Telegram chat ID'sini ko'rsatadi
         // (masalan MOLIYA_GROUP_CHAT_ID'ni sozlash uchun). Hamma ishlata oladi,
