@@ -732,7 +732,9 @@ async function tuzatishBajar(env, taklifId, adminChatId, korsatma) {
         matn: `${yangi.sarlavha}\n\n${taklif.matn ? taklif.matn.split('\n\n').slice(1).join('\n\n') : ''}`,
       }),
     });
-    await oblojkaTayyorlaVaYubor(env, taklifId, adminChatId);
+    await tgSendMessageKb(env, adminChatId,
+      `✏️ Tuzatilgan variant:\n\n${yangi.sarlavha}\n\n${yangi.post_matni}\n\nShu holatda joylansinmi?\n\n🆔${taklifId}`,
+      { inline_keyboard: [[{ text: '✅ Tasdiqlash', callback_data: `stak:${taklifId}:ok` }, { text: '❌ Rad etish', callback_data: `stak:${taklifId}:no` }]] });
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ To'g'irlashda xato: ${String((e && e.message) || e)}`);
   }
@@ -1467,6 +1469,29 @@ async function finishDialog(env, chatId, dialog, maydon) {
   }
 }
 
+// Telegram bir xil update'ni qayta yuborishi mumkin (timeout/500). update_id
+// jadvalga yoziladi; allaqachon bor bo'lsa -- takroriy. Jadval yo'q bo'lsa
+// (migratsiya qilinmagan) ishlashda davom etadi.
+async function takroriyUpdate(env, updateId) {
+  if (!updateId) return false;
+  try {
+    const res = await fetch(`${env.SUPABASE_URL}/rest/v1/bot_update_log`, {
+      method: 'POST',
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ update_id: updateId }),
+      signal: AbortSignal.timeout(4000),
+    });
+    return res.status === 409;
+  } catch (e) {
+    return false;
+  }
+}
+
 export async function onRequestPost({ request, env }) {
   try {
     const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
@@ -1475,6 +1500,7 @@ export async function onRequestPost({ request, env }) {
     }
     const update = await request.json().catch(() => null);
     if (!update) return json({ ok: true });
+    if (await takroriyUpdate(env, update.update_id)) return json({ ok: true });
 
     if (update.callback_query) {
       const cq = update.callback_query;
@@ -1539,6 +1565,10 @@ export async function onRequestPost({ request, env }) {
       }
       if (data.startsWith('montaj_retry:')) {
         const taklifId = data.split(':')[1];
+        if (!isAdmin(env, cq.from && cq.from.id)) {
+          await answerCq(env, cq.id, { text: "Ruxsat yo'q" });
+          return json({ ok: true });
+        }
         await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1676,6 +1706,7 @@ export async function onRequestPost({ request, env }) {
     await handleText(env, chatId, dialog, msg.text);
     return json({ ok: true });
   } catch (e) {
-    return json({ ok: false, error: 'server_error' }, 500);
+    // 500 qaytarsak Telegram bir necha marta qayta yuboradi (takroriy post xavfi) -- doim 200.
+    return json({ ok: true, error: 'server_error' });
   }
 }

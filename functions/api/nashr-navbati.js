@@ -192,6 +192,10 @@ async function tozalash(env) {
       { method: 'PATCH', body: JSON.stringify({ holat: 'muddati_otdi' }) });
     hisobot.muddati_otdi = (eskiTasdiq || []).length;
 
+    // 2 kundan eski update_id yozuvlari (bot dedup jadvali; jadval yo'q bo'lsa jim o'tadi)
+    await sbFetch(env, `bot_update_log?created_at=lt.${encodeURIComponent(new Date(Date.now() - 2 * kunMs).toISOString())}`,
+      { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+
     // Hali ishlatilishi mumkin bo'lgan fayllar: kutilayotgan/tasdiqdagi qatorlar payload'i
     const faol = await sbFetch(env, 'nashr_navbati?holat=in.(kutilmoqda,tasdiq_kutilmoqda)&select=payload');
     const faolMatn = JSON.stringify(faol || []);
