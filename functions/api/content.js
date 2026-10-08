@@ -3,13 +3,11 @@ import { json } from '../_lib/auth.js';
 
 export async function onRequestGet({ env }) {
   try {
-    const projectsRes = await env.DB.prepare(
-      'SELECT * FROM projects ORDER BY sort_order ASC, id ASC'
-    ).all();
-    const testimonialsRes = await env.DB.prepare(
-      'SELECT * FROM testimonials ORDER BY sort_order ASC, id ASC'
-    ).all();
-    const settingsRes = await env.DB.prepare('SELECT key, value FROM settings').all();
+    const [projectsRes, testimonialsRes, settingsRes] = await Promise.all([
+      env.DB.prepare('SELECT * FROM projects ORDER BY sort_order ASC, id ASC').all(),
+      env.DB.prepare('SELECT * FROM testimonials ORDER BY sort_order ASC, id ASC').all(),
+      env.DB.prepare('SELECT key, value FROM settings').all(),
+    ]);
 
     const settings = {};
     for (const row of settingsRes.results) settings[row.key] = row.value;
@@ -49,7 +47,7 @@ export async function onRequestGet({ env }) {
       pricing = null;
     }
 
-    return json({
+    const res = json({
       ok: true,
       projects,
       testimonials,
@@ -65,6 +63,8 @@ export async function onRequestGet({ env }) {
         stats: { years: settings.stats_years, projects: settings.stats_projects },
       },
     });
+    res.headers.set('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=600');
+    return res;
   } catch (e) {
     return json({ ok: false, error: 'db_error', message: String(e) }, 500);
   }
