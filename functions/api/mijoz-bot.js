@@ -1520,6 +1520,11 @@ async function adminTaklifQabul(env, msg, tok) {
 }
 
 async function adminPanel(env, chatId) {
+  // Telegram'dagi "Menu" tugmasi: admin uchun alohida buyruqlar ro'yxati
+  const sm = (body) => fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setMyCommands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) }).catch(() => {});
+  await sm({ scope: { type: 'chat', chat_id: chatId }, commands: [
+    { command: 'admin', description: '🛠 Admin panel' }, { command: 'menu', description: '👁 Mijoz menyusi' }, { command: 'id', description: '🆔 Mening ID' } ] });
+  await sm({ commands: [{ command: 'start', description: 'Boshlash' }, { command: 'menu', description: 'Asosiy menyu' }] });
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '🛠 <b>Visart admin panel</b>', { inline_keyboard: [
     [{ text: '🆕 Oxirgi lidlar', callback_data: 'ap:lid' }, { text: '📊 Bugun / hafta', callback_data: 'ap:stat' }],
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
