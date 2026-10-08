@@ -22,8 +22,8 @@ const T = {
     q_qavat: 'Necha qavatli?', q_paket: 'Qaysi paket?', q_uslub: 'Uslub darajasi?',
     kiradi: 'Kiradi', usul_boshq: 'Boshqaruv', taxminiy: "Bu taxminiy narx. Aniq narx — bepul konsultatsiyada.",
     qayta: '🔁 Qayta hisoblash',
-    xiz: "<b>Xizmatlarimiz</b>\n\n🏛 <b>Arxitektura loyihalash</b> — uy va binolar loyihasi, 15–25 kun\n🛋 <b>Interyer dizayn</b> — planirovka, 3D vizualizatsiya, ishchi chizmalar\n🔨 <b>Remont (pod klyuch)</b> — dizayndan topshirishgacha to'liq qurilish\n📄 <b>Hujjatlar va nazorat</b> — ruxsatnoma, kadastr, mualliflik nazorati\n\nBatafsil — saytda:",
-    xb: ['Arxitektura', 'Interyer', 'Pod klyuch', 'Hujjatlar'],
+    xiz: "<b>Xizmatlarimiz</b>\n\n🏛 <b>Arxitektura loyihalash</b> — uy va binolar loyihasi, 15–25 kun\n🛋 <b>Interyer dizayn</b> — planirovka, 3D vizualizatsiya, ishchi chizmalar\n🔨 <b>Remont (pod klyuch)</b> — dizayndan topshirishgacha to'liq qurilish\n\nBatafsil — saytda:",
+    xb: ['Arxitektura', 'Interyer', 'Pod klyuch'],
     soc: "Bizni kuzatib boring — yangi loyihalar va jarayonlar shu yerda 👇",
     kanal: 'Telegram kanal', sayt: 'Sayt', menejer: '💬 Menejerga yozish', aloqa: 'Aloqa', aloqa_yoq: "Aloqa ma'lumoti hozir mavjud emas.",
     ariza_bosh: 'Ariza uchun bir necha savol beraman.\n\nIsmingiz nima?',
@@ -67,8 +67,8 @@ const T = {
     q_qavat: 'Сколько этажей?', q_paket: 'Какой пакет?', q_uslub: 'Уровень стиля?',
     kiradi: 'Входит', usul_boshq: 'Управление', taxminiy: 'Это ориентировочная цена. Точная — на бесплатной консультации.',
     qayta: '🔁 Пересчитать',
-    xiz: "<b>Наши услуги</b>\n\n🏛 <b>Архитектурное проектирование</b> — проект дома и зданий, 15–25 дней\n🛋 <b>Дизайн интерьера</b> — планировка, 3D-визуализация, рабочие чертежи\n🔨 <b>Ремонт под ключ</b> — от дизайна до сдачи объекта\n📄 <b>Документы и надзор</b> — разрешения, кадастр, авторский надзор\n\nПодробнее на сайте:",
-    xb: ['Архитектура', 'Интерьер', 'Под ключ', 'Документы'],
+    xiz: "<b>Наши услуги</b>\n\n🏛 <b>Архитектурное проектирование</b> — проект дома и зданий, 15–25 дней\n🛋 <b>Дизайн интерьера</b> — планировка, 3D-визуализация, рабочие чертежи\n🔨 <b>Ремонт под ключ</b> — от дизайна до сдачи объекта\n\nПодробнее на сайте:",
+    xb: ['Архитектура', 'Интерьер', 'Под ключ'],
     soc: 'Следите за нами — новые проекты и процесс работы здесь 👇',
     kanal: 'Telegram-канал', sayt: 'Сайт', menejer: '💬 Написать менеджеру', aloqa: 'Контакты', aloqa_yoq: 'Контакты сейчас недоступны.',
     ariza_bosh: 'Задам несколько вопросов для заявки.\n\nКак вас зовут?',
@@ -168,7 +168,7 @@ export async function handleMenu(env, h, cq, data) {
     const u = (uz, rr) => ru ? `${SAYT}/ru/uslugi/${rr}` : `${SAYT}/xizmatlar/${uz}`;
     await send(t(til, 'xiz'), { inline_keyboard: [
       [{ text: xb[0], url: u('arxitektura-loyihalash', 'arhitekturnoe-proektirovanie') }, { text: xb[1], url: u('interyer-dizayn', 'dizajn-interera') }],
-      [{ text: xb[2], url: u('pod-klyuch', 'remont-pod-klyuch') }, { text: xb[3], url: u('loyiha-hujjatlari', 'proektnaya-dokumentaciya') }],
+      [{ text: xb[2], url: u('pod-klyuch', 'remont-pod-klyuch') }],
       [{ text: t(til, 'b_narx'), callback_data: 'menu:narx' }],
     ] });
   } else if (amal === 'soc' || amal === 'aloqa') {
@@ -221,8 +221,39 @@ export async function handleNarx(env, h, cq, data) {
   const kb2 = { inline_keyboard: [[{ text: t(til, 'b_ariza'), callback_data: 'menu:ariza' }, { text: t(til, 'qayta'), callback_data: 'menu:narx' }]] };
   const nota = `\n\n<i>${t(til, 'taxminiy')}</i>`;
 
+  const ARCH_BUNDLED = ['workDrawings', '3d', 'landscape'];
+  const addonlar = ((pr.architecture && pr.architecture.addons) || []).filter((a) => !ARCH_BUNDLED.includes(a.id));
+  const archNatija = async (sotix, floorId, styleId, mask) => {
+    const fl = (pr.architecture.floors || []).find((f) => String(f.id) === String(floorId)) || { mult: 1, uz: floorId, ru: floorId };
+    const st = stil(styleId);
+    const asos = pr.architecture.ratePerSotix * sotix * st.mult * fl.mult;
+    let jami = asos; const qosh = [];
+    addonlar.forEach((a, i) => { if (mask & (1 << i)) { jami += a.flat; qosh.push(`• ${esc(nom(a, til))}: +${sumFmt(a.flat)}`); } });
+    const tl = pr.timelines && pr.timelines.architecture ? nom(pr.timelines.architecture, til) : '';
+    const som = til === 'ru' ? 'сум' : "so'm";
+    await tg(`🏛 <b>${t(til, 's_arch').slice(2).trim()}</b>\n${sotix} ${til === 'ru' ? 'сот.' : 'sotix'} · ${nom(fl, til)} · ${nom(st, til)}\n\n• ${til === 'ru' ? 'Проект' : 'Loyiha'}: ${sumFmt(asos)}${qosh.length ? '\n' + qosh.join('\n') : ''}\n\n💰 ~ <b>${sumFmt(jami)} ${som}</b>${tl ? `\n⏱ ${esc(tl)}` : ''}${nota}`, kb2);
+  };
+
+  const addonKb = (sotix, fl, st, mask) => ({ inline_keyboard: [
+    ...addonlar.map((a, i) => [{ text: `${mask & (1 << i) ? '✅' : '⬜️'} ${nom(a, til)} (+${sumFmt(a.flat)})`.slice(0, 60), callback_data: `nxa:${sotix}:${fl}:${st}:${mask}:t${i}` }]),
+    [{ text: til === 'ru' ? '✅ Рассчитать' : '✅ Hisoblash', callback_data: `nxa:${sotix}:${fl}:${st}:${mask}:go` }],
+  ] });
+
+  if (p[0] === 'nxa') {                 // nxa:<sotix>:<qavat>:<uslub>:<mask>:<amal>  (amal: tN = almashtirish, go = hisoblash)
+    let mask = Number(p[4]) || 0;
+    if (p[5] === 'go') { await h.removeKb(env, chatId, cq.message.message_id); await archNatija(Number(p[1]), p[2], p[3], mask); return; }
+    const i = Number(String(p[5]).slice(1)); if (i >= 0 && i < addonlar.length) mask ^= (1 << i);
+    await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: cq.message.message_id, reply_markup: addonKb(p[1], p[2], p[3], mask) }),
+      signal: AbortSignal.timeout(10000),
+    }).catch(() => {});
+    return;
+  }
   if (p[0] === 'nxf') {
     await tg(t(til, 'q_uslub'), { inline_keyboard: [(pr.styles || []).map((x) => ({ text: nom(x, til), callback_data: `nxs:${p[1]}:${p[2]}:${x.id}` }))] });
+  } else if (p[0] === 'nxs' && addonlar.length) {
+    await tg(til === 'ru' ? 'Нужны дополнительные услуги? (отметьте и нажмите «Рассчитать»)' : "Qo'shimcha xizmatlar kerakmi? (belgilab, «Hisoblash»ni bosing)", addonKb(p[1], p[2], p[3], 0));
   } else if (p[0] === 'nxs') {
     const sotix = Number(p[1]);
     const fl = (pr.architecture.floors || []).find((f) => String(f.id) === p[2]) || { mult: 1, uz: p[2], ru: p[2] };

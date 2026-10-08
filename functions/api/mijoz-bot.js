@@ -63,7 +63,6 @@ const XIZMAT_VARIANTLARI = [
   ['arch', "Arxitektura loyihalash"],
   ['interior', "Interyer dizayn"],
   ['turnkey', "Pod klyuch (arxitektura+interyer+qurilish nazorati)"],
-  ['docs', "Hujjat va nazorat"],
 ];
 
 function json(data, status = 200) {
@@ -84,7 +83,7 @@ async function tgSend(token, chatId, text, replyMarkup) {
   });
 }
 
-const XIZMAT_RU = { arch: 'Архитектурное проектирование', interior: 'Дизайн интерьера', turnkey: 'Ремонт под ключ (архитектура + интерьер + стройка)', docs: 'Документы и надзор' };
+const XIZMAT_RU = { arch: 'Архитектурное проектирование', interior: 'Дизайн интерьера', turnkey: 'Ремонт под ключ (архитектура + интерьер + стройка)' };
 const escH = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function xizmatKeyboard(til) {
   return {
