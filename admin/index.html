@@ -660,10 +660,16 @@ function optimizeImage(file, maxDim, quality){
       const ctx = canvas.getContext('2d');
       if (!ctx) { resolve(file); return; }
       ctx.drawImage(img, 0, 0, width, height);
+      // iOS Safari WebP kodlay olmaydi (PNG qaytaradi) — haqiqiy turini tekshirib, JPEG'ga o'tamiz
+      const fin = (blob, type) => {
+        if (!blob || blob.type !== type || blob.size >= file.size) return null;
+        const ext = type === 'image/webp' ? '.webp' : '.jpg';
+        return new File([blob], file.name.replace(/\.[^.]+$/, '') + ext, { type });
+      };
       canvas.toBlob((blob) => {
-        if (!blob || blob.size >= file.size) { resolve(file); return; }
-        const newName = file.name.replace(/\.[^.]+$/, '') + '.webp';
-        resolve(new File([blob], newName, { type: 'image/webp' }));
+        const f = fin(blob, 'image/webp');
+        if (f) { resolve(f); return; }
+        canvas.toBlob((jb) => { resolve(fin(jb, 'image/jpeg') || file); }, 'image/jpeg', quality);
       }, 'image/webp', quality);
     };
     img.onerror = () => { URL.revokeObjectURL(objUrl); resolve(file); };
