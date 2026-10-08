@@ -138,12 +138,14 @@ async function handleObyektBuyrugi(env, msg) {
       method: 'DELETE',
       prefer: 'return=minimal',
     });
+    // Bir guruh = bitta rol: mijoz guruhi bo'lsa, ustalar roli olib tashlanadi.
+    await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${chatId}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
     await sbFetch(env, 'visart_loyiha_guruhlar', {
       method: 'POST',
       prefer: 'resolution=merge-duplicates,return=minimal',
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: chatId }]),
     });
-    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Bu guruh obyekt №${obyektId}ga bog'landi.`);
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Bu guruh obyekt №${obyektId} uchun MIJOZ guruhi. Bu yerga faqat tasdiqlangan yangiliklar yuboriladi, bot foto/videolarga savol bermaydi.`);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚠️ Bog'lashda xato yuz berdi, qayta urinib ko'ring.");
   }
@@ -174,6 +176,7 @@ async function handleUstalarBuyrugi(env, msg) {
       method: 'DELETE',
       prefer: 'return=minimal',
     });
+    await sbFetch(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${chatId}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
     await sbFetch(env, 'usta_guruhlar', {
       method: 'POST',
       prefer: 'resolution=merge-duplicates,return=minimal',
@@ -1614,7 +1617,7 @@ export async function onRequestPost({ request, env }) {
         await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id,
           "Assalomu alaykum! 👋 Men <b>Visart Design</b>ning rasmiy yordamchi botiman.\n\n" +
           "Vazifam: shu guruhni loyihangizga bog'lash va loyiha davomidagi muhim yangiliklar — to'lov tasdig'i, bosqich yakunlanishi va boshqa yangiliklarni shu yerga avtomatik yetkazib turish.\n\n" +
-          "Admin tez orada guruhni <code>/obyekt &lt;ID&gt;</code> buyrug'i bilan loyihangizga bog'laydi.\n\n" +
+          "Admin tez orada guruhni loyihangizga bog'laydi.\n\n" +
           "Visart jamoasi bilan ishlayotganingiz uchun minnatdorchilik bildiramiz — loyihangiz davomida doim aloqadamiz! 🏗️");
         return json({ ok: true });
       }
