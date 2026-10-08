@@ -69,24 +69,28 @@ export async function holatXabar(env, o, id, yangi, prof) {
 }
 
 export async function obyektKuzatuv(env) {
-  if (!env.MIJOZ_BOT_TOKEN) return;
+  if (!env.MIJOZ_BOT_TOKEN) return { xato: 'MIJOZ_BOT_TOKEN yoq' };
   const [obs, log, prof] = await Promise.all([
     sb(env, 'obyektlar?select=id,nom,holat,mijoz_tel&limit=1000'),
     sb(env, 'obyekt_holat_log?select=obyekt_id,holat&limit=2000').catch(() => null),
     sb(env, 'mijoz_profil?select=chat_id,tel,til&tel=not.is.null&limit=2000').catch(() => []),
   ]);
-  if (!log) return;   // jadval yo'q -- migratsiya ishga tushmagan
+  if (!log) return { xato: 'obyekt_holat_log jadvali yoq (migration_bot_avto.sql)' };
   const eski = new Map(log.map((x) => [String(x.obyekt_id), x.holat]));
+  const natija = { obyektlar: (obs || []).length, yangi_logga: 0, ozgardi: [] };
   for (const o of obs || []) {
     const id = String(o.id);
     const yangi = o.holat || '';
     if (!eski.has(id)) {
       await sb(env, 'obyekt_holat_log', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ obyekt_id: id, holat: yangi }]) }).catch(() => {});
+      natija.yangi_logga++;
       continue;
     }
     if (eski.get(id) === yangi) continue;
+    natija.ozgardi.push(`${o.nom || id}: ${eski.get(id)} → ${yangi}`);
     await holatXabar(env, o, id, yangi, prof);
   }
+  return natija;
 }
 
 // 2) Kunlik xulosa (har kuni 09:00 Toshkent)

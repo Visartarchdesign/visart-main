@@ -308,7 +308,7 @@ export async function onRequestGet({ request, env }) {
     }
   }
 
-  await obyektKuzatuv(env).catch(() => {});
+  const kuzatuv = await obyektKuzatuv(env).catch((e) => ({ xato: String((e && e.message) || e) }));
   await xulosaNavbatiniTekshir(env).catch(() => {});
   await maslahatNavbatiniTekshir(env).catch(() => {});
 
@@ -317,5 +317,5 @@ export async function onRequestGet({ request, env }) {
     tozalashNatijasi = await tozalash(env);
   }
 
-  return json({ ok: true, bajarildi: natijalar.length, natijalar, tozalash: tozalashNatijasi });
+  return json({ ok: true, bajarildi: natijalar.length, natijalar, kuzatuv, tozalash: tozalashNatijasi });
 }
