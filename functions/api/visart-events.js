@@ -285,11 +285,13 @@ export async function onRequestPost({ request, env }) {
     }
 
     if (group === 'moliya') {
-      if (!env.MOLIYA_GROUP_CHAT_ID) {
-        return json({ ok: false, error: 'moliya_group_not_configured' }, 500);
+      const adminlar = String(env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean);
+      let ok = false;
+      for (const c of [env.MOLIYA_GROUP_CHAT_ID, ...adminlar].filter(Boolean)) {
+        const natija = await tgSend(env.MIJOZ_BOT_TOKEN, c, `${prefiks}${matn}`);
+        if (natija) { ok = true; if (c === env.MOLIYA_GROUP_CHAT_ID) break; }
       }
-      const natija = await tgSend(env.MIJOZ_BOT_TOKEN, env.MOLIYA_GROUP_CHAT_ID, `${prefiks}${matn}`);
-      return json({ ok: !!natija });
+      return json({ ok });
     }
 
     if (group === 'obyekt') {

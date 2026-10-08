@@ -180,11 +180,18 @@ async function handle({ request, env }) {
   let yuborilganHodisalar = 0;
 
   const moliya = rows.filter((r) => r.guruh === 'moliya');
-  if (moliya.length && env.MOLIYA_GROUP_CHAT_ID) {
-    const natija = await tgSend(env.MIJOZ_BOT_TOKEN, env.MOLIYA_GROUP_CHAT_ID, digestMatni('📊 Kunlik moliya hisoboti', moliya));
+  if (moliya.length) {
+    // Moliya hisoboti: guruh sozlangan bo'lsa shu yerga, bo'lmasa (yoki guruhga yetmasa) adminlarning shaxsiy chatiga.
+    const adminlar = String(env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const matn = digestMatni('📊 Kunlik moliya hisoboti', moliya);
+    let chatId = null, natija = null;
+    for (const c of [env.MOLIYA_GROUP_CHAT_ID, ...adminlar].filter(Boolean)) {
+      const r = await tgSend(env.MIJOZ_BOT_TOKEN, c, matn);
+      if (r) { if (!natija) { natija = r; chatId = c; } if (c === env.MOLIYA_GROUP_CHAT_ID) break; }
+    }
     if (natija) {
       await belgilaYuborildi(env, moliya.map((r) => r.id), sana);
-      await jurnalgaYoz(env, { sana, guruh: 'moliya', obyektKaliti: MOLIYA_KEY, chatId: env.MOLIYA_GROUP_CHAT_ID, messageId: natija.message_id });
+      await jurnalgaYoz(env, { sana, guruh: 'moliya', obyektKaliti: MOLIYA_KEY, chatId, messageId: natija.message_id });
       yuborilganGuruhlar += 1;
       yuborilganHodisalar += moliya.length;
     }
@@ -209,19 +216,10 @@ async function handle({ request, env }) {
     }
   }
 
-  let tgXato = null;
-  if (moliya.length && env.MOLIYA_GROUP_CHAT_ID && yuborilganGuruhlar === 0) {
-    try {
-      const r = await (await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: env.MOLIYA_GROUP_CHAT_ID, text: '🔧 test' }) })).json();
-      tgXato = r.ok ? 'test_yuborildi' : r.description;
-    } catch (e) { tgXato = 'tarmoq_xato'; }
-  }
   return json({
-    tg_xato: tgXato,
     ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
     // diagnostika: nima uchun yuborilmagani ko'rinsin
     navbatda: { moliya: moliya.length, obyekt: Object.values(obyektlar).reduce((a, b) => a + b.length, 0) },
-    moliya_guruh_sozlangan: !!env.MOLIYA_GROUP_CHAT_ID,
   });
 }
 
