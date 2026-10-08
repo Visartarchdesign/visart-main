@@ -782,6 +782,116 @@ async function claudeMatnTuzatish(env, oldSarlavha, oldPostMatni, korsatma) {
   }
 }
 
+
+// TEZKOR REJIM: admin shaxsiy chatda rasm/video yuborib, izohga erkin
+// ko'rsatma yozsa -- Senarist'ni chetlab o'tib, shu materialdan post
+// tayyorlanadi. Rasm: Claude izohdan sarlavha+matn yozadi va odatdagi
+// "✅ Tasdiqlash" taklifi chiqadi. Video: ko'rsatma bilan darhol Montajchi
+// ishga tushadi (oxirida "✅ Joylash" tasdig'i so'raladi).
+async function claudeTezkorMatn(env, korsatma) {
+  if (!env.ANTHROPIC_API_KEY) return { xato: 'ANTHROPIC_API_KEY yo\'q' };
+  const prompt =
+    "Siz Visart Design (Toshkent, arxitektura va interyer studiyasi) uchun ijtimoiy tarmoq matnlari yozuvchisiz.\n\n" +
+    `Admin rasm yubordi va shunday ko'rsatma berdi: "${korsatma}"\n\n` +
+    "Shu ko'rsatmaga amal qilib post tayyorlang. Qoidalar:\n" +
+    "- Hech qanday faktni (raqam, joy, o'lcham, narx) o'ylab topmang -- faqat ko'rsatmadagi ma'lumotga tayaning.\n" +
+    "- Sodda, tabiiy, zamonaviy o'zbek tilida yozing (rus tilidan kalka yo'q). Formatlash belgilari (**, *) yo'q.\n" +
+    "- 1-qator kuchli hook, so'ng 2-3 qisqa gap, oxirida savol yoki CTA; eng oxirida 5-7 ta hashtag.\n\n" +
+    'JAVOBNI FAQAT JSON: {"sarlavha": "<3-6 so\'z>", "post_matni": "<matn>"}';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) return { xato: `Claude API -> ${res.status}` };
+    const data = await res.json();
+    const t = ((data.content || []).find((x) => x.type === 'text') || {}).text || '';
+    const m = t.match(/\{[\s\S]*\}/);
+    if (!m) return { xato: `JSON emas: ${t.slice(0, 150)}` };
+    return JSON.parse(m[0]);
+  } catch (e) {
+    return { xato: String((e && e.message) || e) };
+  }
+}
+
+async function handleTezkor(env, msg) {
+  const chatId = msg.chat.id;
+  const korsatma = (msg.caption || '').trim();
+  let turi, fileId, aslFileId = null;
+  if (msg.photo && msg.photo.length) {
+    turi = 'photo'; fileId = msg.photo[msg.photo.length - 1].file_id;
+  } else if (msg.video) {
+    turi = 'video'; fileId = (msg.video.thumbnail || msg.video.thumb || {}).file_id || null; aslFileId = msg.video.file_id;
+  } else if (msg.video_note) {
+    turi = 'video_note'; fileId = (msg.video_note.thumbnail || msg.video_note.thumb || {}).file_id || null; aslFileId = msg.video_note.file_id;
+  } else if (msg.document && (msg.document.mime_type || '').startsWith('image/')) {
+    turi = 'photo'; fileId = msg.document.file_id;
+  } else if (msg.document && (msg.document.mime_type || '').startsWith('video/')) {
+    turi = 'video'; fileId = (msg.document.thumbnail || msg.document.thumb || {}).file_id || null; aslFileId = msg.document.file_id;
+  } else return;
+
+  try {
+    const arx = await sbFetch(env, 'media_arxiv', {
+      method: 'POST',
+      prefer: 'return=representation',
+      body: JSON.stringify([{
+        telegram_chat_id: chatId, telegram_message_id: msg.message_id, turi,
+        izoh: korsatma, asl_file_id: aslFileId, file_id: fileId, holat: 'ishlangan',
+      }]),
+    });
+    const arxivId = arx && arx[0] && arx[0].id;
+    if (!arxivId) throw new Error('arxivga yozilmadi');
+
+    if (turi === 'photo') {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '⚡ Tezkor rejim: matn tayyorlanmoqda...');
+      const y = await claudeTezkorMatn(env, korsatma);
+      if (!y || y.xato) {
+        await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ Matn yozishda xato: ${(y && y.xato) || "noma'lum"}`);
+        return;
+      }
+      const t = await sbFetch(env, 'media_taklif', {
+        method: 'POST',
+        prefer: 'return=representation',
+        body: JSON.stringify([{
+          matn: `${y.sarlavha}\n\n${korsatma}`, sarlavha: y.sarlavha, post_matni: y.post_matni,
+          media_arxiv_id: arxivId, media_arxiv_idlar: String(arxivId), holat: 'kutilmoqda',
+        }]),
+      });
+      const tid = t && t[0] && t[0].id;
+      await tgSendMessageKb(env, chatId,
+        `⚡ Tezkor post:\n\n📝 ${y.sarlavha}\n\n📄 Post matni:\n${y.post_matni}\n\nTuzatish uchun shu xabarga REPLY qiling.\n\n🆔${tid}`,
+        { inline_keyboard: [[
+          { text: '✅ Tasdiqlash', callback_data: `stak:${tid}:ok` },
+          { text: '❌ Rad etish', callback_data: `stak:${tid}:no` },
+        ]] });
+    } else {
+      const t = await sbFetch(env, 'media_taklif', {
+        method: 'POST',
+        prefer: 'return=representation',
+        body: JSON.stringify([{
+          matn: korsatma, media_arxiv_id: arxivId, media_arxiv_idlar: String(arxivId), holat: 'tasdiqlangan',
+        }]),
+      });
+      const tid = t && t[0] && t[0].id;
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "⚡ Tezkor rejim: ko'rsatma qabul qilindi, Montajchi ishga tushdi. Tayyor bo'lgach joylashdan oldin tasdiq so'rayman.");
+      await montajBoshlash(env, tid, chatId, korsatma);
+    }
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ Tezkor rejimda xato: ${String((e && e.message) || e)}`);
+  }
+}
+
+async function tgSendMessageKb(env, chatId, text, kb) {
+  await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, reply_markup: kb }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => {});
+}
+
 function adminIdlari(env) {
   return (env.ADMIN_TELEGRAM_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
@@ -1378,6 +1488,13 @@ export async function onRequestPost({ request, env }) {
       } else {
         await handleUstaMedia(env, msg);
       }
+      return json({ ok: true });
+    }
+
+    // TEZKOR REJIM: admin shaxsiy chatda izohli rasm/video yuborsa.
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.caption || '').trim() &&
+        (msg.photo || msg.video || msg.video_note || hujjatRasmYokiVideo)) {
+      await handleTezkor(env, msg);
       return json({ ok: true });
     }
 
