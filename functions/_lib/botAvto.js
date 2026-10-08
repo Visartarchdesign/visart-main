@@ -36,6 +36,31 @@ export function keyingiToshkent(soat, kunQosh = 0) {
 }
 
 // 1) Obyekt holati o'zgarsa mijozga xabar (birinchi ko'rilganda jim yoziladi)
+// Holat o'zgarganda: logni yangilaydi, mijoz va menejerlarga xabar yuboradi.
+// Cron (obyektKuzatuv) va webhook (/api/obyekt-holat) ikkalasi ham shuni chaqiradi.
+export async function holatXabar(env, o, id, yangi, prof) {
+  const eski = await sb(env, `obyekt_holat_log?select=holat&obyekt_id=eq.${encodeURIComponent(id)}`).catch(() => null);
+  if (eski === null) return;                         // jadval yo'q
+  if (eski.length && eski[0].holat === yangi) return; // allaqachon xabar qilingan
+  if (!eski.length) await sb(env, 'obyekt_holat_log', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ obyekt_id: id, holat: yangi }]) }).catch(() => {});
+  else await sb(env, `obyekt_holat_log?obyekt_id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: yangi, updated_at: new Date().toISOString() }) }).catch(() => {});
+  const last9 = raqam(o.mijoz_tel).slice(-9);
+  if (last9.length >= 9) {
+    if (!prof) prof = await sb(env, 'mijoz_profil?select=chat_id,tel,til&tel=not.is.null&limit=2000').catch(() => []);
+    for (const p of (prof || []).filter((x) => raqam(x.tel).slice(-9) === last9)) {
+      const ru = p.til === 'ru';
+      await tg(env, p.chat_id, ru
+        ? `🏗 <b>${esc(o.nom)}</b>\nСтатус объекта обновлён: <b>${esc(yangi)}</b>`
+        : `🏗 <b>${esc(o.nom)}</b>\nObyekt holati yangilandi: <b>${esc(yangi)}</b>`);
+      if (BITDI.test(yangi)) {
+        await tg(env, p.chat_id, ru ? 'Оцените, пожалуйста, нашу работу:' : 'Ishimizni baholang, iltimos:',
+          { inline_keyboard: [[1, 2, 3, 4, 5].map((n) => ({ text: `${n}⭐`, callback_data: `rt:${id}:${n}`.slice(0, 64) }))] });
+      }
+    }
+  }
+  for (const m of menejerIdlari(env)) await tg(env, m, `🏗 Obyekt holati o'zgardi: <b>${esc(o.nom)}</b> → ${esc(yangi)}`);
+}
+
 export async function obyektKuzatuv(env) {
   if (!env.MIJOZ_BOT_TOKEN) return;
   const [obs, log, prof] = await Promise.all([
@@ -53,20 +78,7 @@ export async function obyektKuzatuv(env) {
       continue;
     }
     if (eski.get(id) === yangi) continue;
-    await sb(env, `obyekt_holat_log?obyekt_id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: yangi, updated_at: new Date().toISOString() }) }).catch(() => {});
-    const last9 = raqam(o.mijoz_tel).slice(-9);
-    if (last9.length < 9) continue;
-    for (const p of (prof || []).filter((x) => raqam(x.tel).slice(-9) === last9)) {
-      const ru = p.til === 'ru';
-      await tg(env, p.chat_id, ru
-        ? `🏗 <b>${esc(o.nom)}</b>\nСтатус объекта обновлён: <b>${esc(yangi)}</b>`
-        : `🏗 <b>${esc(o.nom)}</b>\nObyekt holati yangilandi: <b>${esc(yangi)}</b>`);
-      if (BITDI.test(yangi)) {
-        await tg(env, p.chat_id, ru ? 'Оцените, пожалуйста, нашу работу:' : 'Ishimizni baholang, iltimos:',
-          { inline_keyboard: [[1, 2, 3, 4, 5].map((n) => ({ text: `${n}⭐`, callback_data: `rt:${id}:${n}`.slice(0, 64) }))] });
-      }
-    }
-    for (const m of menejerIdlari(env)) await tg(env, m, `🏗 Obyekt holati o'zgardi: <b>${esc(o.nom)}</b> → ${esc(yangi)}`);
+    await holatXabar(env, o, id, yangi, prof);
   }
 }
 
