@@ -100,7 +100,7 @@ const T = {
 
 const ARX_UZ = "Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m³ gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.";
 const ARX_RU = "Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м³. При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.";
-const ARX_FEE = 4000000, ARX_MAX_RES = 500, ARX_MAX_NON = 300;
+const ARX_FEE = 6000000, ARX_MAX_RES = 500, ARX_MAX_NON = 300;
 const arxKey = (v) => { const [a, b] = String(v).split('-'); return { sotix: Number(a) || 0, non: b === 'n' }; };
 export const t = (til, key) => (T[til] || T.uz)[key] !== undefined ? (T[til] || T.uz)[key] : T.uz[key];
 const esc = (x) => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

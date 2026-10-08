@@ -1545,7 +1545,7 @@ const PRICING={
 let pricingState='loading'; // 'loading' | 'ready' | 'failed' — narx faqat serverdan kelgach ko'rsatiladi
 // Paketlar ichiga kiritilgan xizmatlar — alohida qo'shimcha sifatida ko'rsatilmaydi va hisoblanmaydi.
 const ARCH_BUNDLED=['workDrawings','3d','landscape'];
-const ARCH_NONRES_FEE=4000000, ARCH_MAX_RES=500, ARCH_MAX_NONRES=300;
+const ARCH_NONRES_FEE=6000000, ARCH_MAX_RES=500, ARCH_MAX_NONRES=300;
 function archOver(){return calcState.archArea>(calcState.archType==='res'?ARCH_MAX_RES:ARCH_MAX_NONRES);}
 let calcState={
   service:'arch',
