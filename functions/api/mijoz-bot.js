@@ -1700,6 +1700,7 @@ async function guruhMasteriBoshla(env, chat) {
   const kb = { inline_keyboard: [
     [{ text: '👥 Mijozlar guruhi (ilova yangiliklari)', callback_data: `gset:m:${chat.id}` }],
     [{ text: '👷 Ustalar guruhi (kunlik hisobot)', callback_data: `gset:u:${chat.id}` }],
+    [{ text: '💬 Oddiy guruh (narx, maslahat, ariza)', callback_data: `gset:o:${chat.id}` }],
   ] };
   for (const adminId of adminIdlari(env)) {
     await tgSendMessageKb(env, adminId, `➕ Bot «${chat.title || chat.id}» guruhiga qo'shildi.\nBu guruh nima uchun?`, kb);
@@ -1714,6 +1715,15 @@ async function handleGuruhMaster(env, cq, data) {
   await answerCq(env, cq.id);
   await removeKb(env, dmChat, cq.message.message_id);
 
+  if (p[0] === 'gset' && rol === 'o') {
+    await sbFetch(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${guruhId}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+    await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${guruhId}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+    let title = '';
+    try { const c = await (await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getChat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: guruhId }) })).json(); title = (c.result && c.result.title) || ''; } catch (e) { /* nom ixtiyoriy */ }
+    await guruhSalom(env, { id: Number(guruhId), title });
+    await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `✅ Guruh «${escH(title || guruhId)}» oddiy guruh sifatida sozlandi: salom xabari yuborildi, /narx, /loyiha, /maslahat, /obuna buyruqlari ishlaydi.`);
+    return;
+  }
   if (p[0] === 'gset') {
     let rows = null;
     try { rows = await sbFetch(env, 'obyektlar?select=id,nom,mijoz_ism&order=sana.desc.nullslast&limit=30'); } catch (e) { rows = null; }
