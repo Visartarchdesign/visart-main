@@ -279,6 +279,9 @@ export async function onRequestPost({ request, env }) {
     const { type, obyekt_id, matn, group, urgent, summa, umumiy_summa, qoldiq } = body;
     const prefiks = type ? `[${type}]\n` : '';
 
+    // Muzlatish xabarini holat kuzatuvi (har 15 daqiqa) yuboradi: adashib saqlansa, to'g'rilashga vaqt qoladi.
+    if (type === 'obyekt_muzlatildi') return json({ ok: true, skipped: 'holat_kuzatuvi_yuboradi' });
+
     if (urgent !== true) {
       const hodisaId = await navbatgaYoz(env, { type, obyekt_id, matn, group, summa, umumiy_summa, qoldiq });
       return json({ ok: hodisaId !== null, navbatga_yozildi: true, hodisa_id: hodisaId });

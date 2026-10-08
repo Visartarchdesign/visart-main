@@ -58,6 +58,13 @@ export async function holatXabar(env, o, id, yangi, prof) {
       }
     }
   }
+  // Muzlatilgan: obyektning mijoz guruhiga to'lov eslatmasi
+  if (/muzlat|заморож|frozen/i.test(yangi)) {
+    const g = await sb(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(id)}&select=telegram_chat_id`).catch(() => []);
+    if (g && g[0]) {
+      await tg(env, g[0].telegram_chat_id, `⏸ Diqqat: obyektingiz ("${esc(o.nom)}") bo'yicha pul mablag'i tugagani sababli qurilish jarayoni vaqtincha to'xtatildi.\n\nIshni davom ettirish uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, ishlar darhol qayta boshlanadi. Savollar bo'lsa, menejerimiz bilan bog'laning. 🙏`);
+    }
+  }
   for (const m of menejerIdlari(env)) await tg(env, m, `🏗 Obyekt holati o'zgardi: <b>${esc(o.nom)}</b> → ${esc(yangi)}`);
 }
 
