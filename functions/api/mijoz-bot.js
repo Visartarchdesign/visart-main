@@ -1530,6 +1530,7 @@ async function adminPanel(env, chatId) {
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
     [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
     [{ text: '🌐 Sayt murojaatlari', callback_data: 'ap:sayt' }, { text: '🔗 Mijoz ulanishlari', callback_data: 'ap:ul' }],
+    [{ text: '💡 Maslahat yaratish (test)', callback_data: 'ap:ms' }],
     [{ text: '➕ Admin qo\'shish', callback_data: 'ap:add' }, { text: '👥 Adminlar', callback_data: 'ap:list' }],
   ] });
 }
@@ -1599,6 +1600,13 @@ async function adminPanelCb(env, cq, data) {
       const rows = (r && r.results) || [];
       await send(rows.length ? '🌐 <b>Sayt murojaatlari</b>\n\n' + rows.map((x) => `• ${escH(x.name)} · ${escH(x.phone)} · ${escH(x.service || '—')}\n  <i>${escH(String(x.created_at || '').slice(0, 16))}</i>`).join('\n') : 'Murojaatlar yo\'q.');
     } catch (e) { await send("Sayt murojaatlari bazasiga ulanib bo'lmadi (D1 'DB' bog'lanmagan)."); }
+    return;
+  }
+  if (amal === 'ms') {
+    const g = await q('bot_guruhlar?select=chat_id&obuna=eq.true&limit=1');
+    if (!g.length) { await send("⚠️ Obunali guruh yo'q. Avval ommaviy guruhda <code>/obuna</code> yozing (botni guruhga qo'shib)."); return; }
+    await send('⏳ Maslahat yozilmoqda…');
+    await maslahatYarat(env).catch(async (e) => { await send(`⚠️ Xato: ${escH(String((e && e.message) || e).slice(0, 150))}`); });
     return;
   }
   if (amal === 'mijoz') { await menyuKorsat(env, H, chatId, false); return; }
