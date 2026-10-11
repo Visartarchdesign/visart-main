@@ -1821,6 +1821,15 @@ export async function onRequestPost({ request, env }) {
         await handleUstaKategoriya(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('sty:')) {
+        const [, amal, qid] = data.split(':');
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: 'Faqat admin.', show_alert: true }); return json({ ok: true }); }
+        const rows = await sbFetch(env, `nashr_navbati?id=eq.${encodeURIComponent(qid)}&holat=eq.tasdiq_kutilmoqda`, {
+          method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ holat: amal === 'ok' ? 'kutilmoqda' : 'bekor' }) }).catch(() => null);
+        await removeKb(env, cq.message.chat.id, cq.message.message_id);
+        await answerCq(env, cq.id, { text: !rows || !rows.length ? "Allaqachon ko'rib chiqilgan yoki muddati o'tgan." : amal === 'ok' ? 'Tasdiqlandi — vaqtida chiqadi.' : 'Bekor qilindi.' });
+        return json({ ok: true });
+      }
       if (data.startsWith('uok:') || data.startsWith('uno:')) {
         await handleUstaTasdiq(env, cq, data);
         return json({ ok: true });

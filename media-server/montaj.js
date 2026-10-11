@@ -56,11 +56,12 @@ async function tgSendVideo(token, chatId, filePath, caption) {
   }
 }
 
-async function tgSendPhoto(token, chatId, buf, caption) {
+async function tgSendPhoto(token, chatId, buf, caption, replyMarkup) {
   const form = new FormData();
   form.append('chat_id', String(chatId));
+  if (replyMarkup) form.append('reply_markup', JSON.stringify(replyMarkup));
   if (caption) form.append('caption', caption.slice(0, 1024));
-  form.append('photo', new Blob([buf], { type: 'image/png' }), 'cover.png');
+  form.append('photo', new Blob([buf], { type: replyMarkup ? 'image/jpeg' : 'image/png' }), replyMarkup ? 'story.jpg' : 'cover.png');
   const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
@@ -813,22 +814,26 @@ async function navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption) {
 
 async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false) {
   try {
-    await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
       method: 'POST',
       headers: {
         apikey: env.SUPABASE_SERVICE_ROLE_KEY,
         Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
+        Prefer: 'return=representation',
       },
       body: JSON.stringify({
         turi: 'instagram_story',
         payload: rasm ? { image_url: mediaUrl } : { video_url: mediaUrl },
         nashr_vaqti: (vaqt || keyingiStoryVaqt()).toISOString(),
+        holat: 'tasdiq_kutilmoqda', // admin tasdiqlamaguncha worker olmaydi
       }),
       signal: AbortSignal.timeout(10000),
     });
+    const rows = await r.json().catch(() => null);
+    return rows && rows[0] && rows[0].id;
   } catch (e) {
+    return null;
     // navbatga qo'yishda xato bo'lsa ham, asosiy oqimni to'xtatmaydi
   }
 }
@@ -1082,13 +1087,21 @@ export async function bajarNashr({ env, id, adminChatId }) {
       // Bir xil videoni qayta-qayta qo'ymaymiz: Reel = video; 3 ta Story = farqli kartalar.
       try {
         const kartalar = await storyKartalarYarat({ env, videoUrl, sarlavha });
-        const urls = [];
-        for (const k of kartalar) urls.push(await supabaseRasmUpload(env, k.buf));
-        await instagramStoryPost(env, urls[0], true);
+        const t1 = new Date();
         const t2 = keyingiStoryVaqt();
-        await navbatgaQoshStory(env, urls[1], t2, true);
-        await navbatgaQoshStory(env, urls[2], new Date(t2.getTime() + 11 * 3600 * 1000), true);
-        await xabar(`📸 Reels joylandi. Story: teaser hozir, savol kartasi va ${kartalar[2].ai ? 'AI-rasm' : 'maslahat'} kartasi rejalashtirildi.`);
+        const vaqtlar = [t1, t2, new Date(t2.getTime() + 11 * 3600 * 1000)];
+        const nom = { teaser: 'Teaser', savol: 'Savol kartasi', maslahat: 'Maslahat/AI-rasm' };
+        for (let i = 0; i < kartalar.length; i++) {
+          const url = await supabaseRasmUpload(env, kartalar[i].buf);
+          const qid = await navbatgaQoshStory(env, url, vaqtlar[i], true);
+          if (!qid) continue;
+          const t = new Date(vaqtlar[i].getTime() + 5 * 3600 * 1000);
+          const p2 = (n) => String(n).padStart(2, '0');
+          await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, kartalar[i].buf,
+            `📱 Story: ${nom[kartalar[i].rol]}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nTasdiqlamaguncha Instagram'ga CHIQMAYDI.`,
+            { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Bekor', callback_data: `sty:no:${qid}` }]] });
+        }
+        await xabar('📸 Reels joylandi. 3 ta Story tasdiq uchun yuborildi (tasdiqlamaguncha chiqmaydi).');
       } catch (se) {
         await xabar(`📸 Reels joylandi. Story kartalar xato (video takrorlanmadi): ${String((se && se.message) || se)}`);
       }
