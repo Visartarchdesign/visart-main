@@ -152,7 +152,7 @@ async function belgilaYuborildi(env, ids, sana) {
 }
 
 async function jurnalgaYoz(env, { sana, guruh, obyektKaliti, chatId, messageId }) {
-  await sbFetch(env, 'kunlik_xabar_jurnali', {
+  await sbFetch(env, 'kunlik_xabar_jurnali?on_conflict=sana,guruh,obyekt_id', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
     body: JSON.stringify([
