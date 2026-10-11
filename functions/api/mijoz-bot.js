@@ -1531,6 +1531,7 @@ async function adminPanel(env, chatId) {
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
     [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
     [{ text: '🌐 Sayt murojaatlari', callback_data: 'ap:sayt' }, { text: '🔗 Mijoz ulanishlari', callback_data: 'ap:ul' }],
+    [{ text: '👥 Guruhlar (ulash/o\'zgartirish)', callback_data: 'ap:gr' }],
     [{ text: '💡 Maslahat yaratish (test)', callback_data: 'ap:ms' }],
     [{ text: '➕ Admin qo\'shish', callback_data: 'ap:add' }, { text: '👥 Adminlar', callback_data: 'ap:list' }],
   ] });
@@ -1562,6 +1563,34 @@ async function adminPanelCb(env, cq, data) {
     const id = Number(data.split(':')[2]);
     if (id) await sbFetch(env, `bot_adminlar?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' });
     await send("🗑 Admin o'chirildi.");
+    return;
+  }
+  if (amal === 'gr' || amal === 'go' || amal === 'gu') {
+    const gid = data.split(':')[2];
+    const nomOl = async (id) => { try { const c = await (await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getChat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: id }), signal: AbortSignal.timeout(4000) })).json(); return (c.result && c.result.title) || String(id); } catch (e) { return String(id); } };
+    if (amal === 'gu') {
+      await sbFetch(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${gid}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+      await sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${gid}`, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+      await send(`🔌 Guruh (${await nomOl(gid)}) obyektdan uzildi.`);
+      return;
+    }
+    if (amal === 'go') {
+      await send(`👥 <b>${escH(await nomOl(gid))}</b>\nRol/obyektni tanlang (tanlagach obyekt ro'yxati chiqadi):`, { inline_keyboard: [
+        [{ text: '👥 Mijozlar guruhi → obyekt tanlash', callback_data: `gset:m:${gid}` }],
+        [{ text: '👷 Ustalar guruhi → obyekt tanlash', callback_data: `gset:u:${gid}` }],
+        [{ text: '💬 Oddiy guruh', callback_data: `gset:o:${gid}` }],
+        [{ text: '🔌 Obyektdan uzish', callback_data: `ap:gu:${gid}` }],
+      ] });
+      return;
+    }
+    const [mg, ug, ob] = await Promise.all([q('visart_loyiha_guruhlar?select=obyekt_id,telegram_chat_id'), q('usta_guruhlar?select=obyekt_id,telegram_chat_id'), q('obyektlar?select=id,nom&limit=500')]);
+    const onom = new Map(ob.map((o) => [String(o.id), o.nom || o.id]));
+    const hammasi = [...mg.map((x) => ({ ...x, r: '👥' })), ...ug.map((x) => ({ ...x, r: '👷' }))].slice(0, 30);
+    const nomlar = await Promise.all(hammasi.map((x) => nomOl(x.telegram_chat_id)));
+    const mset = new Set(mg.map((x) => String(x.obyekt_id))), uset = new Set(ug.map((x) => String(x.obyekt_id)));
+    const yoq = ob.filter((o) => !mset.has(String(o.id)) || !uset.has(String(o.id))).map((o) => `• ${escH(o.nom || o.id)}: ${mset.has(String(o.id)) ? '' : 'mijoz ✗ '}${uset.has(String(o.id)) ? '' : 'usta ✗'}`);
+    await send(`👥 <b>Guruhlar</b>\nGuruhni bosing — rolini/obyektini o'zgartirasiz yoki uzasiz.\n\n<b>Ulanmagan:</b>\n${yoq.join('\n') || 'hammasi ulangan'}\n\nYangi guruh: botni guruhga qo'shing — savol o'zi chiqadi.`.slice(0, 3900),
+      hammasi.length ? { inline_keyboard: hammasi.map((x, i) => [{ text: `${x.r} ${nomlar[i]} → ${onom.get(String(x.obyekt_id)) || x.obyekt_id}`.slice(0, 60), callback_data: `ap:go:${x.telegram_chat_id}` }]) } : undefined);
     return;
   }
   if (amal === 'ul' || amal === 'uo' || amal === 'ue' || amal === 'ud' || amal === 'uy') {
