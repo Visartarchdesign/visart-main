@@ -136,7 +136,6 @@ async function bajarFacebookVideo(env, payload) {
 }
 
 async function bajarInstagramStory(env, payload) {
-  throw new Error('STORY_TOXTATILGAN: story joylash vaqtincha o\'chirilgan'); // zudlik bilan to'xtatish (2026-10-11)
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) throw new Error('Instagram sozlanmagan');
   const { video_url: videoUrl, image_url: imageUrl } = payload;
   if (!videoUrl && !imageUrl) throw new Error("payload.video_url/image_url bo'sh");
@@ -281,6 +280,13 @@ export async function onRequestGet({ request, env }) {
     // cron-job.org 30s timeout: vaqt tugasa qolganlari keyingi chaqiruvga qoladi
     if (natijalar.length && Date.now() - boshlandi > 15000) break;
     try {
+      // atomik "claim": boshqa chaqiruv bir vaqtda/keyin shu qatorni qayta nashr qilmasin
+      const olindi = await sbFetch(env, `nashr_navbati?id=eq.${q.id}&holat=eq.kutilmoqda`, {
+        method: 'PATCH',
+        prefer: 'return=representation',
+        body: JSON.stringify({ holat: 'bajarilmoqda' }),
+      }).catch(async (e) => { await xatoYoz(env, 'navbat-claim', e); return null; });
+      if (!Array.isArray(olindi) || !olindi.length) continue;
       if (q.turi === 'facebook_photo') {
         await bajarFacebookPhoto(env, q.payload);
       } else if (q.turi === 'facebook_video') {
