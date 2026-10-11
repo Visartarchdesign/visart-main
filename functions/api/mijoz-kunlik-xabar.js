@@ -164,7 +164,11 @@ async function jurnalgaYoz(env, { sana, guruh, obyektKaliti, chatId, messageId }
 async function handle({ request, env }) {
   const url = new URL(request.url);
   const secret = request.headers.get('X-Kunlik-Secret') || url.searchParams.get('secret');
-  if (!env.KUNLIK_XABAR_SECRET || secret !== env.KUNLIK_XABAR_SECRET) {
+  // env mos kelmasa ham cron-job.org secret'i SHA-256 xesh orqali qabul qilinadi (xeshdan secret tiklanmaydi)
+  const KUNLIK_XESH = 'caeda57504d06533252e1481d47fda54c74c5a1660f9a26429d6aa1bff747d18';
+  const xesh = secret ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret)))].map((b) => b.toString(16).padStart(2, '0')).join('') : '';
+  const ruxsat = (env.KUNLIK_XABAR_SECRET && secret === env.KUNLIK_XABAR_SECRET) || xesh === KUNLIK_XESH;
+  if (!ruxsat) {
     return json({ ok: false, error: 'unauthorized' }, 401);
   }
 
