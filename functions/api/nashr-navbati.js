@@ -62,9 +62,9 @@ async function igFetch(path, params) {
 // Container tayyor (FINISHED) bo'lguncha kutadi -- faqat video (Story) uchun
 // kerak, rasm (Facebook photo) sinxron darhol nashr qilinadi.
 async function igContainerKutish(containerId, token) {
-  const max = 20; // 20 x 10s = ~3.3 daqiqa (worker o'zi har 15 daqiqada qayta chaqiriladi)
+  const max = 40; // 40 x 3s = ~2 daqiqa; rasm odatda 1-2 so'rovda tayyor bo'ladi
   for (let i = 0; i < max; i++) {
-    await new Promise((r) => setTimeout(r, 10000));
+    await new Promise((r) => setTimeout(r, i === 0 ? 1500 : 3000));
     const url = new URL(`https://graph.facebook.com/v21.0/${containerId}`);
     url.searchParams.set('fields', 'status_code');
     url.searchParams.set('access_token', token);
@@ -275,7 +275,10 @@ export async function onRequestGet({ request, env }) {
   );
 
   const natijalar = [];
+  const boshlandi = Date.now();
   for (const q of qatorlar || []) {
+    // cron-job.org 30s timeout: vaqt tugasa qolganlari keyingi chaqiruvga qoladi
+    if (natijalar.length && Date.now() - boshlandi > 15000) break;
     try {
       if (q.turi === 'facebook_photo') {
         await bajarFacebookPhoto(env, q.payload);
