@@ -1703,9 +1703,18 @@ async function guruhMasteriBoshla(env, chat) {
     [{ text: '👷 Ustalar guruhi (kunlik hisobot)', callback_data: `gset:u:${chat.id}` }],
     [{ text: '💬 Oddiy guruh (narx, maslahat, ariza)', callback_data: `gset:o:${chat.id}` }],
   ] };
+  const yubor = async (cid, text) => {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: cid, text, reply_markup: kb }), signal: AbortSignal.timeout(10000) });
+      return r.ok;
+    } catch (e) { return false; }
+  };
+  let yetdi = 0;
   for (const adminId of adminIdlari(env)) {
-    await tgSendMessageKb(env, adminId, `➕ Bot «${chat.title || chat.id}» guruhiga qo'shildi.\nBu guruh nima uchun?`, kb);
+    if (await yubor(adminId, `➕ Bot «${chat.title || chat.id}» guruhiga qo'shildi.\nBu guruh nima uchun?`)) yetdi += 1;
   }
+  // Adminning shaxsiy chatiga yetmasa (bot /start bosilmagan) -- savol guruhning o'ziga chiqadi (faqat admin bosa oladi)
+  if (!yetdi) await yubor(chat.id, `➕ Salom! Men Visart botiman.\nAdmin, bu guruh nima uchun? (tugmani faqat admin bosa oladi)\n\nℹ️ Shaxsiy chatga yetolmadim: botga shaxsiy chatda /start bosing.`);
 }
 
 async function handleGuruhMaster(env, cq, data) {
@@ -1976,6 +1985,21 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
 
+    // Bot guruhga qo'shilishining BARCHA yo'llari: my_chat_member (mavjud guruhga qo'shish / admin qilish),
+    // group_chat_created (guruh bot bilan birga yaratilgan), new_chat_members. Bir marta ishlashi uchun kalit bilan.
+    const mcm = update.my_chat_member;
+    const guruhYaratildi = update.message && (update.message.group_chat_created || update.message.supergroup_chat_created);
+    if ((mcm && mcm.chat && ['group', 'supergroup'].includes(mcm.chat.type) && ['member', 'administrator'].includes(mcm.new_chat_member && mcm.new_chat_member.status) && ['left', 'kicked', undefined].includes(mcm.old_chat_member && mcm.old_chat_member.status)) || guruhYaratildi) {
+      const chat = mcm ? mcm.chat : update.message.chat;
+      const kim = mcm ? mcm.from : update.message.from;
+      const kalit = -(Number(String(Math.abs(chat.id)).slice(-9)) * 1e6 + (Math.floor(Date.now() / 60000) % 1e6));
+      if (!(await takroriyUpdate(env, kalit))) {
+        if (isAdmin(env, kim && kim.id)) await guruhMasteriBoshla(env, chat);
+        else await guruhSalom(env, chat);
+      }
+      return json({ ok: true });
+    }
+
     const msg = update.message;
     if (!msg || !msg.chat) return json({ ok: true });
 
@@ -2014,6 +2038,8 @@ export async function onRequestPost({ request, env }) {
       const botId = (env.MIJOZ_BOT_TOKEN || '').split(':')[0];
       const botQoshildimi = msg.new_chat_members.some((m) => String(m.id) === botId);
       if (botQoshildimi) {
+        const kalit2 = -(Number(String(Math.abs(msg.chat.id)).slice(-9)) * 1e6 + (Math.floor(Date.now() / 60000) % 1e6));
+        if (await takroriyUpdate(env, kalit2)) return json({ ok: true });
         if (isAdmin(env, msg.from && msg.from.id)) {
           await guruhMasteriBoshla(env, msg.chat);   // faqat admin qo'shganda sozlash savoli
         } else {
