@@ -36,7 +36,9 @@ async function tgOk(env, chat_id, text) {
 }
 
 // Guruhga xabar yuboradi va natijani menejer/adminga bildiradi (yuborildi / yuborilmadi + sabab).
-async function guruhgaXabarVaHisobot(env, obyektId, nom, matn, tur) {
+export const MUZLATISH_MATN = (nom) => `⏸ Diqqat: obyektingiz ("${esc(nom)}") bo'yicha pul mablag'i tugagani sababli qurilish jarayoni vaqtincha to'xtatildi.\n\nIshni davom ettirish uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, ishlar darhol qayta boshlanadi. Savollar bo'lsa, menejerimiz bilan bog'laning. 🙏`;
+
+export async function guruhgaXabarVaHisobot(env, obyektId, nom, matn, tur) {
   const g = await sb(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(obyektId)}&select=telegram_chat_id`).catch(() => null);
   let natija;
   if (!g || !g[0]) natija = "⚠️ yuborilmadi: obyektga mijoz guruhi bog'lanmagan";
@@ -78,7 +80,7 @@ export async function holatXabar(env, o, id, yangi, prof) {
   }
   // Muzlatilgan: obyektning mijoz guruhiga to'lov eslatmasi (natija menejerga bildiriladi)
   if (/muzlat|заморож|frozen/i.test(yangi)) {
-    await guruhgaXabarVaHisobot(env, id, o.nom, `⏸ Diqqat: obyektingiz ("${esc(o.nom)}") bo'yicha pul mablag'i tugagani sababli qurilish jarayoni vaqtincha to'xtatildi.\n\nIshni davom ettirish uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, ishlar darhol qayta boshlanadi. Savollar bo'lsa, menejerimiz bilan bog'laning. 🙏`, '⏸ Muzlatish');
+    await guruhgaXabarVaHisobot(env, id, o.nom, MUZLATISH_MATN(o.nom), '⏸ Muzlatish');
   }
   // Muzlatishdan chiqdi: mijoz guruhiga ishlar qayta boshlangani haqida xabar
   if (eski.length && /muzlat|заморож|frozen/i.test(eski[0].holat || '') && !/muzlat|заморож|frozen/i.test(yangi)) {

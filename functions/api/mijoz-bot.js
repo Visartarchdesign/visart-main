@@ -46,7 +46,7 @@
 // `lidlar` jadvali ishlatiladi (mavjud tizimga tegmaydi) — pastdagi SQL'ni
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
-import { keyingiToshkent } from '../_lib/botAvto.js';
+import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
@@ -2176,6 +2176,15 @@ export async function onRequestPost({ request, env }) {
         });
         await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `🔎 <b>Obyekt holatlari (server ko'rishi)</b>${log === null ? "\n⚠️ obyekt_holat_log jadvali yo'q!" : ''}\n\n${qator.join('\n') || 'obyektlar bo\'sh'}`.slice(0, 3900));
       } catch (e) { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ /holatlar xato: ${escH(String((e && e.message) || e))}`); }
+      return json({ ok: true });
+    }
+    // /muzlat <obyekt nomi> -- admin: muzlatish xabarini mijoz guruhiga majburan yuboradi (natija qaytariladi)
+    if (/^\/muzlat(\s|$)/.test(msg.text || '') && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
+      const q = msg.text.slice(7).trim().toLowerCase();
+      const obs = await sbFetch(env, 'obyektlar?select=id,nom&limit=500').catch(() => []);
+      const o = (obs || []).find((x) => String(x.nom || '').toLowerCase() === q) || (obs || []).find((x) => String(x.nom || '').toLowerCase().includes(q));
+      if (!q || !o) await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "Ishlatish: /muzlat <obyekt nomi> (topilmadi)");
+      else await guruhgaXabarVaHisobot(env, String(o.id), o.nom, MUZLATISH_MATN(o.nom), '⏸ Muzlatish (qo\'lda)');
       return json({ ok: true });
     }
     if (msg.text === '/id') {
