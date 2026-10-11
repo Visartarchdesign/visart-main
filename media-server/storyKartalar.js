@@ -41,7 +41,8 @@ async function kadrOl(videoPath, nisbat, chiqish) {
 
 async function geminiMatn(env, sarlavha, variant = 0) {
   if (!env.GEMINI_API_KEY) return null;
-  const prompt = `Interyer dizayn studiyasi (Toshkent) Instagram Story'lari uchun O'ZBEK tilida (lotin) qisqa matnlar yoz. Mavzu: "${sarlavha}".${variant ? ` Bu ${variant + 1}-variant: oldingilaridan TUBDAN FARQLI burchak, savol va maslahat tanla.` : ''} Faqat JSON: {"teaser":"<=7 so'z","savol":"auditoriyaga savol <=10 so'z","maslahat":"1 ta amaliy dizayn maslahati <=12 so'z","rasm_prompt":"inglizcha: premium issiq-neytral interyer fotosurati, mavzuga mos, 9:16, realistik yoritish"}`;
+  const burchaklar = ['', 'xarajat va tejash burchagi', 'ko\'p uchraydigan XATO va uni oldini olish burchagi', 'oldin/keyin va natija burchagi', 'mijoz savoli va javob burchagi'];
+  const prompt = `SENARIST rolida: interyer dizayn studiyasi (Toshkent) Instagram Story'lari uchun O'ZBEK tilida (lotin) qisqa matnlar yoz. Mavzu: "${sarlavha}".${variant ? ` Bu ${variant + 1}-variant: oldingi variantlar rad etildi. Mavzuga ${burchaklar[variant % burchaklar.length]} bilan yondash; oldingilardan g'oya, savol va maslahat TUBDAN FARQLI bo'lsin, takrorlama.` : ''} Faqat JSON: {"teaser":"<=7 so'z","savol":"auditoriyaga savol <=10 so'z","maslahat":"1 ta amaliy dizayn maslahati <=12 so'z","rasm_prompt":"inglizcha: premium issiq-neytral interyer fotosurati, mavzuga mos, 9:16, realistik yoritish${variant ? ', boshqacha xona va kompozitsiya' : ''}"}`;
   for (const model of ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite']) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
@@ -81,7 +82,7 @@ export async function storyKartalarYarat({ env, videoUrl, sarlavha }) {
     const k1 = await kadrOl(vp, 0.35, path.join(tmp, 'a.jpg'));
     const k2 = await kadrOl(vp, 0.7, path.join(tmp, 'b.jpg'));
     const m = (await geminiMatn(env, sarlavha)) || {};
-    const teaser = m.teaser || sarlavha;
+    const teaser = m.teaser || ['Yangi loyiha','Bilasizmi?','Natijani ko\'ring','Savol-javob'][v % 4] + ': ' + sarlavha;
     const savol = m.savol || "Sizga qaysi uslub yoqadi?";
     const maslahat = m.maslahat || "Yoritishni 2700–3000K ichida tanlang: xona issiq ko'rinadi.";
     const cover = (b) => sharp(b).resize(W, H, { fit: 'cover' });
@@ -109,15 +110,15 @@ export async function storyVariantYarat({ env, videoUrl, sarlavha, rol, v }) {
     const cover = (b) => sharp(b).resize(W, H, { fit: 'cover' });
     const yUst = v % 2 === 1; // joylashuvni almashtiramiz
     if (rol === 'teaser') {
-      return sharp(await cover(kadr).toBuffer()).composite([{ input: matnSvg(m.teaser || sarlavha, { y: yUst ? 420 : 1380, pastki: "To'liq video — profilimizda (Reels)" }) }]).jpeg({ quality: 90 }).toBuffer();
+      return sharp(await cover(kadr).toBuffer()).composite([{ input: matnSvg(m.teaser || ['Yangi loyiha','Bilasizmi?','Natijani ko\'ring','Savol-javob'][v % 4] + ': ' + sarlavha, { y: yUst ? 420 : 1380, pastki: "To'liq video — profilimizda (Reels)" }) }]).jpeg({ quality: 90 }).toBuffer();
     }
     if (rol === 'savol') {
       const blur = await cover(kadr).blur(v % 2 ? 6 : 28).modulate({ brightness: 0.7 }).toBuffer();
-      return sharp(blur).composite([{ input: matnSvg(m.savol || 'Sizga qaysi variant yoqadi?', { y: yUst ? 600 : 900, size: 84, pastki: 'Javobingizni yozing' }) }]).jpeg({ quality: 90 }).toBuffer();
+      return sharp(blur).composite([{ input: matnSvg(m.savol || ['Sizga qaysi variant yoqadi?','Qaysi rang sizga yaqin?','Uyingizda nimani o\'zgartirardingiz?','Sizning savolingiz bormi?'][v % 4], { y: yUst ? 600 : 900, size: 84, pastki: 'Javobingizni yozing' }) }]).jpeg({ quality: 90 }).toBuffer();
     }
     const ai = await geminiRasm(env, m.rasm_prompt);
     const base = ai ? await cover(ai).toBuffer() : await cover(kadr).toBuffer();
-    return sharp(base).composite([{ input: matnSvg(m.maslahat || "Yoritishni 2700–3000K ichida tanlang.", { y: yUst ? 520 : 1340, size: 66, maxBelgi: 26, pastki: ai ? 'AI vizualizatsiya' : 'Dizayner maslahati' }) }]).jpeg({ quality: 90 }).toBuffer();
+    return sharp(base).composite([{ input: matnSvg(m.maslahat || ["Yoritishni 2700–3000K ichida tanlang.","Ranglarni 60-30-10 qoidasi bilan tanlang.","Mebelni devordan 5–10 sm uzoqroq qo'ying.","Katta xonada 3 xil yorug'lik qatlami yarating."][v % 4], { y: yUst ? 520 : 1340, size: 66, maxBelgi: 26, pastki: ai ? 'AI vizualizatsiya' : 'Dizayner maslahati' }) }]).jpeg({ quality: 90 }).toBuffer();
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

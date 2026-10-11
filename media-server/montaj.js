@@ -826,7 +826,7 @@ async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false, ekstra = {})
         turi: 'instagram_story',
         payload: { ...(rasm ? { image_url: mediaUrl } : { video_url: mediaUrl }), ...ekstra },
         nashr_vaqti: (vaqt || keyingiStoryVaqt()).toISOString(),
-        holat: 'kutilmoqda', // tasdiqsiz: vaqti kelganda worker joylaydi (admin talabi 2026-10-11)
+        holat: 'tasdiq_kutilmoqda', // admin tasdiqlamaguncha worker olmaydi
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -1098,9 +1098,10 @@ export async function bajarNashr({ env, id, adminChatId }) {
           const t = new Date(vaqtlar[i].getTime() + 5 * 3600 * 1000);
           const p2 = (n) => String(n).padStart(2, '0');
           await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, kartalar[i].buf,
-            `📱 Story: ${nom[kartalar[i].rol]}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nVaqti kelganda avtomatik chiqadi.`);
+            `📱 Story: ${nom[kartalar[i].rol]}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nTasdiqlamaguncha Instagram'ga CHIQMAYDI.`,
+            { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Boshqasini yarat', callback_data: `sty:no:${qid}` }]] });
         }
-        await xabar('📸 Reels joylandi. 3 ta Story navbatga qo\'yildi (vaqti kelganda avtomatik chiqadi).');
+        await xabar('📸 Reels joylandi. 3 ta Story tasdiq uchun yuborildi (tasdiqlamaguncha chiqmaydi).');
       } catch (se) {
         await xabar(`📸 Reels joylandi. Story kartalar xato (video takrorlanmadi): ${String((se && se.message) || se)}`);
       }
@@ -1160,7 +1161,8 @@ export async function bajarStoryVariant({ env, id, adminChatId }) {
     const t = new Date(vaqt.getTime() + 5 * 3600 * 1000);
     const p2 = (n) => String(n).padStart(2, '0');
     await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, buf,
-      `📱 Story (yangi variant ${v}/3): ${pl.rol}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nVaqti kelganda avtomatik chiqadi.`);
+      `📱 Story (yangi variant ${v}/3): ${pl.rol}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nTasdiqlamaguncha Instagram'ga CHIQMAYDI.`,
+      { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Boshqasini yarat', callback_data: `sty:no:${qid}` }]] });
   } catch (e) {
     await xabar(`⚠️ Yangi Story variant xato: ${String((e && e.message) || e)}`);
   }
