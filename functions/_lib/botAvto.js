@@ -103,6 +103,8 @@ export async function obyektKuzatuv(env) {
     if (!eski.has(id)) {
       await sb(env, 'obyekt_holat_log', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ obyekt_id: id, holat: yangi }]) }).catch(() => {});
       natija.yangi_logga++;
+      // Birinchi ko'rilganda xabar yuborilmaydi (eski obyektlarga ommaviy xabar ketmasligi uchun) -- lekin muzlatilgan bo'lsa menejerga aytamiz.
+      if (/muzlat|заморож|frozen/i.test(yangi)) for (const m of menejerIdlari(env)) await tg(env, m, `⚠️ <b>${esc(o.nom)}</b> holati «${esc(yangi)}», lekin kuzatuv uni BIRINCHI marta ko'rdi, shuning uchun mijozga xabar yuborilmadi. Yuborish uchun holatni boshqasiga o'zgartirib, yana «Muzlatilgan» qiling.`);
       continue;
     }
     if (eski.get(id) === yangi) continue;

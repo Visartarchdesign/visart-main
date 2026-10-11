@@ -2159,6 +2159,25 @@ export async function onRequestPost({ request, env }) {
       await adminTaklifQabul(env, msg, msg.text.slice(11));
       return json({ ok: true });
     }
+    // /holatlar -- admin uchun diagnostika: server obyektlar holatini qanday ko'rayotgani + qaysi biri mijoz guruhiga ulangan
+    if (msg.text === '/holatlar' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
+      try {
+        const [obs, log, gr] = await Promise.all([
+          sbFetch(env, 'obyektlar?select=id,nom,holat&order=id.desc&limit=40'),
+          sbFetch(env, 'obyekt_holat_log?select=obyekt_id,holat').catch(() => null),
+          sbFetch(env, 'visart_loyiha_guruhlar?select=obyekt_id').catch(() => []),
+        ]);
+        const lm = new Map((log || []).map((x) => [String(x.obyekt_id), x.holat]));
+        const gs = new Set((gr || []).map((x) => String(x.obyekt_id)));
+        const qator = (obs || []).map((o) => {
+          const id = String(o.id);
+          const lg = lm.has(id) ? lm.get(id) : '— (logda yo\'q)';
+          return `• <b>${escH(o.nom || id)}</b>\n   holat: ${escH(o.holat || '—')} | log: ${escH(lg)} | mijoz guruhi: ${gs.has(id) ? 'ha' : "YO'Q"}`;
+        });
+        await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `🔎 <b>Obyekt holatlari (server ko'rishi)</b>${log === null ? "\n⚠️ obyekt_holat_log jadvali yo'q!" : ''}\n\n${qator.join('\n') || 'obyektlar bo\'sh'}`.slice(0, 3900));
+      } catch (e) { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `⚠️ /holatlar xato: ${escH(String((e && e.message) || e))}`); }
+      return json({ ok: true });
+    }
     if (msg.text === '/id') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Sizning chat ID: <code>${chatId}</code>`);
       return json({ ok: true });
