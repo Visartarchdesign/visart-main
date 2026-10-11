@@ -17,7 +17,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
-import { storyKartalarYarat } from './storyKartalar.js';
+import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
 // "Flash Lite" tekin tarifda ancha yuqori kunlik limitga ega (500/kun,
@@ -812,7 +812,7 @@ async function navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption) {
   if (!res.ok) throw new Error(`navbat xato: ${res.status}`);
 }
 
-async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false) {
+async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false, ekstra = {}) {
   try {
     const r = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
       method: 'POST',
@@ -824,7 +824,7 @@ async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false) {
       },
       body: JSON.stringify({
         turi: 'instagram_story',
-        payload: rasm ? { image_url: mediaUrl } : { video_url: mediaUrl },
+        payload: { ...(rasm ? { image_url: mediaUrl } : { video_url: mediaUrl }), ...ekstra },
         nashr_vaqti: (vaqt || keyingiStoryVaqt()).toISOString(),
         holat: 'tasdiq_kutilmoqda', // admin tasdiqlamaguncha worker olmaydi
       }),
@@ -1093,13 +1093,13 @@ export async function bajarNashr({ env, id, adminChatId }) {
         const nom = { teaser: 'Teaser', savol: 'Savol kartasi', maslahat: 'Maslahat/AI-rasm' };
         for (let i = 0; i < kartalar.length; i++) {
           const url = await supabaseRasmUpload(env, kartalar[i].buf);
-          const qid = await navbatgaQoshStory(env, url, vaqtlar[i], true);
+          const qid = await navbatgaQoshStory(env, url, vaqtlar[i], true, { manba_video: videoUrl, sarlavha, rol: kartalar[i].rol, v: 0 });
           if (!qid) continue;
           const t = new Date(vaqtlar[i].getTime() + 5 * 3600 * 1000);
           const p2 = (n) => String(n).padStart(2, '0');
           await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, kartalar[i].buf,
             `📱 Story: ${nom[kartalar[i].rol]}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nTasdiqlamaguncha Instagram'ga CHIQMAYDI.`,
-            { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Bekor', callback_data: `sty:no:${qid}` }]] });
+            { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Boshqasini yarat', callback_data: `sty:no:${qid}` }]] });
         }
         await xabar('📸 Reels joylandi. 3 ta Story tasdiq uchun yuborildi (tasdiqlamaguncha chiqmaydi).');
       } catch (se) {
@@ -1138,5 +1138,32 @@ export async function bajarNashr({ env, id, adminChatId }) {
     await xabar(`⚠️ YouTube xato: ${String((e && e.message) || e)}`);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+
+// Admin Story kartasini ❌ qilganda: BOSHQA variant yaratib, yana tasdiqqa yuboradi.
+export async function bajarStoryVariant({ env, id, adminChatId }) {
+  const sbh = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
+  const xabar = (t) => tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, t).catch(() => {});
+  const rows = await (await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?id=eq.${id}&select=*`, { headers: sbh })).json();
+  const q = rows && rows[0];
+  const pl = q && q.payload;
+  if (!pl || !pl.manba_video) return xabar("ℹ️ Bu karta uchun yangi variant yaratib bo'lmadi (manba yo'q).");
+  const v = (pl.v || 0) + 1;
+  if (v > 3) return xabar("ℹ️ Bu Story uchun 3 ta variant allaqachon taklif qilindi. Hozircha yangisi yaratilmaydi.");
+  try {
+    const buf = await storyVariantYarat({ env, videoUrl: pl.manba_video, sarlavha: pl.sarlavha, rol: pl.rol, v });
+    const url = await supabaseRasmUpload(env, buf);
+    const vaqt = new Date(Math.max(Date.parse(q.nashr_vaqti), Date.now()));
+    const qid = await navbatgaQoshStory(env, url, vaqt, true, { manba_video: pl.manba_video, sarlavha: pl.sarlavha, rol: pl.rol, v });
+    if (!qid) return xabar('⚠️ Yangi variantni navbatga qo\'yib bo\'lmadi.');
+    const t = new Date(vaqt.getTime() + 5 * 3600 * 1000);
+    const p2 = (n) => String(n).padStart(2, '0');
+    await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, buf,
+      `📱 Story (yangi variant ${v}/3): ${pl.rol}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nTasdiqlamaguncha Instagram'ga CHIQMAYDI.`,
+      { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Boshqasini yarat', callback_data: `sty:no:${qid}` }]] });
+  } catch (e) {
+    await xabar(`⚠️ Yangi Story variant xato: ${String((e && e.message) || e)}`);
   }
 }

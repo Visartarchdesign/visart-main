@@ -39,9 +39,9 @@ async function kadrOl(videoPath, nisbat, chiqish) {
   return fs.readFileSync(chiqish);
 }
 
-async function geminiMatn(env, sarlavha) {
+async function geminiMatn(env, sarlavha, variant = 0) {
   if (!env.GEMINI_API_KEY) return null;
-  const prompt = `Interyer dizayn studiyasi (Toshkent) Instagram Story'lari uchun O'ZBEK tilida (lotin) qisqa matnlar yoz. Mavzu: "${sarlavha}". Faqat JSON: {"teaser":"<=7 so'z","savol":"auditoriyaga savol <=10 so'z","maslahat":"1 ta amaliy dizayn maslahati <=12 so'z","rasm_prompt":"inglizcha: premium issiq-neytral interyer fotosurati, mavzuga mos, 9:16, realistik yoritish"}`;
+  const prompt = `Interyer dizayn studiyasi (Toshkent) Instagram Story'lari uchun O'ZBEK tilida (lotin) qisqa matnlar yoz. Mavzu: "${sarlavha}".${variant ? ` Bu ${variant + 1}-variant: oldingilaridan TUBDAN FARQLI burchak, savol va maslahat tanla.` : ''} Faqat JSON: {"teaser":"<=7 so'z","savol":"auditoriyaga savol <=10 so'z","maslahat":"1 ta amaliy dizayn maslahati <=12 so'z","rasm_prompt":"inglizcha: premium issiq-neytral interyer fotosurati, mavzuga mos, 9:16, realistik yoritish"}`;
   for (const model of ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite']) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
@@ -92,6 +92,32 @@ export async function storyKartalarYarat({ env, videoUrl, sarlavha }) {
     const Cbase = ai ? await cover(ai).toBuffer() : await cover(k2).toBuffer();
     const C = await sharp(Cbase).composite([{ input: matnSvg(maslahat, { y: 1340, size: 66, maxBelgi: 26, pastki: ai ? 'AI vizualizatsiya' : 'Dizayner maslahati' }) }]).jpeg({ quality: 90 }).toBuffer();
     return [{ rol: 'teaser', buf: A }, { rol: 'savol', buf: B }, { rol: 'maslahat', buf: C, ai: !!ai }];
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// Rad etilgan karta o'rniga BOSHQA variant: boshqa kadr, boshqa matn, boshqa joylashuv.
+export async function storyVariantYarat({ env, videoUrl, sarlavha, rol, v }) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'storyv-'));
+  try {
+    const vp = path.join(tmp, 'v.mp4');
+    fs.writeFileSync(vp, Buffer.from(await (await fetch(videoUrl)).arrayBuffer()));
+    const nisbatlar = [0.15, 0.5, 0.85, 0.3];
+    const kadr = await kadrOl(vp, nisbatlar[v % nisbatlar.length], path.join(tmp, 'k.jpg'));
+    const m = (await geminiMatn(env, sarlavha, v)) || {};
+    const cover = (b) => sharp(b).resize(W, H, { fit: 'cover' });
+    const yUst = v % 2 === 1; // joylashuvni almashtiramiz
+    if (rol === 'teaser') {
+      return sharp(await cover(kadr).toBuffer()).composite([{ input: matnSvg(m.teaser || sarlavha, { y: yUst ? 420 : 1380, pastki: "To'liq video — profilimizda (Reels)" }) }]).jpeg({ quality: 90 }).toBuffer();
+    }
+    if (rol === 'savol') {
+      const blur = await cover(kadr).blur(v % 2 ? 6 : 28).modulate({ brightness: 0.7 }).toBuffer();
+      return sharp(blur).composite([{ input: matnSvg(m.savol || 'Sizga qaysi variant yoqadi?', { y: yUst ? 600 : 900, size: 84, pastki: 'Javobingizni yozing' }) }]).jpeg({ quality: 90 }).toBuffer();
+    }
+    const ai = await geminiRasm(env, m.rasm_prompt);
+    const base = ai ? await cover(ai).toBuffer() : await cover(kadr).toBuffer();
+    return sharp(base).composite([{ input: matnSvg(m.maslahat || "Yoritishni 2700–3000K ichida tanlang.", { y: yUst ? 520 : 1340, size: 66, maxBelgi: 26, pastki: ai ? 'AI vizualizatsiya' : 'Dizayner maslahati' }) }]).jpeg({ quality: 90 }).toBuffer();
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

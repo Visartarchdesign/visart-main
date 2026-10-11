@@ -1827,7 +1827,13 @@ export async function onRequestPost({ request, env }) {
         const rows = await sbFetch(env, `nashr_navbati?id=eq.${encodeURIComponent(qid)}&holat=eq.tasdiq_kutilmoqda`, {
           method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ holat: amal === 'ok' ? 'kutilmoqda' : 'bekor' }) }).catch(() => null);
         await removeKb(env, cq.message.chat.id, cq.message.message_id);
-        await answerCq(env, cq.id, { text: !rows || !rows.length ? "Allaqachon ko'rib chiqilgan yoki muddati o'tgan." : amal === 'ok' ? 'Tasdiqlandi — vaqtida chiqadi.' : 'Bekor qilindi.' });
+        await answerCq(env, cq.id, { text: !rows || !rows.length ? "Allaqachon ko'rib chiqilgan yoki muddati o'tgan." : amal === 'ok' ? 'Tasdiqlandi — vaqtida chiqadi.' : 'Rad etildi — yangi variant tayyorlanmoqda.' });
+        if (amal === 'no' && rows && rows.length && env.MEDIA_SERVER_URL && env.MEDIA_SECRET) {
+          await fetch(`${env.MEDIA_SERVER_URL}/story-variant`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
+            body: JSON.stringify({ id: qid, adminChatId: cq.message.chat.id }), signal: AbortSignal.timeout(8000),
+          }).catch(() => {});
+        }
         return json({ ok: true });
       }
       if (data.startsWith('uok:') || data.startsWith('uno:')) {
