@@ -52,7 +52,7 @@ function eslatmaMatni(vaqt) {
     "Halol mehnatingiz uchun rahmat — ishlab charchamang! 💪🙏";
 }
 
-import { ruxsatRad } from '../_lib/xato.js';
+import { ruxsatRad, xatoYoz, adminXabar } from '../_lib/xato.js';
 
 async function handle({ request, env }) {
   const url = new URL(request.url);
@@ -68,10 +68,12 @@ async function handle({ request, env }) {
   try {
     guruhlar = await sbFetch(env, 'usta_guruhlar?select=telegram_chat_id');
   } catch (e) {
+    await xatoYoz(env, 'usta-eslatma:supabase', e);
     return json({ ok: false, error: 'supabase_xato' }, 500);
   }
 
   let yuborildi = 0;
+  const rad = [];
   for (const g of guruhlar || []) {
     try {
       const res = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
@@ -81,11 +83,14 @@ async function handle({ request, env }) {
         signal: AbortSignal.timeout(10000),
       });
       if (res.ok) yuborildi += 1;
+      else rad.push(`${g.telegram_chat_id} (${res.status})`);
     } catch (e) {
-      // bitta guruhda xato bo'lsa ham, qolganlariga davom etamiz
+      rad.push(`${g.telegram_chat_id} (${e.message})`); // qolganlariga davom etamiz
     }
   }
 
+  const jami = (guruhlar || []).length;
+  await adminXabar(env, `${jami && !rad.length ? '✅' : '⚠️'} Usta eslatmasi (${vaqt}): ${yuborildi}/${jami} guruhga yuborildi.` + (jami === 0 ? "\nUsta guruhlari ro'yxati bo'sh." : '') + (rad.length ? `\nYetmadi: ${rad.join('; ')}` : ''));
   return json({ ok: true, yuborilgan_guruhlar: yuborildi });
 }
 
