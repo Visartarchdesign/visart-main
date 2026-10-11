@@ -2049,6 +2049,23 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
+    // Guruhga YANGI ODAM qo'shilganda: obyektga ulangan mijoz/usta guruhda unga bot vazifasi tushuntiriladi.
+    if (Array.isArray(msg.new_chat_members) && (msg.chat.type === 'group' || msg.chat.type === 'supergroup')) {
+      const odamlar = msg.new_chat_members.filter((m) => !m.is_bot);
+      if (odamlar.length) {
+        const [mj, us] = await Promise.all([
+          sbFetch(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${msg.chat.id}&select=obyekt_id&limit=1`).catch(() => []),
+          sbFetch(env, `usta_guruhlar?telegram_chat_id=eq.${msg.chat.id}&select=obyekt_id&limit=1`).catch(() => []),
+        ]);
+        const matn = us && us.length ? TANISH_USTA : (mj && mj.length ? TANISH_MIJOZ : null);
+        if (matn) {
+          const ismlar = odamlar.map((m) => `<a href="tg://user?id=${m.id}">${escH([m.first_name, m.last_name].filter(Boolean).join(' ') || 'do\'st')}</a>`).join(', ');
+          await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `👋 Guruhga xush kelibsiz, ${ismlar}!\n\n${matn}`);
+        }
+        return json({ ok: true });
+      }
+    }
+
     // Ustalar guruhidan video/foto kelsa -- matn kerak emas, darhol tasdiqlash
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
