@@ -73,7 +73,7 @@ async function media(env) {
 export async function tizimNazorati(env) {
   try {
     const t = Promise.allSettled([sayt(env), baza(env), telegram(env), instagram(env), media(env)]);
-    const res = await Promise.race([t, new Promise((r) => setTimeout(() => r(null), 12000))]);
+    const res = await Promise.race([t, new Promise((r) => setTimeout(() => r(null), 6000))]);
     // Kunlik xulosa: Toshkent 08:00 (UTC 03:00)
     const n = new Date();
     if (res && n.getUTCHours() === 3 && n.getUTCMinutes() < 15) {
