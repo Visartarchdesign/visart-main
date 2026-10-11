@@ -177,7 +177,7 @@ async function handle({ request, env }) {
   await yurakTekshir(env, 'nashr', 1);
   let rows;
   try {
-    rows = await sbFetch(env, 'kunlik_hodisalar?yuborildi=eq.false&select=*&order=created_at.asc');
+    rows = await sbFetch(env, `kunlik_hodisalar?or=(yuborildi.eq.false,yuborilgan_sana.eq.${sanaUz()})&select=*&order=created_at.asc`);
   } catch (e) {
     await xatoYoz(env, 'kunlik-xabar:supabase', e);
     return json({ ok: false, error: 'supabase_xato' }, 500);
@@ -193,21 +193,39 @@ async function handle({ request, env }) {
   let yuborilganHodisalar = 0;
 
   const moliya = rows.filter((r) => r.guruh === 'moliya');
-  if (moliya.length) {
-    // Moliya hisoboti: guruh sozlangan bo'lsa shu yerga, bo'lmasa (yoki guruhga yetmasa) adminlarning shaxsiy chatiga.
-    const adminlar = String(env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean);
-    const matn = digestMatni('📊 Kunlik moliya hisoboti', moliya);
-    let chatId = null, natija = null;
-    for (const c of [env.MOLIYA_GROUP_CHAT_ID, ...adminlar].filter(Boolean)) {
+  const sabab = {};
+  // Bitta kun = bitta xabar: jurnalda bugungi xabar bor bo'lsa u TAHRIRLANADI (bugungi barcha hodisalar bilan),
+  // yo'q bo'lsa yangi yuboriladi. Shunda test/qayta tekshiruv hisobotni bo'lib yubormaydi.
+  const yuborVaYoz = async (guruh, kalit, sarlavha, items, mijozUchun, nomzodChatlar) => {
+    const matn = digestMatni(sarlavha, items, mijozUchun);
+    const kutilayotgan = items.filter((r) => !r.yuborildi).map((r) => r.id);
+    const jr = await sbFetch(env, `kunlik_xabar_jurnali?sana=eq.${sana}&guruh=eq.${guruh}&obyekt_id=eq.${encodeURIComponent(kalit)}&select=*`).catch(() => null);
+    const j = jr && jr[0];
+    if (j) {
+      const t = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageText`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: j.telegram_chat_id, message_id: j.telegram_message_id, text: matn, parse_mode: 'HTML' }), signal: AbortSignal.timeout(10000) }).catch(() => null);
+      const jd = t ? await t.json().catch(() => null) : null;
+      if (t && (t.ok || (jd && /not modified/i.test(jd.description || '')))) {
+        await belgilaYuborildi(env, kutilayotgan, sana);
+        return { chatId: j.telegram_chat_id, tahrir: true };
+      }
+      // xabar o'chirilgan/tahrirlab bo'lmadi -- pastda yangisi yuboriladi
+    }
+    for (const c of nomzodChatlar.filter(Boolean)) {
       const r = await tgSend(env.MIJOZ_BOT_TOKEN, c, matn);
-      if (r) { if (!natija) { natija = r; chatId = c; } if (c === env.MOLIYA_GROUP_CHAT_ID) break; }
+      if (r) {
+        await belgilaYuborildi(env, kutilayotgan, sana);
+        await jurnalgaYoz(env, { sana, guruh, obyektKaliti: kalit, chatId: c, messageId: r.message_id });
+        return { chatId: c, tahrir: false };
+      }
+      if (c === nomzodChatlar[0]) { /* birinchi tanlov rad etdi -- keyingisini sinaymiz (faqat moliya) */ }
     }
-    if (natija) {
-      await belgilaYuborildi(env, moliya.map((r) => r.id), sana);
-      await jurnalgaYoz(env, { sana, guruh: 'moliya', obyektKaliti: MOLIYA_KEY, chatId, messageId: natija.message_id });
-      yuborilganGuruhlar += 1;
-      yuborilganHodisalar += moliya.length;
-    }
+    return null;
+  };
+  let tahrirlanganlar = 0;
+  if (moliya.length) {
+    const adminlar = String(env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean);
+    const r = await yuborVaYoz('moliya', MOLIYA_KEY, '📊 Kunlik moliya hisoboti', moliya, false, [env.MOLIYA_GROUP_CHAT_ID, ...adminlar]);
+    if (r) { yuborilganGuruhlar += 1; yuborilganHodisalar += moliya.length; if (r.tahrir) tahrirlanganlar += 1; }
   }
 
   const obyektlar = {};
@@ -217,24 +235,18 @@ async function handle({ request, env }) {
     }
   }
 
-  const sabab = {};
   for (const [obyektId, items] of Object.entries(obyektlar)) {
     const chatId = await findGuruhChatId(env, obyektId);
     if (!chatId) { sabab[obyektId] = 'mijoz_guruhi_bogalanmagan'; continue; } // keyingi kunga qoladi
-    const natija = await tgSend(env.MIJOZ_BOT_TOKEN, chatId, digestMatni('📊 Kunlik hisobot', items, true));
-    if (!natija) sabab[obyektId] = `telegram_rad_etdi (chat ${chatId})`;
-    if (natija) {
-      await belgilaYuborildi(env, items.map((r) => r.id), sana);
-      await jurnalgaYoz(env, { sana, guruh: 'obyekt', obyektKaliti: obyektId, chatId, messageId: natija.message_id });
-      yuborilganGuruhlar += 1;
-      yuborilganHodisalar += items.length;
-    }
+    const r = await yuborVaYoz('obyekt', obyektId, '📊 Kunlik hisobot', items, true, [chatId]);
+    if (!r) { sabab[obyektId] = `telegram_rad_etdi (chat ${chatId})`; continue; }
+    yuborilganGuruhlar += 1; yuborilganHodisalar += items.length; if (r.tahrir) tahrirlanganlar += 1;
   }
 
   const muammo = Object.entries(sabab);
   if (muammo.length) await xatoYoz(env, 'kunlik-xabar:yuborilmadi', muammo.map(([k, v]) => `${k}: ${v}`).join('; '));
   if (moliya.length && yuborilganHodisalar === 0 && !muammo.length) await xatoYoz(env, 'kunlik-xabar:moliya', 'moliya hisoboti hech kimga yetmadi');
-  await adminXabar(env, `${yuborilganHodisalar > 0 && !muammo.length ? '✅' : '⚠️'} Kunlik hisobot (${sana}): ${yuborilganGuruhlar} guruhga, ${yuborilganHodisalar} hodisa yuborildi.` + (muammo.length ? `\nYuborilmadi: ${muammo.map(([k, v]) => `${k}: ${v}`).join('; ')}` : ''));
+  await adminXabar(env, `${yuborilganHodisalar > 0 && !muammo.length ? '✅' : '⚠️'} Kunlik hisobot (${sana}): ${yuborilganGuruhlar} guruhga, ${yuborilganHodisalar} hodisa ko'rsatildi${tahrirlanganlar ? ` (${tahrirlanganlar} ta xabar yangilandi)` : ''}.` + (muammo.length ? `\nYuborilmadi: ${muammo.map(([k, v]) => `${k}: ${v}`).join('; ')}` : ''));
   return json({
     ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
     // diagnostika: nima uchun yuborilmagani ko'rinsin
