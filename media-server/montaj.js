@@ -17,6 +17,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
+import { storyKartalarYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
 // "Flash Lite" tekin tarifda ancha yuqori kunlik limitga ega (500/kun,
@@ -737,13 +738,13 @@ async function instagramReelsPost(env, videoUrl, caption, coverUrl) {
 // Tayyor videoni Instagram Story sifatida avtomatik post qiladi (24 soatlik,
 // caption qabul qilmaydi -- Graph API Stories matn/caption maydonini
 // qo'llab-quvvatlamaydi).
-async function instagramStoryPost(env, videoUrl) {
+async function instagramStoryPost(env, mediaUrl, rasm = false) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) return null;
   const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
   const token = env.INSTAGRAM_ACCESS_TOKEN;
   const container = await igFetch(`${igId}/media`, {
     media_type: 'STORIES',
-    video_url: videoUrl,
+    ...(rasm ? { image_url: mediaUrl } : { video_url: mediaUrl }),
     access_token: token,
   });
   const tayyor = await igContainerKutish(container.id, token);
@@ -810,7 +811,7 @@ async function navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption) {
   if (!res.ok) throw new Error(`navbat xato: ${res.status}`);
 }
 
-async function navbatgaQoshStory(env, videoUrl) {
+async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false) {
   try {
     await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
       method: 'POST',
@@ -822,8 +823,8 @@ async function navbatgaQoshStory(env, videoUrl) {
       },
       body: JSON.stringify({
         turi: 'instagram_story',
-        payload: { video_url: videoUrl },
-        nashr_vaqti: keyingiStoryVaqt().toISOString(),
+        payload: rasm ? { image_url: mediaUrl } : { video_url: mediaUrl },
+        nashr_vaqti: (vaqt || keyingiStoryVaqt()).toISOString(),
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -1078,9 +1079,19 @@ export async function bajarNashr({ env, id, adminChatId }) {
     try {
       await xabar('⏳ Instagram Reels/Story joylanmoqda...');
       await instagramReelsPost(env, videoUrl, caption, coverUrl);
-      await instagramStoryPost(env, videoUrl);
-      await navbatgaQoshStory(env, videoUrl);
-      await xabar("📸 Instagram Reels va Story'ga joylandi (2-Story rejalashtirildi).");
+      // Bir xil videoni qayta-qayta qo'ymaymiz: Reel = video; 3 ta Story = farqli kartalar.
+      try {
+        const kartalar = await storyKartalarYarat({ env, videoUrl, sarlavha });
+        const urls = [];
+        for (const k of kartalar) urls.push(await supabaseRasmUpload(env, k.buf));
+        await instagramStoryPost(env, urls[0], true);
+        const t2 = keyingiStoryVaqt();
+        await navbatgaQoshStory(env, urls[1], t2, true);
+        await navbatgaQoshStory(env, urls[2], new Date(t2.getTime() + 11 * 3600 * 1000), true);
+        await xabar(`📸 Reels joylandi. Story: teaser hozir, savol kartasi va ${kartalar[2].ai ? 'AI-rasm' : 'maslahat'} kartasi rejalashtirildi.`);
+      } catch (se) {
+        await xabar(`📸 Reels joylandi. Story kartalar xato (video takrorlanmadi): ${String((se && se.message) || se)}`);
+      }
     } catch (e) {
       await xabar(`⚠️ Instagram Reels/Story xato: ${String((e && e.message) || e)}`);
     }

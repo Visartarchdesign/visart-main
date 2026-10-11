@@ -137,11 +137,11 @@ async function bajarFacebookVideo(env, payload) {
 
 async function bajarInstagramStory(env, payload) {
   if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) throw new Error('Instagram sozlanmagan');
-  const { video_url: videoUrl } = payload;
-  if (!videoUrl) throw new Error("payload.video_url bo'sh");
+  const { video_url: videoUrl, image_url: imageUrl } = payload;
+  if (!videoUrl && !imageUrl) throw new Error("payload.video_url/image_url bo'sh");
   const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
   const token = env.INSTAGRAM_ACCESS_TOKEN;
-  const container = await igFetch(`${igId}/media`, { media_type: 'STORIES', video_url: videoUrl, access_token: token });
+  const container = await igFetch(`${igId}/media`, { media_type: 'STORIES', ...(imageUrl ? { image_url: imageUrl } : { video_url: videoUrl }), access_token: token });
   const tayyor = await igContainerKutish(container.id, token);
   if (!tayyor) throw new Error('Story container FINISHED holatiga yetmadi');
   await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
