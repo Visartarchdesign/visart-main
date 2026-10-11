@@ -19,7 +19,7 @@
 //   (MIJOZ_BOT_TOKEN, MOLIYA_GROUP_CHAT_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY --
 //    visart-events.js/mijoz-bot.js'da allaqachon bor)
 
-import { xatoYoz, yurakYoz, yurakTekshir } from '../_lib/xato.js';
+import { xatoYoz, yurakYoz, yurakTekshir, adminXabar, ruxsatRad } from '../_lib/xato.js';
 
 const MOLIYA_KEY = '__moliya__'; // kunlik_xabar_jurnali'da obyekt_id ustuniga moliya guruhi uchun sentinel
 
@@ -169,6 +169,7 @@ async function handle({ request, env }) {
   const xesh = secret ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret)))].map((b) => b.toString(16).padStart(2, '0')).join('') : '';
   const ruxsat = (env.KUNLIK_XABAR_SECRET && secret === env.KUNLIK_XABAR_SECRET) || xesh === KUNLIK_XESH;
   if (!ruxsat) {
+    await ruxsatRad(env, 'kunlik-xabar');
     return json({ ok: false, error: 'unauthorized' }, 401);
   }
 
@@ -183,6 +184,7 @@ async function handle({ request, env }) {
   }
 
   if (!rows || rows.length === 0) {
+    await adminXabar(env, `ℹ️ Kunlik hisobot (${sanaUz()}): yuboriladigan hodisa yo'q, hech narsa yuborilmadi.`);
     return json({ ok: true, yuborilgan_guruhlar: 0, yuborilgan_hodisalar: 0 });
   }
 
@@ -232,6 +234,7 @@ async function handle({ request, env }) {
   const muammo = Object.entries(sabab);
   if (muammo.length) await xatoYoz(env, 'kunlik-xabar:yuborilmadi', muammo.map(([k, v]) => `${k}: ${v}`).join('; '));
   if (moliya.length && yuborilganHodisalar === 0 && !muammo.length) await xatoYoz(env, 'kunlik-xabar:moliya', 'moliya hisoboti hech kimga yetmadi');
+  await adminXabar(env, `${yuborilganHodisalar > 0 && !muammo.length ? '✅' : '⚠️'} Kunlik hisobot (${sana}): ${yuborilganGuruhlar} guruhga, ${yuborilganHodisalar} hodisa yuborildi.` + (muammo.length ? `\nYuborilmadi: ${muammo.map(([k, v]) => `${k}: ${v}`).join('; ')}` : ''));
   return json({
     ok: true, yuborilgan_guruhlar: yuborilganGuruhlar, yuborilgan_hodisalar: yuborilganHodisalar,
     // diagnostika: nima uchun yuborilmagani ko'rinsin

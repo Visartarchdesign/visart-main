@@ -362,10 +362,13 @@ async function aiTaklifYubor(env) {
   }
 }
 
+import { ruxsatRad } from '../_lib/xato.js';
+
 async function handle({ request, env }) {
   const url = new URL(request.url);
   const secret = request.headers.get('X-Senarist-Secret') || url.searchParams.get('secret');
   if (!env.SENARIST_SECRET || secret !== env.SENARIST_SECRET) {
+    await ruxsatRad(env, 'senarist-tahlil');
     return json({ ok: false, error: 'unauthorized' }, 401);
   }
   if (!env.ANTHROPIC_API_KEY) {

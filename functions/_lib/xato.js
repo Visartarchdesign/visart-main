@@ -36,8 +36,22 @@ export async function yurakTekshir(env, nom, maxSoat) {
     const r = await fetch(`${env.SUPABASE_URL}/rest/v1/bot_yurak?nom=eq.${encodeURIComponent(nom)}&select=oxirgi`, { headers: shdr(env), signal: AbortSignal.timeout(5000) });
     if (!r.ok) return;
     const rows = await r.json();
-    if (!rows || !rows[0]) return;
+    if (!rows || !rows[0]) { await xatoYoz(env, `cron-ishlamayapti:${nom}`, `"${nom}" cron hali birorta ham muvaffaqiyatli ishlamagan (yurak yozuvi yo'q). cron-job.org va secretni tekshiring.`); return; }
     const soat = (Date.now() - new Date(rows[0].oxirgi).getTime()) / 3600e3;
     if (soat > maxSoat) await xatoYoz(env, `cron-ishlamayapti:${nom}`, `"${nom}" cron ${soat.toFixed(1)} soatdan beri ishlamadi (kutilgan: har ${maxSoat} soatda). cron-job.org va secretni tekshiring.`);
   } catch (e) { /* jim */ }
+}
+
+// Adminga oddiy ma'lumot (muvaffaqiyat/natija) -- chastotasi cheklanmaydi.
+export async function adminXabar(env, matn) {
+  try {
+    const admin = list(env.ADMIN_TELEGRAM_IDS)[0];
+    if (!admin || !env.MIJOZ_BOT_TOKEN) return;
+    await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: admin, text: matn.slice(0, 3500) }), signal: AbortSignal.timeout(5000) }).catch(() => {});
+  } catch (e) { /* jim */ }
+}
+
+// cron noto'g'ri secret bilan chaqirilsa (401) -- soatiga 1 marta ogohlantiradi.
+export async function ruxsatRad(env, nom) {
+  await xatoYoz(env, `cron-401:${nom}`, `"${nom}" cron so'rovi RAD ETILDI (401 Unauthorized): cron-job.org dagi secret serverdagi bilan mos emas. Hodisa/hisobot yuborilmadi.`);
 }

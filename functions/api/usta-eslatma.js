@@ -52,10 +52,13 @@ function eslatmaMatni(vaqt) {
     "Halol mehnatingiz uchun rahmat — ishlab charchamang! 💪🙏";
 }
 
+import { ruxsatRad } from '../_lib/xato.js';
+
 async function handle({ request, env }) {
   const url = new URL(request.url);
   const secret = request.headers.get('X-Usta-Secret') || url.searchParams.get('secret');
   if (!env.USTA_ESLATMA_SECRET || secret !== env.USTA_ESLATMA_SECRET) {
+    await ruxsatRad(env, 'usta-eslatma');
     return json({ ok: false, error: 'unauthorized' }, 401);
   }
   const vaqt = url.searchParams.get('vaqt') || 'ertalab';

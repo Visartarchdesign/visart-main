@@ -1,4 +1,4 @@
-import { xatoYoz, yurakYoz, yurakTekshir } from '../_lib/xato.js';
+import { xatoYoz, yurakYoz, yurakTekshir, ruxsatRad } from '../_lib/xato.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
@@ -259,6 +259,7 @@ async function tozalash(env) {
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
+    await ruxsatRad(env, 'nashr-navbati');
     return json({ error: 'ruxsat yo\'q' }, 403);
   }
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
