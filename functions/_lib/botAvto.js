@@ -26,6 +26,24 @@ async function tg(env, chat_id, text, reply_markup) {
   }).catch(() => {});
 }
 
+async function tgOk(env, chat_id, text) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }), signal: AbortSignal.timeout(10000) });
+    if (r.ok) return null;
+    const d = await r.json().catch(() => null);
+    return `Telegram rad etdi (${r.status}${d && d.description ? ': ' + d.description : ''})`;
+  } catch (e) { return `Telegram'ga ulanib bo'lmadi (${e.message})`; }
+}
+
+// Guruhga xabar yuboradi va natijani menejer/adminga bildiradi (yuborildi / yuborilmadi + sabab).
+async function guruhgaXabarVaHisobot(env, obyektId, nom, matn, tur) {
+  const g = await sb(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(obyektId)}&select=telegram_chat_id`).catch(() => null);
+  let natija;
+  if (!g || !g[0]) natija = "⚠️ yuborilmadi: obyektga mijoz guruhi bog'lanmagan";
+  else { const xato = await tgOk(env, g[0].telegram_chat_id, matn); natija = xato ? `⚠️ yuborilmadi: ${esc(xato)}` : '✅ mijoz guruhiga yuborildi'; }
+  for (const m of menejerIdlari(env)) await tg(env, m, `${tur} xabari — <b>${esc(nom)}</b>: ${natija}`);
+}
+
 // Toshkent vaqti bo'yicha keyingi soat:daqiqa (UTC ISO)
 export function keyingiToshkent(soat, kunQosh = 0) {
   const t = new Date(Date.now() + 5 * 3600 * 1000);
@@ -58,17 +76,13 @@ export async function holatXabar(env, o, id, yangi, prof) {
       }
     }
   }
-  // Muzlatilgan: obyektning mijoz guruhiga to'lov eslatmasi
+  // Muzlatilgan: obyektning mijoz guruhiga to'lov eslatmasi (natija menejerga bildiriladi)
   if (/muzlat|заморож|frozen/i.test(yangi)) {
-    const g = await sb(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(id)}&select=telegram_chat_id`).catch(() => []);
-    if (g && g[0]) {
-      await tg(env, g[0].telegram_chat_id, `⏸ Diqqat: obyektingiz ("${esc(o.nom)}") bo'yicha pul mablag'i tugagani sababli qurilish jarayoni vaqtincha to'xtatildi.\n\nIshni davom ettirish uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, ishlar darhol qayta boshlanadi. Savollar bo'lsa, menejerimiz bilan bog'laning. 🙏`);
-    }
+    await guruhgaXabarVaHisobot(env, id, o.nom, `⏸ Diqqat: obyektingiz ("${esc(o.nom)}") bo'yicha pul mablag'i tugagani sababli qurilish jarayoni vaqtincha to'xtatildi.\n\nIshni davom ettirish uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, ishlar darhol qayta boshlanadi. Savollar bo'lsa, menejerimiz bilan bog'laning. 🙏`, '⏸ Muzlatish');
   }
   // Muzlatishdan chiqdi: mijoz guruhiga ishlar qayta boshlangani haqida xabar
   if (eski.length && /muzlat|заморож|frozen/i.test(eski[0].holat || '') && !/muzlat|заморож|frozen/i.test(yangi)) {
-    const g = await sb(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(id)}&select=telegram_chat_id`).catch(() => []);
-    if (g && g[0]) await tg(env, g[0].telegram_chat_id, `▶️ Xushxabar: obyektingiz ("${esc(o.nom)}") bo'yicha ishlar qayta boshlandi (holat: ${esc(yangi)}). To'lov uchun rahmat! 🙏`);
+    await guruhgaXabarVaHisobot(env, id, o.nom, `▶️ Xushxabar: obyektingiz ("${esc(o.nom)}") bo'yicha ishlar qayta boshlandi (holat: ${esc(yangi)}). To'lov uchun rahmat! 🙏`, '▶️ Qayta boshlash');
   }
   for (const m of menejerIdlari(env)) await tg(env, m, `🏗 Obyekt holati o'zgardi: <b>${esc(o.nom)}</b> → ${esc(yangi)}`);
 }
