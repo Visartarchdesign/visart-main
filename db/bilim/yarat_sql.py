@@ -4,12 +4,15 @@ def q(v):
     if v is None:return 'null'
     if isinstance(v,(int,float)):return str(v)
     return "'"+str(v).replace("'","''")+"'"
-rows=[];manba=set()
+rows=[];manba=set();manba_extra=[]
 for f in sorted(glob.glob(os.path.join(os.path.dirname(__file__),'qoidalar_*.py'))):
     sp=importlib.util.spec_from_file_location('m',f);m=importlib.util.module_from_spec(sp);sp.loader.exec_module(m)
     rows+=m.R
+    manba_extra+=getattr(m,'MANBA',[])
 out=['-- AVTOMATIK: db/bilim/yarat_sql.py. Manba: kitoblar (ma\'ruza/amaliy matnlari). tasdiqlangan=false -> admin tasdiqlamaguncha tekshiruvda ishlatilmaydi.']
 for r in rows:manba.add(r[0])
+for kod,nom,tur,ver,iz in manba_extra:
+    out.append(f"insert into norma_manba(kod,nom,tur,versiya,izoh) values ({q(kod)},{q(nom)},{q(tur)},{q(ver)},{q(iz)}) on conflict (kod,versiya) do nothing;")
 for m in sorted(manba):out.append(f"insert into norma_manba(kod,nom,tur,versiya) values ({q(m)},{q(m)},'ichki','kitoblar') on conflict (kod,versiya) do nothing;")
 for r in rows:
     mn,band,soha,ob,xona,par,op,mi,ma,bi,ji,iz=r
