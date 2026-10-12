@@ -175,9 +175,15 @@ async function handle({ request, env }) {
 
   await yurakYoz(env, 'kunlik');
   await yurakTekshir(env, 'nashr', 1);
+  // Mijoz guruhlariga kunlik hisobot FAQAT 2026-10-13 (Toshkent) dan boshlab; undan oldingi hodisalar yuborilmaydi.
+  const BOSHLANISH = '2026-10-12T19:00:00Z';
+  if (Date.now() < Date.parse(BOSHLANISH)) {
+    await adminXabar(env, `⏸ Kunlik hisobot (${sanaUz()}): 2026-10-13 gacha mijoz guruhlariga yuborilmaydi (yoqilgan sana).`);
+    return json({ ok: true, kutilmoqda: 'boshlanish 2026-10-13' });
+  }
   let rows;
   try {
-    rows = await sbFetch(env, `kunlik_hodisalar?or=(yuborildi.eq.false,yuborilgan_sana.eq.${sanaUz()})&select=*&order=created_at.asc`);
+    rows = await sbFetch(env, `kunlik_hodisalar?created_at=gte.${BOSHLANISH}&or=(yuborildi.eq.false,yuborilgan_sana.eq.${sanaUz()})&select=*&order=created_at.asc`);
   } catch (e) {
     await xatoYoz(env, 'kunlik-xabar:supabase', e);
     return json({ ok: false, error: 'supabase_xato' }, 500);
