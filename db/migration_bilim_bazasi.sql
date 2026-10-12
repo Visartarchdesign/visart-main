@@ -19,7 +19,7 @@ create index if not exists norma_qoidalari_idx on norma_qoidalari(soha, xona_tur
 create table if not exists material_bazasi (        -- 3) O'zbekiston bozoriga moslangan material/jihoz
   id bigserial primary key, toifa text, nom text not null, brend text, ishlab_chiqaruvchi text,
   birlik text, narx_uzs numeric, narx_sanasi date, yetkazuvchi text, mavjud_uzbekistonda boolean default true,
-  oʻlcham text, texnik jadval jsonb, izoh text
+  olcham text, texnik_jadval jsonb, izoh text
 );
 create table if not exists rabochka_talablari (     -- 4) rabochka (ishchi chizma) varaqlari va ularda bo'lishi shart narsalar
   id bigserial primary key, varaq_turi text not null,  -- reja|kesim|devor_yozuvi|pol|shift|elektr|santexnika|detal|spetsifikatsiya
