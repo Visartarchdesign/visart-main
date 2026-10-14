@@ -13,7 +13,7 @@ create table if not exists norma_qoidalari (        -- 2) mashinaviy tekshirilad
   operator text not null check (operator in ('>=','<=','=','between','bor','yoq')),
   qiymat_min numeric, qiymat_max numeric, birlik text,
   jiddiylik text default 'xato' check (jiddiylik in ('xato','ogohlantirish','tavsiya')),
-  izoh text, tasdiqlangan boolean default false, created_at timestamptz default now()
+  izoh text, tasdiqlangan boolean default false, rad_etilgan boolean default false, created_at timestamptz default now()
 );
 create index if not exists norma_qoidalari_idx on norma_qoidalari(soha, xona_turi, parametr);
 create table if not exists material_bazasi (        -- 3) O'zbekiston bozoriga moslangan material/jihoz

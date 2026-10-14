@@ -46,6 +46,7 @@
 // `lidlar` jadvali ishlatiladi (mavjud tizimga tegmaydi) — pastdagi SQL'ni
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
+import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
@@ -1532,6 +1533,7 @@ async function adminPanel(env, chatId) {
     [{ text: '👁 Mijoz ko\'rinishi', callback_data: 'ap:mijoz' }, { text: '🆔 Mening ID', callback_data: 'ap:id' }],
     [{ text: '🌐 Sayt murojaatlari', callback_data: 'ap:sayt' }, { text: '🔗 Mijoz ulanishlari', callback_data: 'ap:ul' }],
     [{ text: '👥 Guruhlar (ulash/o\'zgartirish)', callback_data: 'ap:gr' }],
+    [{ text: '📚 Norma qoidalari (tasdiqlash)', callback_data: 'ap:nq' }],
     [{ text: '💡 Maslahat yaratish (test)', callback_data: 'ap:ms' }],
     [{ text: '➕ Admin qo\'shish', callback_data: 'ap:add' }, { text: '👥 Adminlar', callback_data: 'ap:list' }],
   ] });
@@ -1544,6 +1546,14 @@ async function adminPanelCb(env, cq, data) {
   const send = (x, kb) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, x, kb);
   const amal = data.split(':')[1];
   const q = async (path) => (await sbFetch(env, path).catch(() => null)) || [];
+  if (amal === 'nq' || amal === 'nqa' || amal === 'nqr') {
+    if (amal !== 'nq') {
+      const msg = await normaBelgila(env, data.split(':')[2], amal === 'nqa').catch(() => "⚠️ Saqlab bo'lmadi");
+      await send(msg);
+    }
+    await normaKorsat(env, send);
+    return;
+  }
   if (amal === 'add' || amal === 'list' || amal === 'del') {
     if (!isRoot(env, cq.from.id)) { await send("Admin qo'shish/o'chirish faqat asosiy adminga ruxsat."); return; }
     if (amal === 'add') {

@@ -1,5 +1,7 @@
 import { xatoYoz, yurakYoz, yurakTekshir, ruxsatRad } from '../_lib/xato.js';
 import { navbatniYubor } from '../_lib/outbox.js';
+import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
+import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
@@ -329,6 +331,7 @@ export async function onRequestGet({ request, env }) {
   await tizimNazorati(env);
   const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
   await navbatniYubor(env).catch((e) => xatoYoz(env, 'xabar-navbati', e));
+  await haftalikNormaEslatma(env, menejerIdlari(env)).catch((e) => xatoYoz(env, 'norma-eslatma', e));
   await balansEslatma(env).catch((e) => xatoYoz(env, 'balans-eslatma', e));
   await xulosaNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'xulosa-navbati', e));
   await maslahatNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'maslahat-navbati', e));
