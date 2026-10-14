@@ -1,5 +1,6 @@
 // Bot avtomatikasi (cron /api/nashr-navbati ichidan): obyekt holati o'zgarsa mijozga xabar,
 // topshirilganda baho so'rovi, kunlik xulosa, javobsiz lid eslatmasi.
+import { xabarYubor } from './outbox.js';
 const raqam = (s) => String(s || '').replace(/\D/g, '');
 const esc = (s) => String(s == null ? '' : s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 const BITDI = /tugal|topshir|yakun|bitdi|заверш|сдан|done|complete/i;
@@ -38,11 +39,17 @@ async function tgOk(env, chat_id, text) {
 // Guruhga xabar yuboradi va natijani menejer/adminga bildiradi (yuborildi / yuborilmadi + sabab).
 export const MUZLATISH_MATN = (nom) => `⏸ Diqqat: obyektingiz ("${esc(nom)}") bo'yicha pul mablag'i tugagani sababli qurilish jarayoni vaqtincha to'xtatildi.\n\nIshni davom ettirish uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, ishlar darhol qayta boshlanadi. Savollar bo'lsa, menejerimiz bilan bog'laning. 🙏`;
 
-export async function guruhgaXabarVaHisobot(env, obyektId, nom, matn, tur) {
+export async function guruhgaXabarVaHisobot(env, obyektId, nom, matn, tur, kalit) {
   const g = await sb(env, `visart_loyiha_guruhlar?obyekt_id=eq.${encodeURIComponent(obyektId)}&select=telegram_chat_id`).catch(() => null);
   let natija;
   if (!g || !g[0]) natija = "⚠️ yuborilmadi: obyektga mijoz guruhi bog'lanmagan";
-  else { const xato = await tgOk(env, g[0].telegram_chat_id, matn); natija = xato ? `⚠️ yuborilmadi: ${esc(xato)}` : '✅ mijoz guruhiga yuborildi'; }
+  else {
+    const r = await xabarYubor(env, { chat_id: g[0].telegram_chat_id, matn, tur, obyekt_id: obyektId, kalit });
+    natija = r.holat === 'yuborildi' ? '✅ mijoz guruhiga yuborildi'
+      : r.holat === 'navbatda' ? `⏳ hozir yuborilmadi, avtomatik qayta uriniladi (${esc(r.sabab)})`
+      : r.holat === 'takror' ? 'ℹ️ bu xabar allaqachon yuborilgan, takrorlanmadi'
+      : `⚠️ yuborilmadi: ${esc(r.sabab)}`;
+  }
   for (const m of menejerIdlari(env)) await tg(env, m, `${tur} xabari — <b>${esc(nom)}</b>: ${natija}`);
 }
 
@@ -180,7 +187,7 @@ export async function balansEslatma(env) {
   const nat = { chegara: [], muzlat: [] };
   const yoz = (id, patch) => sb(env, 'balans_eslatma', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: JSON.stringify([{ obyekt_id: id, ...patch, updated_at: new Date().toISOString() }]) }).catch(() => {});
   const yubor = async (id, nom, matn, tur) => {
-    if (jonat) return guruhgaXabarVaHisobot(env, id, nom, matn, tur);
+    if (jonat) return guruhgaXabarVaHisobot(env, id, nom, matn, tur, `bal:${id}:${tur.slice(0, 12)}:${bugun}`);
     for (const m of menejerIdlari(env)) await tg(env, m, `🧪 SINOV (BALANS_ESLATMA=on emas, mijozga yuborilmadi) — ${tur} <b>${esc(nom)}</b>:\n\n${matn}`);
   };
   for (const o of obs || []) {
