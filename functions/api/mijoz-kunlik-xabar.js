@@ -191,20 +191,29 @@ async function handle({ request, env }) {
   }
 
   rows = rows || [];
-  // Ustalarga avans/to'lov: Moliya ilovasi hodisa yubormasa ham hisobotga tushishi uchun jadvaldan to'g'ridan-to'g'ri olinadi.
+  // Pul hodisalari (xarajat, to'lov, ustaga avans) Moliya ilovasi hodisasiga EMAS, jadvallarning o'ziga tayanadi:
+  // hodisa kelmasa ham hisobotga tushadi. Jadval o'qilmasa -- eski hodisalar yo'li ishlayveradi.
   try {
     const bosh = new Date(Date.parse(`${sanaUz()}T00:00:00+05:00`)).toISOString();
-    const ut = await sbFetch(env, `usta_tolovlari?created_at=gte.${bosh}&select=*`);
-    if (!rows.some((r) => /avans|usta/i.test(r.turi || ''))) {
-      for (const u of ut || []) {
+    const MANBALAR = [
+      { jadval: 'xarajatlar', turi: 'xarajat_qoshildi', yorliq: 'Xarajat', eski: /^xarajat/i },
+      { jadval: 'tolovlar', turi: 'tolov_qilindi', yorliq: "To'lov", eski: /^tolov/i },
+      { jadval: 'usta_tolovlari', turi: 'usta_avans', yorliq: "Ustaga avans/to'lov", eski: /avans|usta/i },
+    ];
+    for (const mb of MANBALAR) {
+      let jr;
+      try { jr = await sbFetch(env, `${mb.jadval}?created_at=gte.${bosh}&select=obyekt_id,summa`); }
+      catch (e) { await xatoYoz(env, `kunlik-xabar:${mb.jadval}`, e); continue; } // shu manba uchun eski hodisalar qoladi
+      rows = rows.filter((r) => !mb.eski.test(r.turi || '')); // jadvaldan olinganlar o'rnini bosadi (ikki marta sanalmasin)
+      for (const u of jr || []) {
         const sm = Number(u.summa);
         if (!sm || !u.obyekt_id) continue;
-        const m = `Ustaga avans/to'lov: ${sm.toLocaleString('ru-RU')} so'm`;
-        rows.push({ id: null, yuborildi: true, turi: 'usta_avans', guruh: 'obyekt', obyekt_id: String(u.obyekt_id), matn: m, summa: sm, created_at: u.created_at });
-        rows.push({ id: null, yuborildi: true, turi: 'usta_avans', guruh: 'moliya', obyekt_id: String(u.obyekt_id), matn: m, summa: sm, created_at: u.created_at });
+        const m = `${mb.yorliq}: ${sm.toLocaleString('ru-RU')} so'm`;
+        rows.push({ id: null, yuborildi: true, turi: mb.turi, guruh: 'obyekt', obyekt_id: String(u.obyekt_id), matn: m, summa: sm });
+        rows.push({ id: null, yuborildi: true, turi: mb.turi, guruh: 'moliya', obyekt_id: String(u.obyekt_id), matn: m, summa: sm });
       }
     }
-  } catch (e) { await xatoYoz(env, 'kunlik-xabar:usta_tolovlari', e); }
+  } catch (e) { await xatoYoz(env, 'kunlik-xabar:jadval', e); }
 
   if (rows.length === 0) {
     await adminXabar(env, `ℹ️ Kunlik hisobot (${sanaUz()}): yuboriladigan hodisa yo'q, hech narsa yuborilmadi.`);
