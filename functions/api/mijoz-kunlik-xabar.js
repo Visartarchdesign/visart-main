@@ -82,6 +82,7 @@ function turiNomi(turi) {
   if (!turi) return 'Boshqa';
   if (turi === 'xarajat_qoshildi') return 'Xarajatlar';
   if (turi === 'tolov_qilindi') return "To'lovlar";
+  if (turi === 'usta_avans') return 'Ustalarga avans/to\'lov';
   // "zakaz" so'zi mijozga tushunarliroq "buyurtma" bilan almashtiriladi
   // (Moliya ilovasi `type` qanday nom yuborishidan qat'iy nazar).
   const nomalangan = turi.replace(/zakaz/gi, 'buyurtma');
@@ -189,7 +190,23 @@ async function handle({ request, env }) {
     return json({ ok: false, error: 'supabase_xato' }, 500);
   }
 
-  if (!rows || rows.length === 0) {
+  rows = rows || [];
+  // Ustalarga avans/to'lov: Moliya ilovasi hodisa yubormasa ham hisobotga tushishi uchun jadvaldan to'g'ridan-to'g'ri olinadi.
+  try {
+    const bosh = new Date(Date.parse(`${sanaUz()}T00:00:00+05:00`)).toISOString();
+    const ut = await sbFetch(env, `usta_tolovlari?created_at=gte.${bosh}&select=*`);
+    if (!rows.some((r) => /avans|usta/i.test(r.turi || ''))) {
+      for (const u of ut || []) {
+        const sm = Number(u.summa);
+        if (!sm || !u.obyekt_id) continue;
+        const m = `Ustaga avans/to'lov: ${sm.toLocaleString('ru-RU')} so'm`;
+        rows.push({ id: null, yuborildi: true, turi: 'usta_avans', guruh: 'obyekt', obyekt_id: String(u.obyekt_id), matn: m, summa: sm, created_at: u.created_at });
+        rows.push({ id: null, yuborildi: true, turi: 'usta_avans', guruh: 'moliya', obyekt_id: String(u.obyekt_id), matn: m, summa: sm, created_at: u.created_at });
+      }
+    }
+  } catch (e) { await xatoYoz(env, 'kunlik-xabar:usta_tolovlari', e); }
+
+  if (rows.length === 0) {
     await adminXabar(env, `ℹ️ Kunlik hisobot (${sanaUz()}): yuboriladigan hodisa yo'q, hech narsa yuborilmadi.`);
     return json({ ok: true, yuborilgan_guruhlar: 0, yuborilgan_hodisalar: 0 });
   }
