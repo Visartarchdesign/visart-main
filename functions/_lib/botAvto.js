@@ -144,3 +144,67 @@ export async function xulosaNavbatiniTekshir(env) {
   if (bor === null || bor.length) return;
   await sb(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ turi: 'kunlik_xulosa', payload: {}, nashr_vaqti: keyingiToshkent(9), holat: 'kutilmoqda' }]) }).catch(() => {});
 }
+
+// ── Balans eslatmalari ──────────────────────────────────────────────
+// Balans = to'lovlar - xarajatlar (obyekt bo'yicha). BALANS_ESLATMA=on bo'lmasa mijozga YUBORILMAYDI, faqat menejerga "sinov" hisoboti boradi.
+const BALANS_CHEGARALAR = [3, 2, 1]; // mln so'm
+const MUZ_RE = /muzlat|заморож|frozen/i;
+const sumFmt = (n) => Math.round(n).toLocaleString('ru-RU');
+export const MUZLATGAN_ESLATMA = (nom) => `⏸ Hurmatli mijoz, obyektingiz ("${esc(nom)}") hozirgi kunda ham muzlatilgan holatda — mablag' yetarli emasligi sababli qurilish ishlari to'xtab turibdi.\n\nIshlarni tezroq qayta boshlash va muddatlarni surib yubormaslik uchun, iltimos, navbatdagi to'lovni amalga oshiring. To'lov qabul qilingach, jamoamiz ishni darhol davom ettiradi. Savollaringiz bo'lsa, menejerimiz doimo aloqada. 🙏`;
+export const CHEGARA_ESLATMA = (nom, mln) => `💡 Hurmatli mijoz, obyektingiz ("${esc(nom)}") bo'yicha mablag' qoldig'i taxminan ${mln} million so'mgacha kamaydi.\n\nIshlar uzluksiz davom etishi va to'xtab qolmasligi uchun, iltimos, keyingi to'lovni oldindan rejalashtirib qo'ying. Rahmat! 🙏`;
+
+async function balanslar(env) {
+  const [tol, xar] = await Promise.all([
+    sb(env, 'tolovlar?select=obyekt_id,summa&limit=50000'),
+    sb(env, 'xarajatlar?select=obyekt_id,summa&limit=50000'),
+  ]);
+  const m = new Map();
+  for (const x of tol || []) m.set(String(x.obyekt_id), (m.get(String(x.obyekt_id)) || 0) + (Number(x.summa) || 0));
+  for (const x of xar || []) m.set(String(x.obyekt_id), (m.get(String(x.obyekt_id)) || 0) - (Number(x.summa) || 0));
+  return m;
+}
+
+export async function balansEslatma(env) {
+  if (!env.MIJOZ_BOT_TOKEN) return { xato: 'MIJOZ_BOT_TOKEN yoq' };
+  const jonat = env.BALANS_ESLATMA === 'on';
+  const tosh = new Date(Date.now() + 5 * 3600 * 1000);
+  const bugun = tosh.toISOString().slice(0, 10);
+  const soat = tosh.getUTCHours();
+  const [obs, holatlar, bal] = await Promise.all([
+    sb(env, 'obyektlar?select=id,nom,holat&limit=1000'),
+    sb(env, 'balans_eslatma?select=*&limit=2000').catch(() => null),
+    balanslar(env),
+  ]);
+  if (!holatlar) return { xato: 'balans_eslatma jadvali yoq (db/migration_balans_eslatma.sql)' };
+  const h = new Map(holatlar.map((x) => [String(x.obyekt_id), x]));
+  const nat = { chegara: [], muzlat: [] };
+  const yoz = (id, patch) => sb(env, 'balans_eslatma', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: JSON.stringify([{ obyekt_id: id, ...patch, updated_at: new Date().toISOString() }]) }).catch(() => {});
+  const yubor = async (id, nom, matn, tur) => {
+    if (jonat) return guruhgaXabarVaHisobot(env, id, nom, matn, tur);
+    for (const m of menejerIdlari(env)) await tg(env, m, `🧪 SINOV (BALANS_ESLATMA=on emas, mijozga yuborilmadi) — ${tur} <b>${esc(nom)}</b>:\n\n${matn}`);
+  };
+  for (const o of obs || []) {
+    const id = String(o.id), holat = o.holat || '', st = h.get(id) || {};
+    if (BITDI.test(holat)) continue;
+    const b = bal.get(id) || 0;
+    if (MUZ_RE.test(holat)) {
+      // kuniga 1 marta, 10:00 dan keyin; muzlatilgan kuni (birinchi ko'rilganda) o'tkazib yuboriladi
+      if (!st.muzlat_sana) { await yoz(id, { muzlat_sana: bugun }); continue; }
+      if (soat >= 10 && st.muzlat_sana !== bugun) {
+        await yubor(id, o.nom, MUZLATGAN_ESLATMA(o.nom), '⏸ Kunlik muzlatish eslatmasi');
+        await yoz(id, { muzlat_sana: bugun, chegara: null });
+        nat.muzlat.push(o.nom);
+      }
+      continue;
+    }
+    // faol obyekt: chegaradan pastga tushganda (3 -> 2 -> 1 mln)
+    const joriy = BALANS_CHEGARALAR.filter((c) => b <= c * 1e6 && b > 0).pop(); // eng past kesilgan chegara
+    if (b > BALANS_CHEGARALAR[0] * 1e6) { if (st.chegara != null || st.muzlat_sana) await yoz(id, { chegara: null, muzlat_sana: null }); continue; }
+    if (joriy && (st.chegara == null || joriy < st.chegara)) {
+      await yubor(id, o.nom, CHEGARA_ESLATMA(o.nom, joriy), `💡 ${joriy} mln chegara (balans ${sumFmt(b)})`);
+      await yoz(id, { chegara: joriy, muzlat_sana: null });
+      nat.chegara.push(`${o.nom}: ${joriy} mln`);
+    } else if (st.muzlat_sana) await yoz(id, { muzlat_sana: null });
+  }
+  return nat;
+}

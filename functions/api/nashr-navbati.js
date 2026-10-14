@@ -1,7 +1,7 @@
 import { xatoYoz, yurakYoz, yurakTekshir, ruxsatRad } from '../_lib/xato.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
-import { obyektKuzatuv, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
+import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
 // Kechiktirilgan-nashr navbatini (`nashr_navbati` jadvali) ishga tushiruvchi
 // worker. mijoz-bot.js (Facebook post'ini ertalabki oynaga kechiktiradi) va
@@ -327,6 +327,7 @@ export async function onRequestGet({ request, env }) {
 
   await tizimNazorati(env);
   const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
+  await balansEslatma(env).catch((e) => xatoYoz(env, 'balans-eslatma', e));
   await xulosaNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'xulosa-navbati', e));
   await maslahatNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'maslahat-navbati', e));
 
