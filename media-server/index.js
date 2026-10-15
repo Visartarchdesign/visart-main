@@ -14,6 +14,15 @@ import { bajarMontaj, bajarNashr, bajarStoryVariant, bajarAnimatsion, bajarYuzSt
 const app = express();
 app.use(express.json({ limit: '20mb' }));
 
+// Render'da SUPABASE_*/MIJOZ_BOT_TOKEN/GEMINI_API_KEY sozlanmagan bo'lsa ham ishlashi uchun, Cloudflare bot
+// ularni (MEDIA_SECRET bilan himoyalangan HTTPS so'rovda) uzatadi. Render'ning o'z qiymatlari ustun turadi.
+function mergeEnv(req) {
+  const x = (req.body && req.body._env) || {};
+  const out = { ...process.env };
+  for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY']) if (!out[k] && x[k]) out[k] = x[k];
+  return out;
+}
+
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 function tekshirSecret(req, res) {
@@ -54,11 +63,11 @@ app.post('/montaj', (req, res) => {
   if (!aslFileId || !adminChatId) {
     return res.status(400).json({ ok: false, error: 'aslFileId va adminChatId kerak' });
   }
-  if (!process.env.MIJOZ_BOT_TOKEN || !process.env.GEMINI_API_KEY) {
+  if (!mergeEnv(req).MIJOZ_BOT_TOKEN || !mergeEnv(req).GEMINI_API_KEY) {
     return res.status(500).json({ ok: false, error: 'MIJOZ_BOT_TOKEN yoki GEMINI_API_KEY sozlanmagan' });
   }
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarMontaj({ env: process.env, aslFileId, adminChatId, title, taklifId, korsatma }).catch(() => {});
+  bajarMontaj({ env: mergeEnv(req), aslFileId, adminChatId, title, taklifId, korsatma }).catch(() => {});
 });
 
 // POST /nashr -- admin "✅ Joylash" bosganda (Cloudflare bot chaqiradi)
@@ -67,7 +76,7 @@ app.post('/nashr', (req, res) => {
   const { id, adminChatId } = req.body || {};
   if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarNashr({ env: process.env, id, adminChatId }).catch(() => {});
+  bajarNashr({ env: mergeEnv(req), id, adminChatId }).catch(() => {});
 });
 
 // POST /story-variant -- admin Story kartasini ❌ qilganda yangi variant
@@ -76,7 +85,7 @@ app.post('/story-variant', (req, res) => {
   const { id, adminChatId } = req.body || {};
   if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarStoryVariant({ env: process.env, id, adminChatId }).catch(() => {});
+  bajarStoryVariant({ env: mergeEnv(req), id, adminChatId }).catch(() => {});
 });
 
 // POST /animatsion -- material yo'q kuni AI mavzu + ovoz + animatsion video (admin tasdig'iga)
@@ -85,7 +94,7 @@ app.post('/animatsion', (req, res) => {
   const { adminChatId, mavzu, korsatma } = req.body || {};
   if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarAnimatsion({ env: process.env, adminChatId, mavzu, korsatma }).catch(() => {});
+  bajarAnimatsion({ env: mergeEnv(req), adminChatId, mavzu, korsatma }).catch(() => {});
 });
 
 app.post('/yuz-studio', (req, res) => {
@@ -93,7 +102,7 @@ app.post('/yuz-studio', (req, res) => {
   const { adminChatId } = req.body || {};
   if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarYuzStudio({ env: process.env, adminChatId }).catch(() => {});
+  bajarYuzStudio({ env: mergeEnv(req), adminChatId }).catch(() => {});
 });
 
 // VAQTINCHALIK: brauzerdan to'g'ridan-to'g'ri sinash uchun (qo'lda test).
@@ -107,7 +116,7 @@ app.get('/montaj-test', (req, res) => {
     return res.status(400).json({ ok: false, error: 'fileId va chatId kerak' });
   }
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarMontaj({ env: process.env, aslFileId: fileId, adminChatId: chatId, title: title || null }).catch(() => {});
+  bajarMontaj({ env: mergeEnv(req), aslFileId: fileId, adminChatId: chatId, title: title || null }).catch(() => {});
 });
 
 const port = process.env.PORT || 10000;

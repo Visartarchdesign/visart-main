@@ -75,7 +75,7 @@ async function tgSendMessage(token, chatId, text, replyMarkup) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text, ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
-  }).catch(() => {});
+  }).then(async (r) => { if (!r.ok) console.error('tgSendMessage', r.status, (await r.text()).slice(0, 200)); }).catch((e) => console.error('tgSendMessage', e && e.message));
 }
 
 async function geminiFileUpload(apiKey, filePath, mimeType) {

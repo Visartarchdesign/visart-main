@@ -25,10 +25,10 @@ export async function mediaChaqir(env, yol, body, adminChatId) {
     try {
       const r = await fetch(`${env.MEDIA_SERVER_URL}${yol}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
-        body: JSON.stringify(body), signal: AbortSignal.timeout(urinish ? 40000 : 15000),
+        body: JSON.stringify({ ...body, _env: { SUPABASE_URL: env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY, MIJOZ_BOT_TOKEN: env.MIJOZ_BOT_TOKEN, GEMINI_API_KEY: env.GEMINI_API_KEY } }), signal: AbortSignal.timeout(urinish ? 40000 : 15000),
       });
       if (r.ok) return { ok: true };
-      sabab = `HTTP ${r.status}`;
+      sabab = `HTTP ${r.status} ${(await r.text().catch(() => '')).slice(0, 160)}`;
       if (r.status === 401 || r.status === 400) break;
     } catch (e) { sabab = String((e && e.message) || e); }
     if (urinish === 0) await mediaUygot(env, 30000);
