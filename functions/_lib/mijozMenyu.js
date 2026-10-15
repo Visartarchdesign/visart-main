@@ -11,7 +11,7 @@ export const menejerlar = (env) => env.MANAGER_CHAT_ID ? [env.MANAGER_CHAT_ID]
 
 const T = {
   uz: {
-    salom: "Assalomu alaykum! <b>Visart Design</b>ga xush kelibsiz. 👋\nArxitektura, interyer dizayn va remont (pod klyuch) — Toshkent.\n\n📷 Yoqqan interyer rasmini yuboring — uslubini aniqlab, shunga mos loyihalarimizni ko'rsataman.",
+    salom: "Assalomu alaykum! <b>Visart Design</b>ga xush kelibsiz. 👋\nArxitektura, interyer va remont — Toshkent.\n\n📷 Yoqqan interyer rasmini yuboring — uslubini aniqlab, mos loyihalarimizni ko'rsataman.",
     nima: 'Nima qiziqtiradi?',
     b_narx: '💰 Taxminiy narx', b_xiz: '🛠 Xizmatlar', b_port: '🖼 Loyihalarimiz', b_soc: '🌐 Ijtimoiy tarmoqlar',
     b_aloqa: '📞 Bog\'lanish', b_ariza: '📝 Ariza qoldirish', b_obyekt: '📊 Mening obyektim', b_til: '🇷🇺 Русский',
@@ -30,7 +30,7 @@ const T = {
     soc: "Bizni kuzatib boring — yangi loyihalar va jarayonlar shu yerda 👇",
     kanal: 'Telegram kanal', sayt: 'Sayt', menejer: '💬 Menejerga yozish', aloqa: "Bog'lanish", aloqa_yoq: "Aloqa ma'lumoti hozir mavjud emas.",
     ariza_bosh: 'Ariza uchun bir necha savol beraman.\n\nIsmingiz nima?',
-    ism_q: "Iltimos, to'liq ismingizni yozing.", tel_q: 'Rahmat! Endi telefon raqamingizni yuboring (masalan, +998901234567).',
+    ism_q: "Iltimos, to'liq ismingizni yozing.", tel_q: 'Rahmat! Telefon raqamingizni pastdagi tugma bilan yuboring yoki yozing (masalan, +998901234567).',
     tel_xato: "Telefon raqami to'g'ri formatda emas. Masalan: +998901234567", xizmat_q: 'Qaysi xizmat kerak?',
     xizmat_tugma: 'Iltimos, yuqoridagi tugmalardan birini tanlang.', maydon_q: 'Obyekt maydoni necha m²?', tanlandi: 'Tanlandi',
     maydon_xato: 'Iltimos, maydonni raqamda yuboring (m², masalan: 85).',
@@ -75,7 +75,7 @@ const T = {
     soc: 'Следите за нами — новые проекты и процесс работы здесь 👇',
     kanal: 'Telegram-канал', sayt: 'Сайт', menejer: '💬 Написать менеджеру', aloqa: 'Контакты', aloqa_yoq: 'Контакты сейчас недоступны.',
     ariza_bosh: 'Задам несколько вопросов для заявки.\n\nКак вас зовут?',
-    ism_q: 'Пожалуйста, напишите полное имя.', tel_q: 'Спасибо! Теперь отправьте номер телефона (например, +998901234567).',
+    ism_q: 'Пожалуйста, напишите полное имя.', tel_q: 'Спасибо! Отправьте номер кнопкой ниже или напишите (например, +998901234567).',
     tel_xato: 'Неверный формат номера. Пример: +998901234567', xizmat_q: 'Какая услуга нужна?',
     xizmat_tugma: 'Пожалуйста, выберите одну из кнопок выше.', maydon_q: 'Площадь объекта в м²?', tanlandi: 'Выбрано',
     maydon_xato: 'Пожалуйста, укажите площадь числом (м², например: 85).',
@@ -200,7 +200,7 @@ export async function handleMenu(env, h, cq, data) {
       await send(t(til, 'soc'), { inline_keyboard: rows.map((b) => [b]) });
     } else {
       const adr = st.address && (st.address[til] || st.address.uz);
-      const matn = [`<b>${t(til, 'aloqa')}</b>`, st.phone ? `📞 ${esc(st.phone)}` : '', st.email ? `✉️ ${esc(st.email)}` : '', adr ? `📍 ${esc(adr)}` : ''].filter(Boolean).join('\n');
+      const matn = [`<b>${t(til, 'aloqa')}</b>`, st.phone ? `📞 ${esc(st.phone)}` : '', st.email ? `✉️ ${esc(st.email)}` : '', adr ? `📍 ${esc(adr)}` : '', til === 'ru' ? '🕘 Работаем 09:00–21:00 (Ташкент)' : '🕘 Ish vaqti: 09:00–21:00 (Toshkent)'].filter(Boolean).join('\n');
       const kb = [[{ text: t(til, 'b_ariza'), callback_data: 'menu:ariza' }]];
       if (tgp) kb.push([{ text: t(til, 'menejer'), url: tgp }]);
       const soc = [];

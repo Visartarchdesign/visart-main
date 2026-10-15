@@ -1459,7 +1459,7 @@ async function handleText(env, chatId, dialog, text) {
       return;
     }
     await upsertDialog(env, chatId, { step: 'telefon', ism });
-    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'tel_q'));
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'tel_q'), { keyboard: [[{ text: t(til, 'ob_tugma'), request_contact: true }]], resize_keyboard: true, one_time_keyboard: true });
     return;
   }
 
@@ -1470,6 +1470,7 @@ async function handleText(env, chatId, dialog, text) {
       return;
     }
     await upsertDialog(env, chatId, { step: 'xizmat', telefon: tel });
+    await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '✅', { remove_keyboard: true });
     await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(til, 'xizmat_q'), xizmatKeyboard(til));
     return;
   }
@@ -1675,10 +1676,9 @@ async function adminPanelCb(env, cq, data) {
 
 async function handleXizmatTanlandi(env, chatId, dialog, xizmatCode) {
   const label = (XIZMAT_VARIANTLARI.find((x) => x[0] === xizmatCode) || [, xizmatCode])[1];
-  await upsertDialog(env, chatId, { step: 'maydon', xizmat_turi: xizmatCode, xizmat_label: label });
-  const til = (await getProfil(env, H, chatId)).til;
-  const savol = xizmatCode === 'arch' ? (til === 'ru' ? 'Сколько соток участок?' : "Yer maydoni necha sotix?") : t(til, 'maydon_q');
-  await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `${t(til, 'tanlandi')}: ${til === 'ru' ? XIZMAT_RU[xizmatCode] || label : label}.\n\n${savol}`);
+  await upsertDialog(env, chatId, { step: 'tugallandi', xizmat_turi: xizmatCode, xizmat_label: label });
+  // Ariza 3 savolda tugaydi (ism, telefon, xizmat). Maydon/byudjetni menejer qo'ng'iroqda so'raydi.
+  await finishDialog(env, chatId, { ...dialog, xizmat_turi: xizmatCode, xizmat_label: label }, null, false);
 }
 
 async function finishDialog(env, chatId, dialog, maydon, hujjat) {
@@ -1705,19 +1705,18 @@ async function finishDialog(env, chatId, dialog, maydon, hujjat) {
   }
 
   // 2) Narx taxmini (saytning jonli /api/content dan)
-  const pricing = await fetchLivePricing();
-  const narxMatni = estimateText(pricing, dialog.xizmat_turi, maydon, hujjat);
+  const narxMatni = maydon ? estimateText(await fetchLivePricing(), dialog.xizmat_turi, maydon, hujjat) : '';
 
   const til = (await getProfil(env, H, chatId)).til;
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-    `${t(til, 'qabul')(escH(dialog.ism))}\n\n${narxMatni}\n\n${t(til, 'tez')}`);
+    `${t(til, 'qabul')(escH(dialog.ism))}\n\n${narxMatni ? narxMatni + '\n\n' : ''}${t(til, 'tez')}`);
   await followUpQoy(env, H, chatId, dialog.ism, til);
 
   // 3) Menejerga xabar (MANAGER_CHAT_ID yoki adminlar)
   const birlik = dialog.xizmat_turi === 'arch' ? 'sotix' : 'm²';
   for (const mid of menejerlar(env)) {
     await tgSend(env.MIJOZ_BOT_TOKEN, mid,
-      `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}\n📐 ${maydon} ${birlik}${dialog.xizmat_turi === 'arch' ? `\n📄 Hujjatlashtirish: ${hujjat ? 'ha' : "yo'q"}` : ''}\n💬 <a href="tg://user?id=${chatId}">Mijozga Telegramda yozish</a>` +
+      `🆕 Yangi lid (Telegram bot)\n\n👤 ${escH(dialog.ism)}\n📞 ${escH(dialog.telefon)}\n🛠 ${escH(dialog.xizmat_label || dialog.xizmat_turi)}${maydon ? `\n📐 ${maydon} ${birlik}` : ''}${dialog.xizmat_turi === 'arch' && maydon ? `\n📄 Hujjatlashtirish: ${hujjat ? 'ha' : "yo'q"}` : ''}\n💬 <a href="tg://user?id=${chatId}">Mijozga Telegramda yozish</a>` +
       (lidYozildi ? '' : '\n\n⚠️ Supabase lidlar jadvaliga yozishda xato — qo\'lda kiriting!'),
       { inline_keyboard: [[{ text: "✅ Bog'landim", callback_data: `ld:ok:${dialog.telefon}`.slice(0, 64) }, { text: '❌ Qiziqmaydi', callback_data: `ld:no:${dialog.telefon}`.slice(0, 64) }]] }).catch(() => {});
   }
@@ -2124,7 +2123,17 @@ export async function onRequestPost({ request, env }) {
 
     // Oddiy mijoz shaxsiy chatda: kontakt (obyekt holati) yoki rasm-reference.
     if (msg.chat.type === 'private' && !isAdmin(env, msg.from && msg.from.id)) {
-      if (msg.contact) { await handleKontakt(env, H, msg); return json({ ok: true }); }
+      if (msg.contact) {
+        const dlg = await getDialog(env, chatId);
+        if (dlg && dlg.step === 'telefon' && msg.contact.user_id === (msg.from && msg.from.id)) {   // ariza: raqam tugma orqali
+          const tl = (await getProfil(env, H, chatId)).til;
+          await upsertDialog(env, chatId, { step: 'xizmat', telefon: '+' + String(msg.contact.phone_number || '').replace(/\D/g, '') });
+          await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '✅', { remove_keyboard: true });
+          await tgSend(env.MIJOZ_BOT_TOKEN, chatId, t(tl, 'xizmat_q'), xizmatKeyboard(tl));
+          return json({ ok: true });
+        }
+        await handleKontakt(env, H, msg); return json({ ok: true });
+      }
       if (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) {
         await handleMijozFoto(env, H, msg);
         return json({ ok: true });
