@@ -520,8 +520,8 @@ async function ffmpegMuzikaQosh(videoPath, musicPath, outPath) {
     // [0:a] -- video asl ovozi 22% darajada (butunlay o'chirilmaydi -- ambient
     // xona tovushi tabiiyroq eshitiladi); [1:a] -- muzika 55% darajada, 1.5s
     // fade-in bilan boshlanadi (keskin kirmasligi uchun).
-    ? '[0:a]volume=0.22[a0];[1:a]volume=0.55,afade=t=in:st=0:d=1.5[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=2[aout]'
-    : '[1:a]volume=0.55,afade=t=in:st=0:d=1.5[aout]';
+    ? '[0:a]volume=0.22[a0];[1:a]volume=0.55,afade=t=in:st=0:d=1.5[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=2,loudnorm=I=-16:TP=-1.5:LRA=11[aout]'
+    : '[1:a]volume=0.55,afade=t=in:st=0:d=1.5,loudnorm=I=-16:TP=-1.5:LRA=11[aout]';
   await execFileAsync('ffmpeg', [
     '-y', '-i', videoPath, '-stream_loop', '-1', '-i', musicPath,
     '-filter_complex', filterComplex,
@@ -570,6 +570,87 @@ function assEscape(s) {
   return String(s || '').replace(/\\/g, '\\\\').replace(/\{/g, '\\{').replace(/\}/g, '\\}').replace(/\r?\n/g, '\\N');
 }
 
+// Gemini orqali sof o'zbek (lotin) subtitr: audio ajratiladi, nutq so'zma-so'z
+// yoziladi, ikkinchi o'tishda imlo/tinish belgilari tekshiriladi. Vaqtlar
+// "MM:SS.s" yoki soniya sifatida qabul qilinadi.
+function vaqtParse(v) {
+  if (typeof v === 'number') return v;
+  const m = String(v).trim().match(/^(?:(\d+):)?(\d+):(\d+(?:[.,]\d+)?)$|^(\d+(?:[.,]\d+)?)$/);
+  if (!m) return NaN;
+  if (m[4]) return parseFloat(m[4].replace(',', '.'));
+  return (m[1] ? +m[1] * 3600 : 0) + (+m[2]) * 60 + parseFloat(m[3].replace(',', '.'));
+}
+
+async function geminiJsonSora(apiKey, parts) {
+  let xato;
+  for (const model of GEMINI_MODELLAR) {
+    for (let u = 1; u <= 3; u++) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.1 } }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const t = (((d.candidates || [])[0] || {}).content || {}).parts;
+        const text = (t && t[0] && t[0].text) || '';
+        const m = text.match(/\[[\s\S]*\]/);
+        if (!m) throw new Error('Gemini javobi massiv emas: ' + text.slice(0, 150));
+        return JSON.parse(m[0]);
+      }
+      xato = new Error(`Gemini (${model}) ${res.status}`);
+      if (res.status === 429) break;
+      if (res.status === 503 && u < 3) { await new Promise((r) => setTimeout(r, u * 5000)); continue; }
+      throw xato;
+    }
+  }
+  throw xato;
+}
+
+async function geminiSubtitrYarat(env, videoPath, tmpDir) {
+  const audioPath = path.join(tmpDir, 'nutq.mp3');
+  await execFileAsync('ffmpeg', ['-y', '-i', videoPath, '-vn', '-ac', '1', '-ar', '16000', '-b:a', '48k', audioPath]);
+  const up = await geminiFileUpload(env.GEMINI_API_KEY, audioPath, 'audio/mpeg');
+  const act = await geminiFileWaitActive(env.GEMINI_API_KEY, up.name);
+  const raw = await geminiJsonSora(env.GEMINI_API_KEY, [
+    { file_data: { mime_type: 'audio/mpeg', file_uri: act.uri } },
+    { text:
+      "Bu audioda o'zbek tilida (ba'zan rus so'zlari bilan) arxitektura/interyer/qurilish haqida gapirilmoqda. " +
+      "Nutqni so'zma-so'z, ANIQ transkripsiya qiling -- SOF O'ZBEK LOTIN yozuvida (o', g', sh, ch, ng; apostrof sifatida faqat ' belgisi), adabiy imlo bilan, tinish belgilari to'g'ri. " +
+      "Eshitilmagan/noaniq so'zni o'ylab topmang va qo'shmang; musiqa yoki shovqin uchun matn yozmang. Brend nomi: Visart Design. " +
+      "Har bir bo'lak 1-7 so'z (maks. ~42 belgi), gap ma'nosi bo'yicha bo'lingan, vaqtlar nutqqa ANIQ mos. " +
+      'FAQAT JSON massiv: [{"start":"00:01.2","end":"00:03.4","text":"..."}]. Nutq bo\'lmasa: []' },
+  ]);
+  let seg = raw.map((x) => ({ bosh: vaqtParse(x.start), tugash: vaqtParse(x.end), matn: String(x.text || '').trim() }))
+    .filter((x) => x.matn && isFinite(x.bosh) && isFinite(x.tugash) && x.tugash > x.bosh);
+  if (!seg.length) throw new Error("nutq aniqlanmadi");
+  // Imlo tekshiruvi (matn bo'yicha, vaqtlarga tegmaydi)
+  try {
+    const tuz = await geminiJsonSora(env.GEMINI_API_KEY, [{ text:
+      "Quyidagi o'zbek (lotin) subtitr qatorlarini imlo, apostrof (o', g'), tinish belgilari va katta-kichik harf jihatidan TUZATING. " +
+      "Ma'noni o'zgartirmang, so'z qo'shmang/olib tashlamang, tartib va soni (aynan " + seg.length + " ta) saqlansin. " +
+      "FAQAT JSON massiv (satrlar): " + JSON.stringify(seg.map((x) => x.matn)) }]);
+    if (Array.isArray(tuz) && tuz.length === seg.length) seg = seg.map((x, i) => ({ ...x, matn: String(tuz[i] || x.matn).trim() }));
+  } catch (e) { /* tuzatish ixtiyoriy */ }
+  // Ustma-ust tushmasin
+  for (let i = 0; i < seg.length - 1; i++) if (seg[i].tugash > seg[i + 1].bosh) seg[i].tugash = Math.max(seg[i].bosh + 0.3, seg[i + 1].bosh - 0.02);
+  return seg;
+}
+
+// Sof ambient fon muzika (ffmpeg sintez) -- music/ papkasi bo'sh bo'lganda.
+async function muzikaSintez(kayfiyat, soniya, outPath) {
+  const akkord = {
+    sokin: [261.63, 329.63, 392.0, 493.88],            // Cmaj7
+    hashamatli: [293.66, 349.23, 440.0, 523.25, 659.25], // Dm9
+    ilhomlantiruvchi: [196.0, 246.94, 293.66, 392.0, 587.33], // G
+    energetik: [220.0, 261.63, 329.63, 440.0],         // Am
+  }[kayfiyat] || [261.63, 329.63, 392.0, 493.88];
+  const tr = kayfiyat === 'energetik' ? 2.0 : 0.15;
+  const inputs = akkord.flatMap((f) => ['-f', 'lavfi', '-i', `sine=frequency=${f}:duration=${soniya + 3}`]);
+  const mix = akkord.map((_, i) => `[${i}:a]`).join('') + `amix=inputs=${akkord.length}:normalize=1,tremolo=f=${tr}:d=0.35,aecho=0.8:0.7:70|140:0.35|0.2,lowpass=f=1800,volume=2.2,afade=t=in:d=2,afade=t=out:st=${Math.max(0, soniya - 2.5)}:d=2.5[m]`;
+  await execFileAsync('ffmpeg', ['-y', ...inputs, '-filter_complex', mix, '-map', '[m]', '-t', String(soniya), '-c:a', 'libmp3lame', '-b:a', '128k', outPath]);
+  return outPath;
+}
+
 // Whisper.cpp (nodejs-whisper, "tiny" ko'p-tilli model -- Render bepul 512MB
 // RAM cheklovi sabab) orqali videoning o'zbekcha nutqini SRT'ga transkripsiya
 // qiladi. Faqat gapirib ma'lumot berilayotgan (muzika kerak emas deb
@@ -610,6 +691,13 @@ async function whisperSubtitrYarat(videoPath, tmpDir) {
 // o'lcham nomuvofiqligi tufayli matnni noto'g'ri joy/o'lchamda chiqarishi
 // aniqlangani uchun (sinovda tasdiqlangan), shu usul o'rniga PlayRes'ni
 // video o'lchamiga ANIQ moslab, stilni ASS fayl ichida beramiz.
+function qatorBol(m, maks = 26) {
+  const so = m.split(/\s+/); const q = []; let c = '';
+  for (const w of so) { if ((c + ' ' + w).trim().length > maks && c) { q.push(c); c = w; } else c = (c + ' ' + w).trim(); }
+  if (c) q.push(c);
+  return q.join('\n');
+}
+
 async function srtVideogaKuydir(videoPath, segmentlar, outPath) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
@@ -617,12 +705,12 @@ async function srtVideogaKuydir(videoPath, segmentlar, outPath) {
   const marginV = Math.round(height * 0.11);
   const marginLR = Math.round(width * 0.055);
   const assQatorlar = segmentlar.map((s) =>
-    `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(s.matn)}`
+    `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(qatorBol(s.matn))}`
   ).join('\n');
   const assMatn =
     `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nScaledBorderAndShadow: yes\n\n` +
     `[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n` +
-    `Style: Default,Arial,${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,4,2,2,${marginLR},${marginLR},${marginV},1\n\n` +
+    `Style: Default,Liberation Sans,${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H78000000,1,0,0,0,100,100,0,0,1,5,2,2,${marginLR},${marginLR},${marginV},1\n\n` +
     `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${assQatorlar}\n`;
   const assPath = outPath.replace(/\.mp4$/, '.ass');
   fs.writeFileSync(assPath, assMatn, 'utf8');
@@ -878,7 +966,11 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     if (qaror.muzika_kerak) {
       try {
         await bosqich("Fon muzika qo'shilmoqda...");
-        const musicPath = muzikaTanla(qaror.muzika_kayfiyat);
+        let musicPath = muzikaTanla(qaror.muzika_kayfiyat);
+        if (!musicPath) {
+          const { stdout: dur } = await execFileAsync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', outputPath]);
+          musicPath = await muzikaSintez(qaror.muzika_kayfiyat, Math.ceil(parseFloat(dur) || 20), path.join(tmpDir, 'sintez.mp3'));
+        }
         if (musicPath) {
           const bilanMuzikaPath = path.join(tmpDir, 'output-music.mp4');
           await ffmpegMuzikaQosh(outputPath, musicPath, bilanMuzikaPath);
@@ -902,7 +994,9 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
         if (!audioBor) await bosqich("ℹ️ Videoda ovoz yo'q -- subtitr o'tkazib yuborildi").catch(() => {});
         if (audioBor) {
           await bosqich('Subtitr (nutq) aniqlanmoqda...');
-          const segmentlar = await whisperSubtitrYarat(outputPath, tmpDir);
+          let segmentlar;
+          try { segmentlar = await geminiSubtitrYarat(env, outputPath, tmpDir); }
+          catch (ge) { segmentlar = await whisperSubtitrYarat(outputPath, tmpDir); }
           if (segmentlar) {
             await bosqich('Subtitr videoga kuydirilmoqda...');
             const bilanSubtitrPath = path.join(tmpDir, 'output-subtitr.mp4');

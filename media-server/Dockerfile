@@ -4,7 +4,7 @@ FROM node:20-slim
 # (nodejs-whisper paketi orqali, manbadan) qurish uchun kerak -- subtitr
 # generatsiyasi shunga tayanadi.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg cmake g++ git python3 make curl ca-certificates \
+  && apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-liberation fonts-dejavu-core cmake g++ git python3 make curl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
