@@ -2101,6 +2101,23 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
+    // Admin shaxsiy chatda rasm + izoh "yuz" yuborsa -- muallif yuzi kutubxonasiga saqlanadi
+    // (AI oblojka va animatsion videolarda ishlatiladi).
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?yuz\b/i.test(msg.caption || '') &&
+        (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || '')))) {
+      try {
+        const fid = msg.photo ? msg.photo[msg.photo.length - 1].file_id : msg.document.file_id;
+        const gf = await (await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getFile?file_id=${fid}`)).json();
+        const buf = await (await fetch(`https://api.telegram.org/file/bot${env.MIJOZ_BOT_TOKEN}/${gf.result.file_path}`)).arrayBuffer();
+        const yol = `yuz/${Date.now()}.jpg`;
+        const up = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public-media/${yol}`, {
+          method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }, body: buf });
+        if (!up.ok) throw new Error(`Storage ${up.status}`);
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, '✅ Yuz rasmi saqlandi. Oblojka va animatsiyalarda ishlatiladi. Yana yuboring (turli burchak/kayfiyat yaxshi).');
+      } catch (e) { await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⚠️ Saqlanmadi: ${String((e && e.message) || e)}`); }
+      return json({ ok: true });
+    }
+
     // Ustalar guruhidan video/foto kelsa -- matn kerak emas, darhol tasdiqlash
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).

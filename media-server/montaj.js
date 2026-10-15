@@ -17,6 +17,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
+import { yuzTanla, aiOblojka } from './yuz.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -1097,7 +1098,10 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       // 2/8 kategoriyada aiFonBuf shart emas).
       const aiFonBuf = (kategoriya === 2 || kategoriya === 8) ? null : await geminiPremiumFon(sarlavha);
 
-      qopqoqBuf = await qopqoqYarat({
+      const yuzBuf = await yuzTanla(env);
+      const aiQopqoq = await aiOblojka(env, { sarlavha, aksent: qaror.aksent, yuz: yuzBuf }).catch(() => null);
+      if (aiQopqoq) qopqoqBuf = aiQopqoq;
+      else qopqoqBuf = await qopqoqYarat({
         rasmBuf: frameBuf,
         rasmBuf2: frameBuf2,
         aiFonBuf,
@@ -1304,24 +1308,46 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
   await execFileAsync('ffmpeg', ['-y', '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', pcm, outPath]);
 }
 
-async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath) {
+async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath, vurgu = '', yuzBuf = null) {
+  // Makon Vizual uslubi: och iliq fon, katta serif sarlavha + rangli vurg'u so'z, toza chiziq-chizma.
   const W = 720, H = 1280;
-  const qat = ikkiQatorgaBol(xmlEscape(sarlavha), 16);
-  const fs1 = tur === 'hook' ? 78 : 62;
-  const matnQ = matn ? ikkiQatorgaBol(xmlEscape(matn), 26) : [];
-  // chiziqli "chizma" naqshi (arxitektura plani ruhida)
-  const chiz = Array.from({ length: 9 }, (_, i) => `<line x1="${60 + i * 80}" y1="0" x2="${60 + i * 80}" y2="${H}" stroke="#c9a876" stroke-opacity="0.07"/>`).join('') +
-    `<rect x="70" y="${H - 420}" width="300" height="220" fill="none" stroke="#c9a876" stroke-opacity="0.35" stroke-width="2"/><line x1="70" y1="${H - 310}" x2="370" y2="${H - 310}" stroke="#c9a876" stroke-opacity="0.35" stroke-width="2"/><line x1="220" y1="${H - 420}" x2="220" y2="${H - 310}" stroke="#c9a876" stroke-opacity="0.35" stroke-width="2"/>`;
-  const svg = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1813"/><stop offset="1" stop-color="#0d0c09"/></linearGradient></defs>
-    <rect width="${W}" height="${H}" fill="url(#g)"/>${chiz}
-    <text x="60" y="110" font-family="Liberation Sans, Arial, sans-serif" font-size="26" font-weight="700" fill="#c9a876" letter-spacing="6">VISART DESIGN</text>
-    <rect x="60" y="150" width="90" height="5" fill="#c9a876"/>
-    ${qat.map((q, i) => `<text x="60" y="${430 + i * (fs1 + 14)}" font-family="Liberation Sans, Arial, sans-serif" font-size="${fs1}" font-weight="800" fill="#ffffff">${q}</text>`).join('')}
-    ${matnQ.map((q, i) => `<text x="60" y="${430 + qat.length * (fs1 + 14) + 50 + i * 44}" font-family="Liberation Sans, Arial, sans-serif" font-size="32" font-weight="500" fill="#d9d2c3">${q}</text>`).join('')}
-    <text x="60" y="${H - 80}" font-family="Liberation Sans, Arial, sans-serif" font-size="24" fill="#8a8272">${indeks + 1} / ${jami}</text>
-  </svg>`);
-  await sharp(svg).png().toFile(outPath);
+  const BG = '#ecebe6', INK = '#16150f', ACC = '#0e6b5c', ACC2 = '#c4572b';
+  const accent = tur === 'hook' ? ACC2 : ACC;
+  const fs1 = tur === 'hook' ? 72 : 60;
+  const qat = qatorBol(xmlEscape(sarlavha), Math.floor(610 / (fs1 * 0.6))).split('\n');
+  const vr = vurgu ? xmlEscape(vurgu).toLowerCase() : '';
+  const qatSvg = qat.map((q, i) => {
+    const y = 300 + i * (fs1 + 16);
+    const sozlar = q.split(' ');
+    const tspans = sozlar.map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? accent : INK}">${w} </tspan>`).join('');
+    return `<text x="56" y="${y}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${tspans}</text>`;
+  }).join('');
+  const matnQ = matn ? qatorBol(xmlEscape(matn), 30).split('\n') : [];
+  const yMatn = 300 + qat.length * (fs1 + 16) + 30;
+  // izometrik xona (chiziq-chizma)
+  const ox = 120, oy = 960;
+  const xona = `<g fill="none" stroke="${INK}" stroke-opacity="0.55" stroke-width="3">
+    <path d="M${ox},${oy} l240,-130 l240,130 l-240,130 z"/>
+    <path d="M${ox},${oy} v-200 l240,-130 v200"/><path d="M${ox + 480},${oy} v-200 l-240,-130"/>
+    <path d="M${ox + 300},${oy - 150} h90 v60 h-90 z" stroke="${accent}" stroke-width="4"/></g>`;
+  const yuzSvg = yuzBuf ? '<image href="data:image/jpeg;base64,YUZ" x="468" y="1010" width="200" height="200" clip-path="url(#c)" preserveAspectRatio="xMidYMid slice"/><circle cx="568" cy="1110" r="100" fill="none" stroke="' + accent + '" stroke-width="5"/>' : '';
+  const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="c"><circle cx="568" cy="1110" r="100"/></clipPath></defs>
+    <rect width="${W}" height="${H}" fill="${BG}"/>
+    <text x="56" y="96" font-family="Liberation Sans, Arial, sans-serif" font-size="24" font-weight="700" fill="${INK}" letter-spacing="6">VISART DESIGN</text>
+    <rect x="56" y="118" width="70" height="4" fill="${accent}"/>
+    ${qatSvg}
+    ${matnQ.map((q, i) => `<text x="56" y="${yMatn + i * 42}" font-family="Liberation Sans, Arial, sans-serif" font-size="30" fill="#4a463d">${q}</text>`).join('')}
+    ${xona}
+    ${yuzSvg}
+    <text x="56" y="${H - 70}" font-family="Liberation Sans, Arial, sans-serif" font-size="22" fill="#8a8272">${indeks + 1} / ${jami}</text>
+  </svg>`;
+  let buf = Buffer.from(svg);
+  if (yuzBuf) {
+    const kichik = await sharp(yuzBuf).resize(200, 200, { fit: 'cover', position: 'attention' }).jpeg({ quality: 82 }).toBuffer();
+    buf = Buffer.from(svg.replace('YUZ', kichik.toString('base64')));
+  }
+  await sharp(buf).png().toFile(outPath);
 }
 
 async function animatsionSenariy(env, mavzu) {
@@ -1335,8 +1361,9 @@ async function animatsionSenariy(env, mavzu) {
     "Siz Visart Design (Toshkent, arxitektura va interyer studiyasi) uchun Instagram Reels senaristisiz. Material (video/foto) yo'q, shuning uchun animatsion, ovozli, FOYDALI qisqa video kerak.\n" +
     (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
     "Qoidalar: odamlarni QIZIQTIRADIGAN, amaliy maslahat (masalan 'Oshxonada 3 ta keng tarqalgan xato'). FAKT/RAQAM/STATISTIKA o'ylab topmang -- faqat umume'tirof etilgan dizayn va qurilish tamoyillari. Tabiiy, sodda, zamonaviy o'zbek (lotin), kalka yo'q, 'ajoyib/mukammal' kabi hype so'zlar yo'q.\n" +
+    "MAVZU USLUBI (makon_vizual kabi): hayotiy savol/afsona va uning ARXITEKTURA-FIZIKA javobi, masalan: \"Nega ba'zi hovlilar yozda juda issiq?\" (quyosh burchagi, soya), \"Oq chiroq uyingizni arzon ko'rsatadi\" (2700K va 6500K), \"Katta deraza. Yarimi parda?\", \"Uyingizga ichki dizayn kerakmi?\", \"1 xona -- 5 xil oila\" (planirovka variantlari). Qisqa, aniq, vizual tushuntiriladigan mavzu.\n" +
     "Struktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd CTA (saqlang/ustangizga yuboring/DM). Jami ovoz ~20-35 soniya.\n" +
-    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
+    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
@@ -1349,6 +1376,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     const slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 7);
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
 
+    const yuzBuf = await yuzTanla(env);
     const segFiles = [];
     const subtitr = [];
     let t = 0;
@@ -1357,7 +1385,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
       const png = path.join(tmpDir, `s${i}.png`);
       const mp3 = path.join(tmpDir, `v${i}.mp3`);
       const seg = path.join(tmpDir, `seg${i}.mp4`);
-      await slaydRasm(sl.tur, sl.sarlavha || '', sl.matn || '', i, slaydlar.length, png);
+      await slaydRasm(sl.tur, sl.sarlavha || '', sl.matn || '', i, slaydlar.length, png, sl.vurgu || '', (sl.tur === 'hook' || sl.tur === 'cta') ? yuzBuf : null);
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
       const kadr = Math.round(dur * 25);
@@ -1395,7 +1423,8 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     try {
       const fp = path.join(tmpDir, 'f.jpg');
       await ffmpegKadrOl(chiqish, fp, 0.1);
-      qopqoqBuf = await qopqoqYarat({ rasmBuf: fs.readFileSync(fp), rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: '', raqam: '' });
+      qopqoqBuf = await aiOblojka(env, { sarlavha, aksent: meta.vurgu || '', yuz: yuzBuf }).catch(() => null);
+      if (!qopqoqBuf) qopqoqBuf = await qopqoqYarat({ rasmBuf: fs.readFileSync(fp), rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: '', raqam: '' });
     } catch (e) { qopqoqBuf = null; }
     if (qopqoqBuf) await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, qopqoqBuf, `🖼️ Qopqoq -- ${sarlavha}`);
     await tasdiqqaYubor(env, adminChatId, chiqish, qopqoqBuf, {
