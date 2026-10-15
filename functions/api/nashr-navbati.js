@@ -3,7 +3,7 @@ import { navbatniYubor } from '../_lib/outbox.js';
 import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
-import { mediaUygot } from '../_lib/media.js';
+import { mediaUygot, mediaChaqir } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
@@ -332,6 +332,8 @@ export async function onRequestGet({ request, env }) {
   await tizimNazorati(env);
   // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
   if (env.MEDIA_SERVER_URL) await mediaUygot(env, 20000).catch(() => {});
+  // Kunlik kafolat: Toshkent 11:00 gacha (11:00-11:14 oynasi) bugun video taklifi/nashri yo'q bo'lsa -- animatsion video buyurtma qilinadi.
+  await kunlikAnimatsiya(env).catch((e) => xatoYoz(env, 'kunlik-animatsiya', e));
   const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
   await navbatniYubor(env).catch((e) => xatoYoz(env, 'xabar-navbati', e));
   await haftalikNormaEslatma(env, menejerIdlari(env)).catch((e) => xatoYoz(env, 'norma-eslatma', e));
@@ -345,4 +347,19 @@ export async function onRequestGet({ request, env }) {
   }
 
   return json({ ok: true, bajarildi: natijalar.length, natijalar, kuzatuv, tozalash: tozalashNatijasi });
+}
+
+async function kunlikAnimatsiya(env) {
+  const tosh = new Date(Date.now() + 5 * 3600e3);
+  if (tosh.getUTCHours() !== 11 || tosh.getUTCMinutes() >= 15) return;
+  const admin = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean)[0];
+  if (!admin || !env.MEDIA_SERVER_URL) return;
+  const kunBosh = new Date(Date.UTC(tosh.getUTCFullYear(), tosh.getUTCMonth(), tosh.getUTCDate()) - 5 * 3600e3).toISOString();
+  const q = (p) => fetch(`${env.SUPABASE_URL}/rest/v1/${p}`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } }).then((r) => r.json()).catch(() => []);
+  const [vid, tak] = await Promise.all([
+    q(`nashr_navbati?turi=eq.video_nashr&holat=neq.bekor&created_at=gte.${kunBosh}&select=id&limit=1`),
+    q(`media_taklif?holat=in.(kutilmoqda,tasdiqlangan)&created_at=gte.${kunBosh}&select=id&limit=1`),
+  ]);
+  if ((vid && vid.length) || (tak && tak.length)) return;
+  await mediaChaqir(env, '/animatsion', { adminChatId: admin }, admin);
 }

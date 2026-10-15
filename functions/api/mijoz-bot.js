@@ -2120,6 +2120,19 @@ export async function onRequestPost({ request, env }) {
       if (yr && yr.ok) await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, '🚀 Media-server so\'rovni oldi, ishlayapti.');
       return json({ ok: true });
     }
+    // Admin ovozli xabar (yoki audio) + izoh "ovoz" -- ovoz namunasi kutubxonasiga (klon uchun) saqlanadi.
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?ovoz\b/i.test(msg.caption || '') && (msg.voice || msg.audio)) {
+      try {
+        const fid = (msg.voice || msg.audio).file_id;
+        const gf = await (await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getFile?file_id=${fid}`)).json();
+        const buf = await (await fetch(`https://api.telegram.org/file/bot${env.MIJOZ_BOT_TOKEN}/${gf.result.file_path}`)).arrayBuffer();
+        const up = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public-media/ovoz/${Date.now()}.ogg`, {
+          method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'audio/ogg', 'x-upsert': 'true' }, body: buf });
+        if (!up.ok) throw new Error(`Storage ${up.status}`);
+        await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, '✅ Ovoz namunasi saqlandi.');
+      } catch (e) { await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⚠️ Saqlanmadi: ${String((e && e.message) || e)}`); }
+      return json({ ok: true });
+    }
     // Admin shaxsiy chatda rasm + izoh "yuz" yuborsa -- muallif yuzi kutubxonasiga saqlanadi
     // (AI oblojka va animatsion videolarda ishlatiladi).
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?yuz\b/i.test(msg.caption || '') &&

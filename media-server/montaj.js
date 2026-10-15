@@ -1283,6 +1283,16 @@ async function tgSoniya(file) {
 }
 
 async function ovozYarat(env, matn, outPath, tmpDir) {
+  // 0) Muallifning o'z ovozi (ElevenLabs klon) -- kalit va ovoz ID qo'yilgan bo'lsa
+  if (env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID) {
+    try {
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${env.ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`, {
+        method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: matn, model_id: env.ELEVENLABS_MODEL || 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.85 } }),
+        signal: AbortSignal.timeout(45000) });
+      if (r.ok) { fs.writeFileSync(outPath, Buffer.from(await r.arrayBuffer())); return; }
+    } catch (e) { /* bepul ovozga o'tamiz */ }
+  }
   // 1) Microsoft Edge neyron ovozi (o'zbek, erkak: Sardor)
   try {
     const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
@@ -1351,6 +1361,36 @@ async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath, vurgu = '',
   await sharp(buf).png().toFile(outPath);
 }
 
+// Mavzuga mos AI illyustratsiya (ma'lumot uchun, bizning ish emas) + bizning matn qatlamimiz.
+async function animatsiyaAiRasm(env, sl, indeks, jami, outPath) {
+  if (!env.GEMINI_API_KEY || !sl.rasm) return false;
+  const prompt = `Clean educational illustration for an architecture/interior tips video, vertical 9:16. Subject: ${sl.rasm}. ` +
+    'Style: minimalist 3D isometric / soft-render concept illustration, light warm beige background, muted natural palette with one teal or terracotta accent, soft shadows, lots of empty space in the TOP 45% of the frame (text will be added). ' +
+    'No text, no letters, no numbers, no logos, no people faces.';
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'}:generateContent?key=${env.GEMINI_API_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }), signal: AbortSignal.timeout(60000) });
+  if (!res.ok) return false;
+  const d = await res.json();
+  const im = ((((d.candidates || [])[0] || {}).content || {}).parts || []).find((x) => x.inlineData && x.inlineData.data);
+  if (!im) return false;
+  const W = 720, H = 1280;
+  const fs1 = sl.tur === 'hook' ? 70 : 58;
+  const qat = qatorBol(xmlEscape(sl.sarlavha || ''), Math.floor(620 / (fs1 * 0.6))).split('\n');
+  const vr = sl.vurgu ? xmlEscape(sl.vurgu).toLowerCase() : '';
+  const tx = qat.map((q, i) => `<text x="52" y="${250 + i * (fs1 + 14)}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
+  const ov = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6" stop-opacity="0.95"/><stop offset="0.7" stop-color="#ecebe6" stop-opacity="0.55"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient></defs>
+    <rect width="${W}" height="620" fill="url(#t)"/>
+    <text x="52" y="92" font-family="Liberation Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#16150f" letter-spacing="6">VISART DESIGN</text>
+    <rect x="52" y="112" width="64" height="4" fill="#c4572b"/>${tx}
+    <text x="${W - 52}" y="${H - 40}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="16" fill="#6b665a" letter-spacing="2">AI ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
+  </svg>`);
+  const baza = await sharp(Buffer.from(im.inlineData.data, 'base64')).resize(W, H, { fit: 'cover', position: 'centre' }).toBuffer();
+  await sharp(baza).composite([{ input: ov }]).png().toFile(outPath);
+  return true;
+}
+
 async function animatsionSenariy(env, mavzu) {
   let oxirgilar = '';
   try {
@@ -1363,8 +1403,8 @@ async function animatsionSenariy(env, mavzu) {
     (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
     "Qoidalar: odamlarni QIZIQTIRADIGAN, amaliy maslahat (masalan 'Oshxonada 3 ta keng tarqalgan xato'). FAKT/RAQAM/STATISTIKA o'ylab topmang -- faqat umume'tirof etilgan dizayn va qurilish tamoyillari. Tabiiy, sodda, zamonaviy o'zbek (lotin), kalka yo'q, 'ajoyib/mukammal' kabi hype so'zlar yo'q.\n" +
     "MAVZU USLUBI (makon_vizual kabi): hayotiy savol/afsona va uning ARXITEKTURA-FIZIKA javobi, masalan: \"Nega ba'zi hovlilar yozda juda issiq?\" (quyosh burchagi, soya), \"Oq chiroq uyingizni arzon ko'rsatadi\" (2700K va 6500K), \"Katta deraza. Yarimi parda?\", \"Uyingizga ichki dizayn kerakmi?\", \"1 xona -- 5 xil oila\" (planirovka variantlari). Qisqa, aniq, vizual tushuntiriladigan mavzu.\n" +
-    "Struktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd CTA (saqlang/ustangizga yuboring/DM). Jami ovoz ~20-35 soniya.\n" +
-    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
+    "Struktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd CTA (saqlang/ustangizga yuboring/DM). Jami ovoz 15-40 soniya (mavzu va foydali ma'lumot hajmiga qarab: oddiy lifehack 15-22 s, chuqurroq tushuntirish 30-40 s; slaydlar soni 3-8).\n" +
+    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","rasm":"<INGLIZCHA: shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
@@ -1374,7 +1414,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "🎞️ Material yo'q -- animatsion ovozli video tayyorlanmoqda...");
     const raw = await animatsionSenariy(env, [mavzu, korsatma].filter(Boolean).join('. '));
     const meta = raw.find((x) => x.tur === 'meta') || {};
-    const slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 7);
+    const slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 8);
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
 
     const yuzBuf = await yuzTanla(env);
@@ -1386,7 +1426,8 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
       const png = path.join(tmpDir, `s${i}.png`);
       const mp3 = path.join(tmpDir, `v${i}.mp3`);
       const seg = path.join(tmpDir, `seg${i}.mp4`);
-      await slaydRasm(sl.tur, sl.sarlavha || '', sl.matn || '', i, slaydlar.length, png, sl.vurgu || '', (sl.tur === 'hook' || sl.tur === 'cta') ? yuzBuf : null);
+      const aiRasm = await animatsiyaAiRasm(env, sl, i, slaydlar.length, png).catch(() => false);
+      if (!aiRasm) await slaydRasm(sl.tur, sl.sarlavha || '', sl.matn || '', i, slaydlar.length, png, sl.vurgu || '', (sl.tur === 'hook' || sl.tur === 'cta') ? yuzBuf : null);
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
       const kadr = Math.round(dur * 25);
