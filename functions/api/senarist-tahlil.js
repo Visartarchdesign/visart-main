@@ -386,6 +386,16 @@ async function handle({ request, env }) {
     await adminXabarBer(env, `⚠️ Senarist to'xtadi: Supabase xato -- ${String((e && e.message) || e)}`);
     return json({ ok: false, error: 'supabase_xato' }, 500);
   }
+  // Takror yo'q: oldin taklifga (rad etilmagan) kirgan material qayta ishlatilmaydi.
+  if (rows && rows.length) {
+    const ishl = await sbFetch(env, `media_taklif?holat=neq.rad_etilgan&select=media_arxiv_id,media_arxiv_idlar&order=created_at.desc&limit=500`).catch(() => []);
+    const band = new Set();
+    for (const t of ishl || []) {
+      if (t.media_arxiv_id) band.add(String(t.media_arxiv_id));
+      String(t.media_arxiv_idlar || '').split(',').filter(Boolean).forEach((x) => band.add(x.trim()));
+    }
+    rows = rows.filter((r) => !band.has(String(r.id)));
+  }
   if (!rows || rows.length < KAM_MATERIAL_CHEGARA) {
     await aiTaklifYubor(env);
     return json({ ok: true, holat: 'yetarli_material_yoq', mavjud: rows ? rows.length : 0 });

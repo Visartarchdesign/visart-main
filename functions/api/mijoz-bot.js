@@ -727,6 +727,18 @@ async function tuzatishBajar(env, taklifId, adminChatId, korsatma) {
     const arxivRows = await sbFetch(env, `media_arxiv?id=eq.${taklif.media_arxiv_id}&select=turi`);
     const turi = arxivRows && arxivRows[0] ? arxivRows[0].turi : null;
 
+    // "Bugun qo'yilmasin" -- shu kungi (Toshkent) kutayotgan nashrlar bekor qilinadi.
+    if (/(bugun|hozir|shu kun).*(qo'?yma|joylama|chiqarma|kerak emas|bekor|rad|otmen|atmen)|^\s*(bekor|rad|otmen|atmen)\b/i.test(korsatma || '')) {
+      const kunBosh = new Date(Date.now() + 5 * 3600e3); kunBosh.setUTCHours(0, 0, 0, 0);
+      const bosh = new Date(kunBosh.getTime() - 5 * 3600e3).toISOString();
+      const oxir = new Date(kunBosh.getTime() + 19 * 3600e3).toISOString();
+      const bek = await sbFetch(env, `nashr_navbati?holat=in.(tasdiq_kutilmoqda,kutilmoqda)&nashr_vaqti=gte.${bosh}&nashr_vaqti=lt.${oxir}`, {
+        method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => []);
+      await sbFetch(env, `media_taklif?id=eq.${taklifId}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'rad_etilgan' }) }).catch(() => {});
+      await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `🚫 Bugungi nashr bekor qilindi (${(bek || []).length} ta navbat).`);
+      return;
+    }
+
     if (turi === 'video' || turi === 'video_note') {
       await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "🔧 Ko'rsatmangiz bilan Montajchi qayta ishga tushirilmoqda...");
       await montajBoshlash(env, taklifId, adminChatId, korsatma);
@@ -1982,7 +1994,7 @@ export async function onRequestPost({ request, env }) {
           const rr = await sbFetch(env, `nashr_navbati?id=eq.${nid}&select=payload`).catch(() => null);
           const tid = rr && rr[0] && rr[0].payload && rr[0].payload.taklifId;
           await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-            `❌ Joylash bekor qilindi. Nima to'g'rilansin?\nShu xabarga REPLY qilib yozing (masalan: "montaj qisqaroq bo'lsin", "sarlavhani o'zgartir", "izohda narx bo'lmasin") -- shu ko'rsatma bilan qayta tayyorlab, yana tasdiqqa yuboraman.${tid ? `\n\n🆔${tid}` : ''}`);
+            `❌ Rad etildi. Sababi nima va nimani to'g'rilash kerak?\nShu xabarga REPLY qilib yozing (masalan: "montaj qisqaroq bo'lsin", "subtitrda xato bor", "sarlavhani o'zgartir") -- AI shu ko'rsatma bo'yicha qayta tayyorlab, yana tasdiqqa yuboradi.\nBugun umuman qo'yilmasin desangiz: "bugun qo'yma" deb yozing.${tid ? `\n\n🆔${tid}` : ''}`);
         }
         return json({ ok: true });
       }
