@@ -185,6 +185,8 @@ export async function balansEslatma(env) {
   if (!holatlar) return { xato: 'balans_eslatma jadvali yoq (db/migration_balans_eslatma.sql)' };
   const h = new Map(holatlar.map((x) => [String(x.obyekt_id), x]));
   const nat = { chegara: [], muzlat: [] };
+  // Birinchi ishga tushishda (jadval bo'sh) eski holatlar SIMLANMAYDI -- faqat qayd etiladi (guruhlarga to'p-to'pdan xabar ketmasin).
+  const birinchi = holatlar.length === 0;
   const yoz = (id, patch) => sb(env, 'balans_eslatma', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal', body: JSON.stringify([{ obyekt_id: id, ...patch, updated_at: new Date().toISOString() }]) }).catch(() => {});
   const yubor = async (id, nom, matn, tur) => {
     if (jonat) return guruhgaXabarVaHisobot(env, id, nom, matn, tur, `bal:${id}:${tur.slice(0, 12)}:${bugun}`);
@@ -194,6 +196,11 @@ export async function balansEslatma(env) {
     const id = String(o.id), holat = o.holat || '', st = h.get(id) || {};
     if (BITDI.test(holat)) continue;
     const b = bal.get(id) || 0;
+    if (birinchi) {
+      const j0 = BALANS_CHEGARALAR.filter((c) => b <= c * 1e6 && b > 0).pop();
+      await yoz(id, { chegara: j0 != null ? j0 : null, muzlat_sana: MUZ_RE.test(holat) ? bugun : null });
+      continue;
+    }
     if (MUZ_RE.test(holat)) {
       // kuniga 1 marta, 10:00 dan keyin; muzlatilgan kuni (birinchi ko'rilganda) o'tkazib yuboriladi
       if (!st.muzlat_sana) { await yoz(id, { muzlat_sana: bugun }); continue; }
