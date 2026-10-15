@@ -196,17 +196,17 @@ async function handle({ request, env }) {
   try {
     const bosh = new Date(Date.parse(`${sanaUz()}T00:00:00+05:00`)).toISOString();
     const MANBALAR = [
-      { jadval: 'xarajatlar', turi: 'xarajat_qoshildi', yorliq: 'Xarajat', eski: /^xarajat/i },
+      { jadval: 'xarajatlar', ustun: 'jami', turi: 'xarajat_qoshildi', yorliq: 'Xarajat', eski: /^xarajat/i },
       { jadval: 'tolovlar', turi: 'tolov_qilindi', yorliq: "To'lov", eski: /^tolov/i },
       { jadval: 'usta_tolovlari', turi: 'usta_avans', yorliq: "Ustaga avans/to'lov", eski: /avans|usta/i },
     ];
     for (const mb of MANBALAR) {
       let jr;
-      try { jr = await sbFetch(env, `${mb.jadval}?created_at=gte.${bosh}&select=obyekt_id,summa`); }
+      try { jr = await sbFetch(env, `${mb.jadval}?created_at=gte.${bosh}&select=obyekt_id,${mb.ustun || 'summa'}`); }
       catch (e) { await xatoYoz(env, `kunlik-xabar:${mb.jadval}`, e); continue; } // shu manba uchun eski hodisalar qoladi
       rows = rows.filter((r) => !mb.eski.test(r.turi || '')); // jadvaldan olinganlar o'rnini bosadi (ikki marta sanalmasin)
       for (const u of jr || []) {
-        const sm = Number(u.summa);
+        const sm = Number(u[mb.ustun || 'summa']);
         if (!sm || !u.obyekt_id) continue;
         const m = `${mb.yorliq}: ${sm.toLocaleString('ru-RU')} so'm`;
         rows.push({ id: null, yuborildi: true, turi: mb.turi, guruh: 'obyekt', obyekt_id: String(u.obyekt_id), matn: m, summa: sm });

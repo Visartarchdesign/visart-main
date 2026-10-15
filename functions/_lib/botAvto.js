@@ -163,11 +163,11 @@ export const CHEGARA_ESLATMA = (nom, mln) => `💡 Hurmatli mijoz, obyektingiz (
 async function balanslar(env) {
   const [tol, xar] = await Promise.all([
     sb(env, 'tolovlar?select=obyekt_id,summa&limit=50000'),
-    sb(env, 'xarajatlar?select=obyekt_id,summa&limit=50000'),
+    sb(env, 'xarajatlar?select=obyekt_id,jami&limit=50000'),
   ]);
   const m = new Map();
   for (const x of tol || []) m.set(String(x.obyekt_id), (m.get(String(x.obyekt_id)) || 0) + (Number(x.summa) || 0));
-  for (const x of xar || []) m.set(String(x.obyekt_id), (m.get(String(x.obyekt_id)) || 0) - (Number(x.summa) || 0));
+  for (const x of xar || []) m.set(String(x.obyekt_id), (m.get(String(x.obyekt_id)) || 0) - (Number(x.jami) || 0));
   return m;
 }
 
