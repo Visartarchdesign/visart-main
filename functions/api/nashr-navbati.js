@@ -261,7 +261,7 @@ async function tozalash(env) {
   return hisobot;
 }
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
     await ruxsatRad(env, 'nashr-navbati');
@@ -331,9 +331,11 @@ export async function onRequestGet({ request, env }) {
 
   await tizimNazorati(env);
   // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
-  if (env.MEDIA_SERVER_URL) await mediaUygot(env, 20000).catch(() => {});
+  // Fonda (cron javobini kechiktirmaydi -- cron-job.org 30 soniyada uzadi va keyingi qadamlar kesilib qoladi)
+  const fonda = (p) => { const q = p.catch(() => {}); if (waitUntil) waitUntil(q); };
+  if (env.MEDIA_SERVER_URL) fonda(mediaUygot(env, 20000));
   // Kunlik kafolat: Toshkent 11:00 gacha (11:00-11:14 oynasi) bugun video taklifi/nashri yo'q bo'lsa -- animatsion video buyurtma qilinadi.
-  await kunlikAnimatsiya(env).catch((e) => xatoYoz(env, 'kunlik-animatsiya', e));
+  fonda(kunlikAnimatsiya(env));
   const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
   await navbatniYubor(env).catch((e) => xatoYoz(env, 'xabar-navbati', e));
   await haftalikNormaEslatma(env, menejerIdlari(env)).catch((e) => xatoYoz(env, 'norma-eslatma', e));
