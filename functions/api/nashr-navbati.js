@@ -3,6 +3,7 @@ import { navbatniYubor } from '../_lib/outbox.js';
 import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
+import { mediaUygot } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
@@ -329,6 +330,8 @@ export async function onRequestGet({ request, env }) {
   }
 
   await tizimNazorati(env);
+  // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
+  if (env.MEDIA_SERVER_URL) await mediaUygot(env, 20000).catch(() => {});
   const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
   await navbatniYubor(env).catch((e) => xatoYoz(env, 'xabar-navbati', e));
   await haftalikNormaEslatma(env, menejerIdlari(env)).catch((e) => xatoYoz(env, 'norma-eslatma', e));

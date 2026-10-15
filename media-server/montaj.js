@@ -463,7 +463,7 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
       // (xotira va chiqish hajmini nazorat qilish uchun) -- aks holda
       // asl o'lcham saqlanadi.
       '-vf', "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
       // Manba (telefon) odatda bt709 rangda -- buni aniq ko'rsatmasak, ba'zi
       // pleyerlarda video xira/qorong'i ko'rinadi.
       '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',

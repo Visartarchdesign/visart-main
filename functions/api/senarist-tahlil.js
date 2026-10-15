@@ -193,17 +193,21 @@ async function claudeTahlil(env, items) {
       '{"turi": "single" yoki "karusel", "tanlangan_idlar": [<raqam>, ...], "sarlavha": "<qisqa, aniq, jozibali sarlavha>", "post_matni": "<to\'liq Instagram posti matni, hashtaglar bilan>", "sabab": "<nega shu tanlandi, 1 jumla -- faqat admin uchun, ichki>"}',
   });
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content }] }),
-    // Bir nechta rasm/video-thumbnail tahlili (vision) 30s'dan uzoqroq ketishi mumkin.
-    signal: AbortSignal.timeout(55000),
-  });
+  let res;
+  for (const model of [env.SENARIST_MODEL || MODEL, 'claude-sonnet-5-5']) {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({ model, max_tokens: 4000, messages: [{ role: 'user', content }] }),
+      // Bir nechta rasm/video-thumbnail tahlili (vision) 30s'dan uzoqroq ketishi mumkin.
+      signal: AbortSignal.timeout(55000),
+    });
+    if (res.status !== 404 && res.status !== 400) break; // model nomi noto'g'ri bo'lsa keyingisini sinaymiz
+  }
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
     throw new Error(`Claude API -> ${res.status}: ${txt.slice(0, 300)}`);
@@ -402,6 +406,7 @@ async function handle({ request, env }) {
   }
 
   if (items.length < 2) {
+    await adminXabarBer(env, `⚠️ Senarist: ${rows.length} ta material bor, lekin Telegramdan faqat ${items.length} tasi yuklab olindi (file_id eskirgan bo'lishi mumkin). Yangi video/rasm tashlang.`);
     return json({ ok: true, holat: 'tahlil_qilinadigan_material_kam', mavjud: items.length });
   }
 

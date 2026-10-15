@@ -49,6 +49,7 @@
 import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
+import { mediaChaqir } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat } from '../_lib/mijozMenyu.js';
 
@@ -708,15 +709,7 @@ async function montajBoshlash(env, taklifId, adminChatId, korsatma) {
     if (arxiv.turi !== 'video' && arxiv.turi !== 'video_note') return;
 
     const title = taklif.sarlavha || (taklif.matn || '').split('\n\n')[0];
-    await fetch(`${env.MEDIA_SERVER_URL}/montaj`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
-      body: JSON.stringify({ aslFileId: arxiv.asl_file_id, adminChatId, title, taklifId, korsatma }),
-      // Render bepul tarifda uxlab qolgan bo'lsa, uyg'onishi 50+ soniya
-      // olishi mumkin -- ulanish shu vaqt ichida o'rnatilishi uchun uzoqroq
-      // timeout beramiz (aks holda so'rov Render'ga umuman YETIB BORMAYDI).
-      signal: AbortSignal.timeout(55000),
-    });
+    await mediaChaqir(env, '/montaj', { aslFileId: arxiv.asl_file_id, adminChatId, title, taklifId, korsatma }, adminChatId);
   } catch (e) {
     // Juda sekin bo'lsa ham -- keyingi safar qo'lda qayta urinib ko'rish mumkin.
   }
@@ -1876,10 +1869,7 @@ export async function onRequestPost({ request, env }) {
         await removeKb(env, cq.message.chat.id, cq.message.message_id);
         await answerCq(env, cq.id, { text: !rows || !rows.length ? "Allaqachon ko'rib chiqilgan yoki muddati o'tgan." : amal === 'ok' ? 'Tasdiqlandi — vaqtida chiqadi.' : 'Rad etildi — yangi variant tayyorlanmoqda.' });
         if (amal === 'no' && rows && rows.length && env.MEDIA_SERVER_URL && env.MEDIA_SECRET) {
-          await fetch(`${env.MEDIA_SERVER_URL}/story-variant`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
-            body: JSON.stringify({ id: qid, adminChatId: cq.message.chat.id }), signal: AbortSignal.timeout(8000),
-          }).catch(() => {});
+          await mediaChaqir(env, '/story-variant', { id: qid, adminChatId: cq.message.chat.id }, cq.message.chat.id);
         }
         return json({ ok: true });
       }
@@ -1985,12 +1975,7 @@ export async function onRequestPost({ request, env }) {
         await removeKb(env, chatId, cq.message.message_id);
         if (qaror === 'ok') {
           await answerCq(env, cq.id, { text: 'Joylanmoqda...' });
-          await fetch(`${env.MEDIA_SERVER_URL}/nashr`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
-            body: JSON.stringify({ id: nid, adminChatId: chatId }),
-            signal: AbortSignal.timeout(55000),
-          }).catch(() => {});
+          await mediaChaqir(env, '/nashr', { id: nid, adminChatId: chatId }, chatId);
         } else {
           await sbFetch(env, `nashr_navbati?id=eq.${nid}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
           await answerCq(env, cq.id, { text: 'Bekor qilindi' });
