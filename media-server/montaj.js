@@ -926,6 +926,56 @@ async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false, ekstra = {})
   }
 }
 
+// Tayyor video + qopqoqni adminga yuboradi va tasdiq (✅ Joylash / ❌ Bekor) so'raydi.
+async function tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha, tavsif, hashtaglar, izoh, taklifId }) {
+    await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
+      outputPath, `🎬 Montaj tayyor -- ${sarlavha}\n\n${izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
+    // TASDIQ: tayyor video + qopqoq Supabase'ga yuklanadi, navbat jadvaliga
+    // "tasdiq_kutilmoqda" holatida yoziladi va adminga tugmalar yuboriladi.
+    // Instagram/Facebook/YouTube'ga FAQAT "✅ Joylash" bosilgandan keyin
+    // (bajarNashr) chiqadi.
+    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const videoUrl = await supabaseVideoUpload(env, outputPath);
+        let coverUrl = null;
+        if (qopqoqBuf) {
+          try { coverUrl = await supabaseRasmUpload(env, qopqoqBuf); } catch (e) {
+            await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Qopqoq yuklanmadi: ${String((e && e.message) || e).slice(0, 200)}`).catch(() => {});
+          }
+        }
+        const caption = `${sarlavha}\n\n${tavsif || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign ${hashtaglar || '#arxitektura #interyerdizayn #ToshkentDizayn #qurilish'}`;
+        const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
+          method: 'POST',
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            turi: 'video_nashr',
+            holat: 'tasdiq_kutilmoqda',
+            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: tavsif || '', taklifId: taklifId || null },
+            nashr_vaqti: new Date().toISOString(),
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!resp.ok) throw new Error(`navbat xato: ${resp.status} ${(await resp.text().catch(() => '')).slice(0, 150)}`);
+        const nid = (await resp.json())[0].id;
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"\n\nKamchilik bo'lsa -- shu xabarga REPLY qilib nimani to'g'rilashni yozing (montaj/sarlavha/izoh) -- qayta tayyorlayman.${taklifId ? `\n\n🆔${taklifId}` : ''}`,
+          { inline_keyboard: [[
+            { text: '✅ Joylash', callback_data: `vnash:${nid}:ok` },
+            { text: '❌ Bekor', callback_data: `vnash:${nid}:no` },
+          ]] });
+      } catch (e) {
+        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+          `⚠️ Tasdiqqa tayyorlashda xato: ${String((e && e.message) || e)}`);
+      }
+    }
+
+}
+
 async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
@@ -1067,52 +1117,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     }
 
     await bosqich('Telegramga yuklanmoqda...');
-    await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
-      outputPath, `🎬 Montaj tayyor -- ${sarlavha}\n\n${qaror.izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
-    // TASDIQ: tayyor video + qopqoq Supabase'ga yuklanadi, navbat jadvaliga
-    // "tasdiq_kutilmoqda" holatida yoziladi va adminga tugmalar yuboriladi.
-    // Instagram/Facebook/YouTube'ga FAQAT "✅ Joylash" bosilgandan keyin
-    // (bajarNashr) chiqadi.
-    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const videoUrl = await supabaseVideoUpload(env, outputPath);
-        let coverUrl = null;
-        if (qopqoqBuf) {
-          try { coverUrl = await supabaseRasmUpload(env, qopqoqBuf); } catch (e) {
-            await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Qopqoq yuklanmadi: ${String((e && e.message) || e).slice(0, 200)}`).catch(() => {});
-          }
-        }
-        const caption = `${sarlavha}\n\n${qaror.tavsif || ''}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign ${qaror.hashtaglar || '#arxitektura #interyerdizayn #ToshkentDizayn #qurilish'}`;
-        const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
-          method: 'POST',
-          headers: {
-            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-            'Content-Type': 'application/json',
-            Prefer: 'return=representation',
-          },
-          body: JSON.stringify({
-            turi: 'video_nashr',
-            holat: 'tasdiq_kutilmoqda',
-            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: qaror.tavsif || '', taklifId: taklifId || null },
-            nashr_vaqti: new Date().toISOString(),
-          }),
-          signal: AbortSignal.timeout(10000),
-        });
-        if (!resp.ok) throw new Error(`navbat xato: ${resp.status} ${(await resp.text().catch(() => '')).slice(0, 150)}`);
-        const nid = (await resp.json())[0].id;
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"\n\nKamchilik bo'lsa -- shu xabarga REPLY qilib nimani to'g'rilashni yozing (montaj/sarlavha/izoh) -- qayta tayyorlayman.${taklifId ? `\n\n🆔${taklifId}` : ''}`,
-          { inline_keyboard: [[
-            { text: '✅ Joylash', callback_data: `vnash:${nid}:ok` },
-            { text: '❌ Bekor', callback_data: `vnash:${nid}:no` },
-          ]] });
-      } catch (e) {
-        await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-          `⚠️ Tasdiqqa tayyorlashda xato: ${String((e && e.message) || e)}`);
-      }
-    }
-
+    await tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha, tavsif: qaror.tavsif, hashtaglar: qaror.hashtaglar, izoh: qaror.izoh, taklifId });
     return true;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1259,5 +1264,146 @@ export async function bajarStoryVariant({ env, id, adminChatId }) {
       { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Boshqasini yarat', callback_data: `sty:no:${qid}` }]] });
   } catch (e) {
     await xabar(`⚠️ Yangi Story variant xato: ${String((e && e.message) || e)}`);
+  }
+}
+
+// ───────────────────────── Animatsion video (material yo'q kunlar uchun) ─────────────────────────
+// AI mavzu va senariy yozadi -> ovoz (TTS) -> brend slaydlar (Ken Burns) ->
+// fon muzika (ovoz ustida past) -> subtitr -> qopqoq -> ADMIN TASDIG'IGA.
+const USTUNLAR = ['Interyer xatolari', 'Kichik xonani katta ko\'rsatish', 'Yoritish sirlari', 'Material tanlash', 'Remont rejasi va tartibi', 'Rang va uslub', 'Planirovka maslahati', 'Byudjetni tejash'];
+
+async function tgSoniya(file) {
+  const { stdout } = await execFileAsync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file]);
+  return parseFloat(stdout) || 0;
+}
+
+async function ovozYarat(env, matn, outPath, tmpDir) {
+  // 1) Microsoft Edge neyron ovozi (o'zbek, erkak: Sardor)
+  try {
+    const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata(process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+    const dir = fs.mkdtempSync(path.join(tmpDir, 'tts-'));
+    const r = await tts.toFile(dir, matn);
+    fs.copyFileSync(r.audioFilePath, outPath);
+    return;
+  } catch (e) { /* Gemini TTS'ga o'tamiz */ }
+  // 2) Gemini TTS (zaxira)
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: `O'zbek tilida, tabiiy va iliq, aniq talaffuz bilan o'qing: ${matn}` }] }],
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } },
+    }),
+  });
+  if (!res.ok) throw new Error(`TTS xato: ${res.status}`);
+  const d = await res.json();
+  const b64 = d.candidates[0].content.parts[0].inlineData.data;
+  const pcm = path.join(tmpDir, 'v.pcm');
+  fs.writeFileSync(pcm, Buffer.from(b64, 'base64'));
+  await execFileAsync('ffmpeg', ['-y', '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', pcm, outPath]);
+}
+
+async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath) {
+  const W = 720, H = 1280;
+  const qat = ikkiQatorgaBol(xmlEscape(sarlavha), 16);
+  const fs1 = tur === 'hook' ? 78 : 62;
+  const matnQ = matn ? ikkiQatorgaBol(xmlEscape(matn), 26) : [];
+  // chiziqli "chizma" naqshi (arxitektura plani ruhida)
+  const chiz = Array.from({ length: 9 }, (_, i) => `<line x1="${60 + i * 80}" y1="0" x2="${60 + i * 80}" y2="${H}" stroke="#c9a876" stroke-opacity="0.07"/>`).join('') +
+    `<rect x="70" y="${H - 420}" width="300" height="220" fill="none" stroke="#c9a876" stroke-opacity="0.35" stroke-width="2"/><line x1="70" y1="${H - 310}" x2="370" y2="${H - 310}" stroke="#c9a876" stroke-opacity="0.35" stroke-width="2"/><line x1="220" y1="${H - 420}" x2="220" y2="${H - 310}" stroke="#c9a876" stroke-opacity="0.35" stroke-width="2"/>`;
+  const svg = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1b1813"/><stop offset="1" stop-color="#0d0c09"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#g)"/>${chiz}
+    <text x="60" y="110" font-family="Liberation Sans, Arial, sans-serif" font-size="26" font-weight="700" fill="#c9a876" letter-spacing="6">VISART DESIGN</text>
+    <rect x="60" y="150" width="90" height="5" fill="#c9a876"/>
+    ${qat.map((q, i) => `<text x="60" y="${430 + i * (fs1 + 14)}" font-family="Liberation Sans, Arial, sans-serif" font-size="${fs1}" font-weight="800" fill="#ffffff">${q}</text>`).join('')}
+    ${matnQ.map((q, i) => `<text x="60" y="${430 + qat.length * (fs1 + 14) + 50 + i * 44}" font-family="Liberation Sans, Arial, sans-serif" font-size="32" font-weight="500" fill="#d9d2c3">${q}</text>`).join('')}
+    <text x="60" y="${H - 80}" font-family="Liberation Sans, Arial, sans-serif" font-size="24" fill="#8a8272">${indeks + 1} / ${jami}</text>
+  </svg>`);
+  await sharp(svg).png().toFile(outPath);
+}
+
+async function animatsionSenariy(env, mavzu) {
+  let oxirgilar = '';
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/media_taklif?select=sarlavha&order=created_at.desc&limit=15`, {
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }, signal: AbortSignal.timeout(10000) });
+    oxirgilar = ((await r.json()) || []).map((x) => x.sarlavha).filter(Boolean).join('; ');
+  } catch (e) { /* ixtiyoriy */ }
+  const prompt =
+    "Siz Visart Design (Toshkent, arxitektura va interyer studiyasi) uchun Instagram Reels senaristisiz. Material (video/foto) yo'q, shuning uchun animatsion, ovozli, FOYDALI qisqa video kerak.\n" +
+    (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
+    "Qoidalar: odamlarni QIZIQTIRADIGAN, amaliy maslahat (masalan 'Oshxonada 3 ta keng tarqalgan xato'). FAKT/RAQAM/STATISTIKA o'ylab topmang -- faqat umume'tirof etilgan dizayn va qurilish tamoyillari. Tabiiy, sodda, zamonaviy o'zbek (lotin), kalka yo'q, 'ajoyib/mukammal' kabi hype so'zlar yo'q.\n" +
+    "Struktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd CTA (saqlang/ustangizga yuboring/DM). Jami ovoz ~20-35 soniya.\n" +
+    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
+  return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
+}
+
+export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'anim-'));
+  try {
+    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "🎞️ Material yo'q -- animatsion ovozli video tayyorlanmoqda...");
+    const raw = await animatsionSenariy(env, [mavzu, korsatma].filter(Boolean).join('. '));
+    const meta = raw.find((x) => x.tur === 'meta') || {};
+    const slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 7);
+    if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
+
+    const segFiles = [];
+    const subtitr = [];
+    let t = 0;
+    for (let i = 0; i < slaydlar.length; i++) {
+      const sl = slaydlar[i];
+      const png = path.join(tmpDir, `s${i}.png`);
+      const mp3 = path.join(tmpDir, `v${i}.mp3`);
+      const seg = path.join(tmpDir, `seg${i}.mp4`);
+      await slaydRasm(sl.tur, sl.sarlavha || '', sl.matn || '', i, slaydlar.length, png);
+      await ovozYarat(env, sl.ovoz, mp3, tmpDir);
+      const dur = (await tgSoniya(mp3)) + 0.5;
+      const kadr = Math.round(dur * 25);
+      await execFileAsync('ffmpeg', [
+        '-y', '-loop', '1', '-i', png, '-i', mp3,
+        '-vf', `zoompan=z='min(zoom+0.0007,1.09)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${kadr}:s=720x1280:fps=25,format=yuv420p`,
+        '-af', 'apad,aresample=44100', '-t', String(dur),
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+        '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
+      ], { maxBuffer: 1024 * 1024 * 20 });
+      segFiles.push(seg);
+      subtitr.push({ bosh: t + 0.1, tugash: t + dur - 0.15, matn: sl.ovoz });
+      t += dur;
+    }
+    const list = path.join(tmpDir, 'list.txt');
+    fs.writeFileSync(list, segFiles.map((p) => `file '${p}'`).join('\n'));
+    const birlashgan = path.join(tmpDir, 'birlashgan.mp4');
+    await execFileAsync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', birlashgan]);
+
+    // Fon muzika: ovoz 100%, muzika past
+    const muz = await muzikaSintez('sokin', Math.ceil(t) + 1, path.join(tmpDir, 'm.mp3'));
+    const mixed = path.join(tmpDir, 'mixed.mp4');
+    await execFileAsync('ffmpeg', ['-y', '-i', birlashgan, '-i', muz,
+      '-filter_complex', '[1:a]volume=0.16[m];[0:a][m]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11[a]',
+      '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mixed]);
+
+    let chiqish = mixed;
+    try {
+      const sub = path.join(tmpDir, 'final.mp4');
+      if (await srtVideogaKuydir(mixed, subtitr, sub)) chiqish = sub;
+    } catch (e) { /* subtitrsiz ham yaroqli */ }
+
+    const sarlavha = meta.post_sarlavha || slaydlar[0].sarlavha || 'Visart Design';
+    let qopqoqBuf = null;
+    try {
+      const fp = path.join(tmpDir, 'f.jpg');
+      await ffmpegKadrOl(chiqish, fp, 0.1);
+      qopqoqBuf = await qopqoqYarat({ rasmBuf: fs.readFileSync(fp), rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: '', raqam: '' });
+    } catch (e) { qopqoqBuf = null; }
+    if (qopqoqBuf) await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, qopqoqBuf, `🖼️ Qopqoq -- ${sarlavha}`);
+    await tasdiqqaYubor(env, adminChatId, chiqish, qopqoqBuf, {
+      sarlavha, tavsif: meta.tavsif, hashtaglar: meta.hashtaglar,
+      izoh: `Animatsion (${Math.round(t)} s) -- AI mavzu va ovoz. Ovozni tinglab, xato bo'lsa ❌ bosing va sababini yozing.`, taklifId: null });
+  } catch (e) {
+    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Animatsion video yaratilmadi: ${String((e && e.message) || e).slice(0, 300)}`).catch(() => {});
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 }

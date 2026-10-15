@@ -9,7 +9,7 @@
 
 import express from 'express';
 import { yasaOblojka } from './oblojka.js';
-import { bajarMontaj, bajarNashr, bajarStoryVariant } from './montaj.js';
+import { bajarMontaj, bajarNashr, bajarStoryVariant, bajarAnimatsion } from './montaj.js';
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -77,6 +77,15 @@ app.post('/story-variant', (req, res) => {
   if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
   bajarStoryVariant({ env: process.env, id, adminChatId }).catch(() => {});
+});
+
+// POST /animatsion -- material yo'q kuni AI mavzu + ovoz + animatsion video (admin tasdig'iga)
+app.post('/animatsion', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  const { adminChatId, mavzu, korsatma } = req.body || {};
+  if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
+  res.json({ ok: true, holat: 'boshlandi' });
+  bajarAnimatsion({ env: process.env, adminChatId, mavzu, korsatma }).catch(() => {});
 });
 
 // VAQTINCHALIK: brauzerdan to'g'ridan-to'g'ri sinash uchun (qo'lda test).

@@ -155,6 +155,21 @@ function rasmMediaTuri(b64) {
   return 'image/jpeg';
 }
 
+// Admin qarorlaridan o'rganish: tasdiqlangan (namuna) va rad etilgan (qochish) postlar,
+// hamda oxirgi postlar (takror/ketma-ket bir xil ustun bo'lmasin).
+async function senaristTajriba(env) {
+  try {
+    const q = async (holat, n) => (await sbFetch(env, `media_taklif?holat=eq.${holat}&select=sarlavha,post_matni&order=created_at.desc&limit=${n}`).catch(() => [])) || [];
+    const [ok, no, oxirgi] = await Promise.all([q('tasdiqlangan', 5), q('rad_etilgan', 4),
+      sbFetch(env, 'media_taklif?select=sarlavha&order=created_at.desc&limit=14').catch(() => [])]);
+    let t = '';
+    if (ok.length) t += "\n\nADMIN TASDIQLAGAN NAMUNALAR (shu uslub, ohang, uzunlikka yaqin yozing):\n" + ok.map((x) => `- ${x.sarlavha}: ${(x.post_matni || '').slice(0, 280)}`).join('\n');
+    if (no.length) t += "\n\nADMIN RAD ETGAN (bunday sarlavha/uslubdan QOCHING):\n" + no.map((x) => `- ${x.sarlavha}`).join('\n');
+    if (oxirgi && oxirgi.length) t += "\n\nOxirgi postlar (mavzu/hook/ustunni TAKRORLAMANG, xilma-xillik: loyiha, maslahat, material, jarayon, oldin/keyin navbatlashsin):\n" + oxirgi.map((x) => `- ${x.sarlavha}`).join('\n');
+    return t;
+  } catch (e) { return ''; }
+}
+
 async function claudeTahlil(env, items) {
   const content = [];
   for (const it of items) {
@@ -167,6 +182,7 @@ async function claudeTahlil(env, items) {
   content.push({
     type: 'text',
     text:
+      (await senaristTajriba(env)) + "\n\n" +
       "Yuqoridagi materiallar Visart Design arxitektura/dizayn studiyasining ijtimoiy tarmoq uchun xom video/rasm to'plami. " +
       "Bir xil \"albom\" qiymatiga ega elementlar BITTA Telegram xabarida (albom/media group) birga yuborilgan -- ular odatda bitta xonadon/obyektning turli burchaklari, shuning uchun ularni BITTA karusel post sifatida birga ko'rsatish mumkin.\n\n" +
       "Vazifa: eng mos keladigan BITTA variantni tanlang:\n" +
@@ -367,6 +383,18 @@ async function aiTaklifYubor(env) {
 }
 
 import { ruxsatRad } from '../_lib/xato.js';
+import { mediaChaqir } from '../_lib/media.js';
+
+// Material yo'q kuni: AI mavzu + ovozli animatsion video (tasdiqqa). Kuniga 1 marta.
+async function animatsionYoki(env) {
+  const admin = (env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).filter(Boolean)[0];
+  if (!admin || !env.MEDIA_SERVER_URL) return aiTaklifYubor(env);
+  const bosh = new Date(Date.now() - 20 * 3600e3).toISOString();
+  const oxirgi = await sbFetch(env, `nashr_navbati?turi=eq.video_nashr&created_at=gte.${bosh}&select=id&limit=1`).catch(() => []);
+  if (oxirgi && oxirgi.length) return;
+  const r = await mediaChaqir(env, '/animatsion', { adminChatId: admin }, admin);
+  if (!r.ok) await aiTaklifYubor(env);
+}
 
 async function handle({ request, env }) {
   const url = new URL(request.url);
@@ -397,7 +425,7 @@ async function handle({ request, env }) {
     rows = rows.filter((r) => !band.has(String(r.id)));
   }
   if (!rows || rows.length < KAM_MATERIAL_CHEGARA) {
-    await aiTaklifYubor(env);
+    await animatsionYoki(env);
     return json({ ok: true, holat: 'yetarli_material_yoq', mavjud: rows ? rows.length : 0 });
   }
 
