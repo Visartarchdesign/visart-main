@@ -45,7 +45,7 @@ export async function aiOblojka(env, { sarlavha, aksent = '', yuz = null }) {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'] } }), signal: AbortSignal.timeout(60000) });
-      if (!res.ok) continue;
+      if (!res.ok) { sabablar.push(`Gemini HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 160)}`); continue; }
       const d = await res.json();
       const p = (((d.candidates || [])[0] || {}).content || {}).parts || [];
       const im = p.find((x) => x.inlineData && x.inlineData.data);
@@ -87,6 +87,7 @@ export async function yuzStudio(env, tgSendPhoto) {
     'arms crossed, standing, confident friendly smile, waist-up',
   ];
   const natija = [];
+  const sabablar = [];
   for (const v of variantlar) {
     const parts = refs.map((b) => ({ inlineData: { mimeType: 'image/jpeg', data: b.toString('base64') } }));
     parts.push({ text:
@@ -100,15 +101,16 @@ export async function yuzStudio(env, tgSendPhoto) {
       if (!res.ok) continue;
       const d = await res.json();
       const im = ((((d.candidates || [])[0] || {}).content || {}).parts || []).find((x) => x.inlineData && x.inlineData.data);
-      if (!im) continue;
+      if (!im) { sabablar.push('Gemini rasm qaytarmadi: ' + JSON.stringify(d).slice(0, 200)); continue; }
       const buf = await sharp(Buffer.from(im.inlineData.data, 'base64')).jpeg({ quality: 92 }).toBuffer();
       const name = `${Date.now()}-${natija.length}.jpg`;
       const up = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public-media/yuz_ai/${name}`, {
         method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }, body: buf });
-      if (!up.ok) continue;
+      if (!up.ok) { sabablar.push(`Storage HTTP ${up.status} ${(await up.text().catch(() => '')).slice(0, 160)}`); continue; }
       natija.push(name);
       await tgSendPhoto(buf, `✨ ${v}\nYoqmasa ❌ bosing -- o'chiriladi.`, { inline_keyboard: [[{ text: "❌ O'chirish", callback_data: `yuzdel:${name}` }]] });
-    } catch (e) { /* keyingisi */ }
+    } catch (e) { sabablar.push(String((e && e.message) || e).slice(0, 160)); }
   }
+  if (!natija.length && sabablar.length) throw new Error('Portret yaratilmadi. Sabab: ' + sabablar[0]);
   return natija.length;
 }

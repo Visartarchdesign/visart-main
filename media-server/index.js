@@ -25,6 +25,26 @@ function mergeEnv(req) {
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+let oxirgiAdmin = null;
+async function xatoYubor(env, chatId, nom, e) {
+  const m = `⚠️ ${nom} xato: ${String((e && e.message) || e).slice(0, 500)}`;
+  console.error(m);
+  const tok = (env && env.MIJOZ_BOT_TOKEN) || process.env.MIJOZ_BOT_TOKEN;
+  if (!tok || !chatId) return;
+  await fetch(`https://api.telegram.org/bot${tok}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: m }) }).catch(() => {});
+}
+process.on('uncaughtException', (e) => { xatoYubor(null, oxirgiAdmin, 'Media-server (crash)', e); });
+process.on('unhandledRejection', (e) => { xatoYubor(null, oxirgiAdmin, 'Media-server (rejection)', e); });
+function ish(nom, req, fn) {
+  const env = mergeEnv(req);
+  const chatId = (req.body && (req.body.adminChatId || req.body.chatId)) || null;
+  if (chatId) oxirgiAdmin = chatId;
+  const kerak = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY'].filter((k) => !env[k]);
+  if (kerak.length) return xatoYubor(env, chatId, nom, new Error('env yetishmaydi: ' + kerak.join(', ')));
+  const t = setTimeout(() => xatoYubor(env, chatId, nom, new Error("8 daqiqadan beri tugamadi (osilib qolgan bo'lishi mumkin)")), 480000);
+  Promise.resolve().then(() => fn(env)).catch((e) => xatoYubor(env, chatId, nom, e)).finally(() => clearTimeout(t));
+}
+
 function tekshirSecret(req, res) {
   const secret = req.headers['x-media-secret'];
   if (!process.env.MEDIA_SECRET || secret !== process.env.MEDIA_SECRET) {
@@ -67,7 +87,7 @@ app.post('/montaj', (req, res) => {
     return res.status(500).json({ ok: false, error: 'MIJOZ_BOT_TOKEN yoki GEMINI_API_KEY sozlanmagan' });
   }
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarMontaj({ env: mergeEnv(req), aslFileId, adminChatId, title, taklifId, korsatma }).catch(() => {});
+  ish('Montaj', req, (env) => bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma }));
 });
 
 // POST /nashr -- admin "✅ Joylash" bosganda (Cloudflare bot chaqiradi)
@@ -76,7 +96,7 @@ app.post('/nashr', (req, res) => {
   const { id, adminChatId } = req.body || {};
   if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarNashr({ env: mergeEnv(req), id, adminChatId }).catch(() => {});
+  ish('Nashr', req, (env) => bajarNashr({ env, id, adminChatId }));
 });
 
 // POST /story-variant -- admin Story kartasini ❌ qilganda yangi variant
@@ -85,7 +105,7 @@ app.post('/story-variant', (req, res) => {
   const { id, adminChatId } = req.body || {};
   if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarStoryVariant({ env: mergeEnv(req), id, adminChatId }).catch(() => {});
+  ish('Story', req, (env) => bajarStoryVariant({ env, id, adminChatId }));
 });
 
 // POST /animatsion -- material yo'q kuni AI mavzu + ovoz + animatsion video (admin tasdig'iga)
@@ -94,7 +114,7 @@ app.post('/animatsion', (req, res) => {
   const { adminChatId, mavzu, korsatma } = req.body || {};
   if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarAnimatsion({ env: mergeEnv(req), adminChatId, mavzu, korsatma }).catch(() => {});
+  ish('Animatsiya', req, (env) => bajarAnimatsion({ env, adminChatId, mavzu, korsatma }));
 });
 
 app.post('/yuz-studio', (req, res) => {
@@ -102,7 +122,7 @@ app.post('/yuz-studio', (req, res) => {
   const { adminChatId } = req.body || {};
   if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  bajarYuzStudio({ env: mergeEnv(req), adminChatId }).catch(() => {});
+  ish('Yuz-studio', req, (env) => bajarYuzStudio({ env, adminChatId }));
 });
 
 // VAQTINCHALIK: brauzerdan to'g'ridan-to'g'ri sinash uchun (qo'lda test).
