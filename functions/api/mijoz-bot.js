@@ -2108,6 +2108,12 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\/animatsiya\b/i.test(msg.text || '')) {
+      const mavzu = (msg.text || '').replace(/^\/animatsiya(@\w+)?\s*/i, '').trim();
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⏳ Animatsion video buyurtmasi qabul qilindi${mavzu ? ` (mavzu: ${escH(mavzu)})` : ' (mavzuni AI tanlaydi)'}. 3–6 daqiqada tasdiqqa keladi.`);
+      await mediaChaqir(env, '/animatsion', { adminChatId: msg.chat.id, mavzu: mavzu || undefined }, msg.chat.id);
+      return json({ ok: true });
+    }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\/yuzstudio\b/i.test(msg.text || '')) {
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, "⏳ /yuzstudio qabul qilindi. Media-server uyg'onmoqda, portretlar 1–3 daqiqada keladi...");
       const yr = await mediaChaqir(env, '/yuz-studio', { adminChatId: msg.chat.id }, msg.chat.id);
