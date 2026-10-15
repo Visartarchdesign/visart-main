@@ -13,10 +13,10 @@ const T = {
   uz: {
     salom: "Assalomu alaykum! <b>Visart Design</b>ga xush kelibsiz. 👋\nArxitektura, interyer dizayn va remont (pod klyuch) — Toshkent.\n\n📷 Yoqqan interyer rasmini yuboring — uslubini aniqlab, shunga mos loyihalarimizni ko'rsataman.",
     nima: 'Nima qiziqtiradi?',
-    b_narx: '💰 Narxni hisoblash', b_xiz: '🛠 Xizmatlar', b_port: '🖼 Loyihalarimiz', b_soc: '🌐 Ijtimoiy tarmoqlar',
-    b_aloqa: '📞 Aloqa', b_ariza: '📝 Ariza qoldirish', b_obyekt: '📊 Mening obyektim', b_til: '🇷🇺 Русский',
+    b_narx: '💰 Taxminiy narx', b_xiz: '🛠 Xizmatlar', b_port: '🖼 Loyihalarimiz', b_soc: '🌐 Ijtimoiy tarmoqlar',
+    b_aloqa: '📞 Bog\'lanish', b_ariza: '📝 Ariza qoldirish', b_obyekt: '📊 Mening obyektim', b_til: '🇷🇺 Русский',
     narx_yoq: "Hozir narxlarni yuklab bo'lmadi. Ariza qoldiring — menejer aniq narxni aytadi.",
-    narx_q: 'Qaysi xizmat narxini hisoblaymiz?',
+    narx_q: 'Loyihangiz narxini taxminan hisoblab beraman — 1 daqiqa. Qaysi xizmat kerak?',
     s_arch: '🏛 Arxitektura loyihalash', s_int: '🛋 Interyer dizayn', s_tk: '🔨 Remont (pod klyuch)',
     q_sotix: 'Yer maydoni necha <b>sotix</b>? (raqam yozing, masalan: 6)',
     q_int: 'Interyer maydoni necha <b>m²</b>? (masalan: 85)',
@@ -28,7 +28,7 @@ const T = {
     xiz: "<b>Xizmatlarimiz</b>\n\n🏛 <b>Arxitektura loyihalash</b> — uy va binolar loyihasi, 15–25 kun\n🛋 <b>Interyer dizayn</b> — planirovka, 3D vizualizatsiya, ishchi chizmalar\n🔨 <b>Remont (pod klyuch)</b> — dizayndan topshirishgacha to'liq qurilish\n\nBatafsil — saytda:",
     xb: ['Arxitektura', 'Interyer', 'Pod klyuch'],
     soc: "Bizni kuzatib boring — yangi loyihalar va jarayonlar shu yerda 👇",
-    kanal: 'Telegram kanal', sayt: 'Sayt', menejer: '💬 Menejerga yozish', aloqa: 'Aloqa', aloqa_yoq: "Aloqa ma'lumoti hozir mavjud emas.",
+    kanal: 'Telegram kanal', sayt: 'Sayt', menejer: '💬 Menejerga yozish', aloqa: "Bog'lanish", aloqa_yoq: "Aloqa ma'lumoti hozir mavjud emas.",
     ariza_bosh: 'Ariza uchun bir necha savol beraman.\n\nIsmingiz nima?',
     ism_q: "Iltimos, to'liq ismingizni yozing.", tel_q: 'Rahmat! Endi telefon raqamingizni yuboring (masalan, +998901234567).',
     tel_xato: "Telefon raqami to'g'ri formatda emas. Masalan: +998901234567", xizmat_q: 'Qaysi xizmat kerak?',
@@ -133,18 +133,24 @@ async function saytMalumot() {
 const havola = (v, baza) => { v = String(v || '').trim(); if (!v) return null; return /^https?:\/\//i.test(v) ? v : baza + v.replace(/^@/, ''); };
 
 // ── MENYU ──
-function menyuKb(til) {
-  return { inline_keyboard: [
+function menyuKb(til, obyektBor) {
+  const rows = [
     [{ text: t(til, 'b_narx'), callback_data: 'menu:narx' }, { text: t(til, 'b_xiz'), callback_data: 'menu:xiz' }],
-    [{ text: t(til, 'b_port'), url: til === 'ru' ? `${SAYT}/ru/#projects` : `${SAYT}/#projects` }, { text: t(til, 'b_soc'), callback_data: 'menu:soc' }],
-    [{ text: t(til, 'b_aloqa'), callback_data: 'menu:aloqa' }, { text: t(til, 'b_ariza'), callback_data: 'menu:ariza' }],
-    [{ text: t(til, 'b_obyekt'), callback_data: 'menu:obyekt' }, { text: t(til, 'b_til'), callback_data: 'menu:til' }],
-  ] };
+    [{ text: t(til, 'b_port'), url: til === 'ru' ? `${SAYT}/ru/#projects` : `${SAYT}/#projects` }, { text: t(til, 'b_aloqa'), callback_data: 'menu:aloqa' }],
+  ];
+  // "Mening obyektim" faqat admin obyektga biriktirgan (telefoni obyektda bor) mijozga ko'rinadi.
+  rows.push(obyektBor
+    ? [{ text: t(til, 'b_obyekt'), callback_data: 'menu:obyekt' }, { text: t(til, 'b_til'), callback_data: 'menu:til' }]
+    : [{ text: t(til, 'b_til'), callback_data: 'menu:til' }]);
+  return { inline_keyboard: rows };
+}
+async function obyektBormi(env, h, p) {
+  try { return !!(p && p.tel && (await obyektlarTopish(env, h, p.tel)).length); } catch (e) { return false; }
 }
 
 export async function menyuKorsat(env, h, chatId, salom) {
   const p = await getProfil(env, h, chatId);
-  await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, (salom ? t(p.til, 'salom') + '\n\n' : '') + t(p.til, 'nima'), menyuKb(p.til));
+  await h.tgSend(env.MIJOZ_BOT_TOKEN, chatId, (salom ? t(p.til, 'salom') + '\n\n' : '') + t(p.til, 'nima'), menyuKb(p.til, await obyektBormi(env, h, p)));
 }
 
 export async function handleMenu(env, h, cq, data) {
@@ -158,7 +164,7 @@ export async function handleMenu(env, h, cq, data) {
   if (amal === 'til') {
     const yangi = til === 'ru' ? 'uz' : 'ru';
     await setProfil(env, h, chatId, { til: yangi });
-    await send(t(yangi, 'nima'), menyuKb(yangi));
+    await send(t(yangi, 'nima'), menyuKb(yangi, await obyektBormi(env, h, p)));
   } else if (amal === 'narx') {
     const d = await saytMalumot();
     if (!d || !d.pricing || !d.pricing.architecture) {
@@ -195,7 +201,14 @@ export async function handleMenu(env, h, cq, data) {
     } else {
       const adr = st.address && (st.address[til] || st.address.uz);
       const matn = [`<b>${t(til, 'aloqa')}</b>`, st.phone ? `📞 ${esc(st.phone)}` : '', st.email ? `✉️ ${esc(st.email)}` : '', adr ? `📍 ${esc(adr)}` : ''].filter(Boolean).join('\n');
-      await send(matn || t(til, 'aloqa_yoq'), tgp ? { inline_keyboard: [[{ text: t(til, 'menejer'), url: tgp }]] } : undefined);
+      const kb = [[{ text: t(til, 'b_ariza'), callback_data: 'menu:ariza' }]];
+      if (tgp) kb.push([{ text: t(til, 'menejer'), url: tgp }]);
+      const soc = [];
+      if (ig) soc.push({ text: 'Instagram', url: ig });
+      if (tg) soc.push({ text: t(til, 'kanal'), url: tg });
+      if (yt) soc.push({ text: 'YouTube', url: yt });
+      if (soc.length) kb.push(soc);
+      await send(matn, { inline_keyboard: kb });
     }
   } else if (amal === 'ariza') {
     await h.upsertDialog(env, chatId, { step: 'ism', ism: null, telefon: null, xizmat_turi: null, maydon_m2: null });

@@ -50,7 +50,7 @@ import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
-import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan } from '../_lib/mijozMenyu.js';
+import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
   ism: 'ism',
@@ -2233,6 +2233,10 @@ export async function onRequestPost({ request, env }) {
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) &&
         (msg.text === '/start' || msg.text === '/admin' || msg.text === '/start guruh')) {
       await adminPanel(env, chatId);
+      return json({ ok: true });
+    }
+    if (msg.chat.type === 'private' && (msg.text === '/obyekt' || msg.text === '/start obyekt')) {
+      await obyektKorsat(env, H, chatId, await getProfil(env, H, chatId)); // yashirin yo'l: menyuda tugma yo'q, mijozga guruhdan havola beriladi
       return json({ ok: true });
     }
     if (msg.text === '/start' || msg.text === '/menu' || msg.text === '/start guruh') {
