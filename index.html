@@ -59,9 +59,8 @@
 <script type="application/ld+json" id="faqLd">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Loyiha narxi nimaga bog'liq?", "acceptedAnswer": {"@type": "Answer", "text": "Narx maydon, uslub darajasi (Standart, Premium, Lyuks), qavatlar soni va tanlangan xizmatlar tarkibiga bog'liq. Saytdagi kalkulyator taxminiy narxni ko'rsatadi, aniq narx bepul konsultatsiyada belgilanadi."}}, {"@type": "Question", "name": "Loyiha qancha vaqtda tayyor bo'ladi?", "acceptedAnswer": {"@type": "Answer", "text": "Arxitektura loyihasi odatda 15–25 kun, interyer dizayn paketga qarab 10–35 kun davom etadi. Pod klyuch qurilish maydonga qarab 3 oydan 12 oygacha."}}, {"@type": "Question", "name": "To'lov qanday amalga oshiriladi?", "acceptedAnswer": {"@type": "Answer", "text": "Barcha ishlar shartnoma asosida bajariladi. Pod klyuch qurilishda to'lov 4 bosqichda: 30% — shartnomada, 30% — qurilish ishlaridan keyin, 30% — pardozlash bosqichida, 10% — topshirishda. Loyihalash xizmatlari bo'yicha to'lov tartibi shartnomada kelishiladi."}}, {"@type": "Question", "name": "Ruxsatnoma va hujjatlarni ham tayyorlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Kadastr, mygov.uz orqali olinadigan qurilish ruxsatnomalari va qurilishdan oldin kerak bo'ladigan boshqa rasmiy hujjatlarni tayyorlaymiz."}}, {"@type": "Question", "name": "Qurilish jarayonini nazorat qilasizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha. Mualliflik nazorati doirasida obyektga muntazam borib, ishlar loyihaga mos bajarilishini tekshiramiz. Pod klyuch xizmatda qurilishni to'liq o'zimiz olib boramiz."}}, {"@type": "Question", "name": "Toshkentdan tashqarida ham ishlaysizmi?", "acceptedAnswer": {"@type": "Answer", "text": "Ha, O'zbekiston bo'ylab va MDH davlatlarida loyihalar bajaramiz. Konsultatsiya va loyihani kelishish onlayn ham o'tkazilishi mumkin."}}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="image" id="heroPreload" href="/assets/hero.webp" imagesrcset="/assets/hero-sm.webp 900w, /assets/hero.webp 1800w" imagesizes="100vw" fetchpriority="high">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="image" id="heroPreload" href="/assets/hero.webp" fetchpriority="high">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --gold:#A9895A;--gold-l:#C4A876;
@@ -214,7 +213,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 /* ═══ SERVICES — minimal row ═══ */
 .services{padding:0 0 150px;background:var(--paper);position:relative;overflow:hidden}
 .services>.services-list{position:relative;z-index:1}
-.services-list{border-top:0.5px solid var(--line-dark);max-width:1240px;margin:0 auto;padding:0 44px;box-sizing:border-box}
+.services-list{border-top:0.5px solid var(--line-dark);max-width:1240px;margin:0 auto}
 .svc-row{position:relative;display:grid;grid-template-columns:50px 1fr 1fr 24px;gap:36px;padding:38px 0;border-bottom:0.5px solid var(--line-dark);align-items:center;transition:background-color .4s ease,padding-left .4s var(--ease)}
 .svc-row.svc-highlight{background-color:var(--gold-bg,#f4efe6)}
 .svc-arrow{order:3;width:20px;height:20px;color:var(--gold);opacity:0;transform:translateX(-8px);transition:opacity .3s var(--ease),transform .3s var(--ease)}
@@ -263,10 +262,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 .proj-card:hover .proj-card-cta{background:var(--gold);border-color:var(--gold);color:var(--ink)}
 .proj-card-cta svg{width:13px;height:13px;flex-shrink:0}
 @media(max-width:1100px){.proj-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.proj-grid{grid-template-columns:repeat(2,1fr);padding:0 14px;gap:10px;margin-top:44px}.proj-card-img{height:230px}
-.proj-card-badge{top:8px;left:8px;font-size:8.5px;padding:4px 7px}
-.proj-card-info{padding:12px 10px}.proj-card-info h3{font-size:14px;line-height:1.25}.proj-card-info p{font-size:10.5px}
-.proj-card-cta{display:none}}
+@media(max-width:640px){.proj-grid{grid-template-columns:1fr;padding:0 20px;gap:20px;margin-top:44px}.proj-card-img{height:280px}}
 
 .projects-more{padding:80px 0;background:var(--paper);text-align:center}
 
@@ -503,7 +499,6 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em}
 }
 @media(max-width:600px){
   .wrap{padding:0 20px}
-  .services-list{padding:0 20px}
   .fb-caption,.hero-inner{padding-left:20px;padding-right:20px}
   .pmodal-body{padding:50px 20px 70px}
   .pmodal-hero-cap{left:20px;right:20px;bottom:40px}
@@ -604,6 +599,40 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
   .projects-more{padding:50px 20px 70px}
 }
 @media(prefers-reduced-motion:reduce){.split-word span{opacity:1!important}.js .reveal,.js .reveal-scale{opacity:1!important;transform:none!important}}
+
+/* ═══ MOTION SAHNALAR (scroll bilan, scroll'ni to'smaydi) ═══ */
+.ms-scene{height:230vh;position:relative;background:#1f241e;color:#f5f2e9;isolation:isolate}
+.ms-stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;display:grid;place-items:center}
+.ms-grid{position:absolute;inset:0;background-image:linear-gradient(#bb9c6125 1px,transparent 1px),linear-gradient(90deg,#bb9c6125 1px,transparent 1px);background-size:70px 70px;transform:scale(1.2) rotate(-7deg);opacity:calc(1 - var(--p,0))}
+.ms-outline{position:absolute;width:65%;height:70%;stroke:#c9ae73;fill:none;stroke-width:1;stroke-dasharray:1600;stroke-dashoffset:calc(1600 - var(--draw,0)*1600);opacity:calc(1 - var(--photo,0));z-index:1}
+.ms-photo{position:absolute;inset:0;clip-path:inset(calc((1 - var(--photo,0))*38%) calc((1 - var(--photo,0))*31%));transform:scale(calc(1.16 - var(--photo,0)*.16));opacity:var(--photo,0);will-change:clip-path,transform}
+.ms-photo img{width:100%;height:100%;object-fit:cover}
+.ms-photo:after{content:'';position:absolute;inset:0;background:linear-gradient(#10180c55,#10180c20 35%,#10180ccc)}
+.ms-title{position:relative;z-index:2;text-align:center;width:90%;transform:translateY(calc(var(--p,0)*-45px)) scale(calc(1 - var(--p,0)*.12));pointer-events:none}
+.ms-eyebrow{font-size:11px;letter-spacing:3px;font-weight:600;color:#e6d3a4;margin-bottom:22px}
+.ms-h{font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;line-height:1.02;font-size:clamp(46px,7.4vw,118px);letter-spacing:-.035em;max-width:1000px;margin:auto;text-shadow:0 2px 30px #0008}
+.ms-h em{color:#ecd8a6;font-style:italic}
+.ms-caption{position:absolute;bottom:35px;left:6%;right:6%;display:flex;justify-content:space-between;align-items:center;z-index:3;font-size:10px;letter-spacing:2px;color:#f2eddc}
+.ms-track{height:2px;width:100px;background:#ffffff45}
+.ms-track:before{content:'';display:block;width:calc(var(--p,0)*100%);height:100%;background:#d0b577}
+.ms-corner{position:absolute;inset:9%;border:1px solid #c5ad7140;pointer-events:none;opacity:calc(1 - var(--photo,0))}
+.ms-corner:before,.ms-corner:after{content:'+';font:25px monospace;color:#d6bd7c;position:absolute;top:-16px;left:-8px}
+.ms-corner:after{top:auto;left:auto;bottom:-16px;right:-8px}
+.ms-two{height:200vh;background:#e8e4d9}
+.ms-shutter{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;z-index:2;pointer-events:none}
+.ms-shutter>div{background:#252a22;display:grid;place-items:center;will-change:transform}
+.ms-shutter>div:first-child{transform:translateX(calc(var(--open,0)*-101%))}
+.ms-shutter>div:last-child{transform:translateX(calc(var(--open,0)*101%))}
+.ms-shutter img{width:110px;opacity:.9}
+.ms-two .ms-photo{clip-path:none;opacity:1;transform:scale(calc(1.15 - var(--open,0)*.15))}
+.ms-two .ms-title{z-index:3;opacity:var(--open,0)}
+.ms-toggle{position:fixed;right:18px;bottom:16px;background:#f4f2ecee;border:1px solid #c1bba9;padding:10px 14px;z-index:60;font-size:10px;color:#333;border-radius:2px;min-height:40px}
+.ms-off .ms-scene{height:80vh}.ms-off .ms-stage{position:relative;height:80vh}
+.ms-off .ms-photo{clip-path:none;opacity:1;transform:none}
+.ms-off .ms-grid,.ms-off .ms-outline,.ms-off .ms-shutter,.ms-off .ms-corner{display:none}
+.ms-off .ms-title{opacity:1;transform:none}
+@media(max-width:800px){.ms-scene{height:180vh}.ms-two{height:160vh}.ms-h{font-size:clamp(40px,12vw,64px)}.ms-caption{font-size:8px;letter-spacing:1px;gap:12px;bottom:30px}.ms-outline{width:90%}.ms-shutter img{width:70px}.ms-toggle{bottom:10px;right:10px}.ms-track{width:55px}}
+@media(prefers-reduced-motion:reduce){.ms-scene{height:80vh}.ms-stage{position:relative;height:80vh}.ms-photo{clip-path:none;opacity:1;transform:none}.ms-grid,.ms-outline,.ms-shutter,.ms-corner{display:none}.ms-title{opacity:1;transform:none}.ms-toggle{display:none}}
 </style>
 </head>
 <body>
@@ -683,7 +712,7 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
 <!-- HERO — full bleed, one photo, one line -->
 <section class="hero">
   <div class="hero-media">
-    <img id="heroImg" src="/assets/hero.webp" srcset="/assets/hero-sm.webp 900w, /assets/hero.webp 1800w" sizes="100vw" width="1800" height="1125" decoding="async" fetchpriority="high" alt="Visart Design — zamonaviy interyer dizayni, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
+    <img id="heroImg" src="/assets/hero.webp" width="1800" height="1125" decoding="async" fetchpriority="high" alt="Visart Design — zamonaviy interyer dizayni, Toshkent" onerror="this.src='https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1800&q=85'">
   </div>
   <div class="wrap hero-inner">
     <div class="hero-line"><span data-lang="uz" class="lang-active">Arxitektura va interyer dizayn</span><span data-lang="ru">Архитектура и дизайн интерьера</span></div>
@@ -724,6 +753,27 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
   <div class="wrap statement-inner reveal">
     <div class="eyebrow"><span data-lang="uz" class="lang-active">Yondashuv</span><span data-lang="ru">Подход</span></div>
     <h2><span data-lang="uz" class="lang-active">Hech qanday qasr va keng uylar insonga ko'ngil xotirjamligini bera olmaydi. <em>Ko'ngilga mos loyiha</em> yaratamiz.</span><span data-lang="ru">Ни один дворец и просторный дом не подарит человеку душевное спокойствие. Мы создаём проект, <em>созвучный душе</em>.</span></h2>
+  </div>
+</section>
+
+<!-- MOTION 1: chizmadan 3D makonga -->
+<section class="ms-scene" aria-label="Chizmadan 3D makonga / От чертежа к 3D-пространству">
+  <div class="ms-stage">
+    <div class="ms-grid" aria-hidden="true"></div><div class="ms-corner" aria-hidden="true"></div>
+    <svg class="ms-outline" viewBox="0 0 800 600" aria-hidden="true"><path d="M100 500V100H700V500ZM100 280H350V100M350 280V500M350 370H700M500 100V370M100 400H350M540 160H650V300H540ZM150 150H300V240H150ZM150 330H260V375H150ZM400 430H620V475H400Z"/><path d="M80 80H720M80 520H720M60 100V500M740 100V500"/></svg>
+    <div class="ms-photo"><img src="/assets/hero.webp" alt="" width="1800" height="1125" loading="lazy" decoding="async"></div>
+    <div class="ms-title"><p class="ms-eyebrow">VISART · ARCHDESIGN</p><p class="ms-h"><span data-lang="uz" class="lang-active">Chizmadan<br><em>3D makongacha</em></span><span data-lang="ru">От чертежа<br><em>до 3D-пространства</em></span></p></div>
+    <div class="ms-caption" aria-hidden="true"><span><span data-lang="uz" class="lang-active">01 — KONSEPT VA 3D DIZAYN</span><span data-lang="ru">01 — КОНЦЕПЦИЯ И 3D-ДИЗАЙН</span></span><span class="ms-track"></span><span>SCROLL ↓</span></div>
+  </div>
+</section>
+
+<!-- MOTION 2: arxitektura -->
+<section class="ms-scene ms-two" aria-label="Arxitektura loyihalash / Архитектурное проектирование">
+  <div class="ms-stage">
+    <div class="ms-photo"><img src="/assets/arch-01.webp" alt="" width="1600" height="1000" loading="lazy" decoding="async"></div>
+    <div class="ms-shutter" aria-hidden="true"><div><img src="/assets/favicon-192.png" alt=""></div><div><img src="/assets/favicon-192.png" alt=""></div></div>
+    <div class="ms-title"><p class="ms-eyebrow">VISART · <span data-lang="uz" class="lang-active">ARXITEKTURA</span><span data-lang="ru">АРХИТЕКТУРА</span></p><p class="ms-h"><span data-lang="uz" class="lang-active">Ko'ngilga mos<br><em>loyiha yaratamiz.</em></span><span data-lang="ru">Проект, созвучный<br><em>вашей душе.</em></span></p></div>
+    <div class="ms-caption" aria-hidden="true"><span><span data-lang="uz" class="lang-active">02 — ARXITEKTURA LOYIHALASH</span><span data-lang="ru">02 — АРХИТЕКТУРНОЕ ПРОЕКТИРОВАНИЕ</span></span><span class="ms-track"></span><span>SCROLL ↓</span></div>
   </div>
 </section>
 
@@ -870,17 +920,6 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
           </div>
         </div>
         <div class="calc-group">
-          <span class="calc-label"><span data-lang="uz" class="lang-active">Bino turi</span><span data-lang="ru">Тип здания</span></span>
-          <div class="calc-options calc-2" id="calcArchType" style="max-width:420px"></div>
-        </div>
-        <div class="calc-group">
-          <span class="calc-label"><span id="calcArchAreaLabel"></span></span>
-          <div class="calc-area">
-            <input type="range" id="calcArchAreaRange" aria-label="Bino maydoni (m²) / Площадь здания (м²)" min="50" max="1000" step="10" value="200">
-            <div class="calc-area-val"><span id="calcArchAreaVal">200</span> <span id="calcArchAreaUnit">m²</span></div>
-          </div>
-        </div>
-        <div class="calc-group">
           <span class="calc-label"><span data-lang="uz" class="lang-active">Qavatlar soni</span><span data-lang="ru">Количество этажей</span></span>
           <div class="calc-options calc-3" id="calcArchFloors"></div>
         </div>
@@ -888,7 +927,6 @@ a.svc-link[data-lang].lang-active{display:inline-flex}
           <span class="calc-label"><span data-lang="uz" class="lang-active">Qo'shimcha xizmatlar</span><span data-lang="ru">Дополнительные услуги</span></span>
           <div class="calc-addons" id="calcArchAddons"></div>
         </div>
-        <div class="calc-tier-note" id="calcArchScopeNote"><span data-lang="uz" class="lang-active">Narx turar joylar (uylar) uchun 500 m² gacha, noturar binolar uchun 300 m³ gacha bo'lgan maydonga amal qiladi. Maydon oshsa, narx loyihaga qarab alohida hisoblanadi.</span><span data-lang="ru">Цена действует для жилых домов площадью до 500 м² и нежилых зданий до 300 м³. При большей площади стоимость рассчитывается индивидуально, в зависимости от проекта.</span></div>
       </div>
 
       <div id="calcInteriorGroup" style="display:none">
@@ -1326,7 +1364,7 @@ function renderProjects(filter){
     return `
     <a href="${href}" class="proj-card reveal-scale" data-id="${p.id}" aria-label="${p.title[lang]} — ${cta}">
       <div class="proj-card-img">
-        <img src="${p.thumb}"${smSrcset(p.thumb)} alt="${(p.alts&&p.alts[p.hero]&&(p.alts[p.hero][lang]||p.alts[p.hero].uz))||p.title[lang]}" loading="lazy" decoding="async" onerror="this.removeAttribute('srcset');this.onerror=function(){this.src='${FALLBACKS[i%FALLBACKS.length]}'};this.src=this.src">
+        <img src="${p.thumb}" alt="${(p.alts&&p.alts[p.hero]&&(p.alts[p.hero][lang]||p.alts[p.hero].uz))||p.title[lang]}" loading="lazy" decoding="async" onerror="this.src='${FALLBACKS[i%FALLBACKS.length]}'">
         <span class="proj-card-badge">${BADGE_TXT[p.status][lang]}</span>
         <div class="proj-card-info">
           <h3>${p.title[lang]}</h3>
@@ -1545,15 +1583,11 @@ const PRICING={
 let pricingState='loading'; // 'loading' | 'ready' | 'failed' — narx faqat serverdan kelgach ko'rsatiladi
 // Paketlar ichiga kiritilgan xizmatlar — alohida qo'shimcha sifatida ko'rsatilmaydi va hisoblanmaydi.
 const ARCH_BUNDLED=['workDrawings','3d','landscape'];
-const ARCH_NONRES_FEE=6000000, ARCH_MAX_RES=500, ARCH_MAX_NONRES=300;
-function archOver(){return calcState.archArea>(calcState.archType==='res'?ARCH_MAX_RES:ARCH_MAX_NONRES);}
 let calcState={
   service:'arch',
   style:'standard',
   sotix:6,
   archFloors:1,
-  archType:'res',
-  archArea:200,
   area:120,
   archAddons:[],
   interiorPackage:'full',
@@ -1613,22 +1647,6 @@ function renderCalc(){
     floorsWrap.innerHTML=PRICING.architecture.floors.map(f=>`<button type="button" class="calc-chip ${f.id===calcState.archFloors?'active':''}" data-floor="${f.id}">${f[lang]}</button>`).join('');
     floorsWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.archFloors=parseInt(b.dataset.floor,10);renderCalc();}));
   }
-
-  const typeWrap=document.getElementById('calcArchType');
-  if(typeWrap){
-    const TYPES=[{id:'res',uz:'Turar joy',ru:'Жилой дом'},{id:'non',uz:'Noturar bino',ru:'Нежилое здание'}];
-    typeWrap.innerHTML=TYPES.map(f=>`<button type="button" class="calc-chip ${f.id===calcState.archType?'active':''}" data-atype="${f.id}">${f[lang]}</button>`).join('');
-    typeWrap.querySelectorAll('.calc-chip').forEach(b=>b.addEventListener('click',()=>{calcState.archType=b.dataset.atype;renderCalc();}));
-  }
-  const archAreaRange=document.getElementById('calcArchAreaRange');
-  if(archAreaRange)archAreaRange.value=calcState.archArea;
-  const archAreaVal=document.getElementById('calcArchAreaVal');
-  if(archAreaVal)archAreaVal.textContent=calcState.archArea;
-  const non=calcState.archType==='non';
-  const aLbl=document.getElementById('calcArchAreaLabel');
-  if(aLbl)aLbl.textContent=non?(lang==='uz'?'Bino hajmi (m³)':'Объём здания (м³)'):(lang==='uz'?'Bino maydoni (m²)':'Площадь здания (м²)');
-  const aUnit=document.getElementById('calcArchAreaUnit');
-  if(aUnit)aUnit.textContent=non?'m³':'m²';
 
   const sotixRange=document.getElementById('calcSotixRange');
   if(sotixRange)sotixRange.value=calcState.sotix;
@@ -1739,12 +1757,6 @@ function calcCompute(){
       const a=PRICING.architecture.addons.find(x=>x.id===id);
       if(a)total+=a.flat;
     });
-    if(calcState.archType==='non')total+=ARCH_NONRES_FEE;
-    if(archOver()){
-      calcState.total=0;
-      valEl.textContent=lang==='uz'?"Narx maydoniga qarab alohida hisoblanadi":"Стоимость рассчитывается отдельно, по площади";
-      return;
-    }
     calcState.total=total;
     valEl.textContent="~ "+(lang==='uz'?fmtUZS(total):fmtRUB(total));
     return;
@@ -1793,11 +1805,6 @@ function calcCompute(){
   }
 }
 
-document.getElementById('calcArchAreaRange')?.addEventListener('input',(e)=>{
-  calcState.archArea=parseInt(e.target.value,10);
-  const el=document.getElementById('calcArchAreaVal');if(el)el.textContent=calcState.archArea;
-  calcCompute();
-});
 document.getElementById('calcSotixRange')?.addEventListener('input',(e)=>{
   calcState.sotix=parseInt(e.target.value,10);
   const el=document.getElementById('calcSotixVal');
@@ -1839,7 +1846,7 @@ function sendCalcToContact(){
   if(msgEl){
     if(calcState.service==='arch'){
       const floor=PRICING.architecture.floors.find(f=>f.id===calcState.archFloors);
-      msgEl.value=`${svcLabel}, ${calcState.archType==='non'?'noturar bino '+calcState.archArea+' m³':'turar joy '+calcState.archArea+' m²'}, ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — ${archOver()?'narx maydoniga qarab hisoblanadi':'taxminiy '+resultTxt}`;
+      msgEl.value=`${svcLabel}, ${calcState.sotix} ${SOTIX_LABEL[lang]}, ${floor?floor[lang]:''} — taxminiy ${resultTxt}`;
     }else if(calcState.service==='interior'){
       const pkg=PRICING.interior.packages.find(p=>p.id===calcState.interiorPackage);
       msgEl.value=`${svcLabel} (${pkg?pkg[lang]:''}), ${calcState.area} m² — taxminiy ${resultTxt}`;
@@ -1914,9 +1921,6 @@ updateBpRail();
 // ═══ ADMIN PANELDAN DINAMIK KONTENT — mavjud bo'lsa hardcoded ma'lumotlarni almashtiradi.
 // Agar /api/content mavjud bo'lmasa yoki xatolik bersa, sayt yuqoridagi standart
 // (hardcoded) ma'lumotlar bilan to'liq ishlayveradi — hech narsa buzilmaydi. ═══
-function smSrcset(u){
-  return (typeof u==='string'&&/\/uploads\/[^\/]+\.webp$/.test(u))?` srcset="${u.replace(/\.webp$/,'-sm.webp')} 800w, ${u} 1920w" sizes="(max-width:700px) 100vw, 33vw"`:'';
-}
 async function loadDynamicContent(){
   try{
     const res=await fetch('/api/content');
@@ -2038,6 +2042,25 @@ window.matchMedia('(min-width:901px)').addEventListener('change',e=>{
     document.body.style.overflow='';
   }
 });
+
+/* Motion sahnalar: scroll progress (rAF), "Animatsiyani kamaytirish" tugmasi */
+(function(){
+  var scenes=[].slice.call(document.querySelectorAll('.ms-scene'));if(!scenes.length)return;
+  var rm=matchMedia('(prefers-reduced-motion:reduce)'),off=rm.matches;
+  try{if(localStorage.getItem('visart_motion')==='off')off=true}catch(e){}
+  var btn=document.createElement('button');btn.type='button';btn.className='ms-toggle';
+  function lbl(){var ru=(document.documentElement.lang==='ru');btn.textContent=off?(ru?'Включить анимацию':'Animatsiyani yoqish'):(ru?'Уменьшить анимацию':'Animatsiyani kamaytirish');btn.setAttribute('aria-pressed',String(off))}
+  function mode(){document.body.classList.toggle('ms-off',off);lbl();upd()}
+  btn.addEventListener('click',function(){off=!off;try{localStorage.setItem('visart_motion',off?'off':'on')}catch(e){}mode()});
+  rm.addEventListener&&rm.addEventListener('change',function(e){off=e.matches;mode()});
+  document.body.appendChild(btn);
+  var cl=function(n){return Math.max(0,Math.min(1,n))},pend=false;
+  function upd(){pend=false;scenes.forEach(function(el){var r=el.getBoundingClientRect();if(r.bottom<-200||r.top>innerHeight+200)return;var p=cl(-r.top/Math.max(1,r.height-innerHeight));el.style.setProperty('--p',p);el.style.setProperty('--draw',cl(p*3));el.style.setProperty('--photo',cl((p-.2)/.6));el.style.setProperty('--open',cl((p-.1)/.65))})}
+  function q(){if(!pend){pend=true;requestAnimationFrame(upd)}}
+  addEventListener('scroll',q,{passive:true});addEventListener('resize',q);
+  document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.lang-btn'))setTimeout(lbl,0)});
+  mode();
+})();
 </script>
 </body>
 </html>
