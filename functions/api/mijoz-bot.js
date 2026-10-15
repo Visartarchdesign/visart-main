@@ -2109,7 +2109,9 @@ export async function onRequestPost({ request, env }) {
     }
 
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\/yuzstudio\b/i.test(msg.text || '')) {
-      await mediaChaqir(env, '/yuz-studio', { adminChatId: msg.chat.id }, msg.chat.id);
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, "⏳ /yuzstudio qabul qilindi. Media-server uyg'onmoqda, portretlar 1–3 daqiqada keladi...");
+      const yr = await mediaChaqir(env, '/yuz-studio', { adminChatId: msg.chat.id }, msg.chat.id);
+      if (yr && yr.ok) await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, '🚀 Media-server so\'rovni oldi, ishlayapti.');
       return json({ ok: true });
     }
     // Admin shaxsiy chatda rasm + izoh "yuz" yuborsa -- muallif yuzi kutubxonasiga saqlanadi
