@@ -4,18 +4,20 @@ import sharp from 'sharp';
 
 const esc = (s) => String(s || '').replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
 
-export async function yuzTanla(env) {
+export async function yuzTanla(env, prefix = 'yuz_ai', hammasi = false) {
   try {
     if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return null;
     const r = await fetch(`${env.SUPABASE_URL}/storage/v1/object/list/public-media`, {
       method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prefix: 'yuz', limit: 100 }), signal: AbortSignal.timeout(10000) });
+      body: JSON.stringify({ prefix, limit: 100 }), signal: AbortSignal.timeout(10000) });
     const list = ((await r.json()) || []).filter((x) => x.name && /\.(jpe?g|png)$/i.test(x.name));
     if (!list.length) return null;
-    const f = list[Math.floor(Math.random() * list.length)];
-    const img = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public/public-media/yuz/${f.name}`, { signal: AbortSignal.timeout(15000) });
-    if (!img.ok) return null;
-    return Buffer.from(await img.arrayBuffer());
+    const yukla = async (f) => {
+      const img = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public/public-media/${prefix}/${f.name}`, { signal: AbortSignal.timeout(15000) });
+      return img.ok ? Buffer.from(await img.arrayBuffer()) : null;
+    };
+    if (hammasi) return (await Promise.all(list.slice(0, 4).map(yukla))).filter(Boolean);
+    return await yukla(list[Math.floor(Math.random() * list.length)]);
   } catch (e) { return null; }
 }
 
@@ -29,9 +31,10 @@ function sarlavhaQatorlari(t, maks = 13) {
 
 export async function aiOblojka(env, { sarlavha, aksent = '', yuz = null }) {
   if (!env.GEMINI_API_KEY) return null;
+  if (!yuz) yuz = (await yuzTanla(env, 'yuz', true).catch(() => []))[0] || null; // faqat shaxsni aniqlash uchun; natija ishlangan, xom foto emas
   const sahna =
     `Create a premium vertical (9:16) Instagram Reels cover photo for an architecture & interior design studio in Tashkent. Topic: "${sarlavha}". ` +
-    (yuz ? 'The man from the reference photo MUST appear with EXACTLY his real face, hair and features (do not alter identity), wearing smart-casual dark clothes, in the lower half, confident friendly expression, looking at camera, naturally interacting with a topic-relevant prop (architectural scale model, floor plan, material samples or a lamp). ' : 'A topic-relevant premium interior/architecture scene. ') +
+    (yuz ? 'The man from the reference photo MUST appear with EXACTLY his real face shape, eyes, nose and hair (identity must be unmistakable), but PROFESSIONALLY RETOUCHED and flattering: soft cinematic key light, clean even natural skin, neat hair, sharp confident look, premium dark blazer over black turtleneck, in the lower half, confident friendly expression, looking at camera, naturally interacting with a topic-relevant prop (architectural scale model, floor plan, material samples or a lamp). ' : 'A topic-relevant premium interior/architecture scene. ') +
     'Cinematic soft lighting, warm gold and deep charcoal palette, shallow depth of field, ultra-realistic, magazine-quality. Keep the TOP 40% of the frame visually calm and darker (text will be added later). ABSOLUTELY NO text, letters, numbers, logos or watermarks in the image.';
   const parts = [];
   if (yuz) parts.push({ inlineData: { mimeType: 'image/jpeg', data: yuz.toString('base64') } });
@@ -70,4 +73,42 @@ export async function aiOblojka(env, { sarlavha, aksent = '', yuz = null }) {
   </svg>`);
   const baza = await sharp(buf).resize(W, H, { fit: 'cover', position: 'attention' }).toBuffer();
   return sharp(baza).composite([{ input: overlay }]).png().toBuffer();
+}
+
+// Muallifning "chiroyli" AI portretlari: xom rasmlardan (yuz/) studiya darajasida 4 ta portret yaratadi.
+// Natijalar yuz_ai/ ga saqlanadi va admin'ga yuboriladi (❌ bilan o'chirish mumkin).
+export async function yuzStudio(env, tgSendPhoto) {
+  const refs = await yuzTanla(env, 'yuz', true);
+  if (!refs.length) throw new Error("yuz/ kutubxonasi bo'sh -- avval botga 'yuz' izohi bilan rasm yuboring");
+  const variantlar = [
+    'front-facing, confident subtle smile, looking at camera, chest-up',
+    'three-quarter view turned slightly to his left, calm confident gaze, chest-up',
+    'three-quarter view turned slightly to his right, thoughtful expression, chest-up',
+    'arms crossed, standing, confident friendly smile, waist-up',
+  ];
+  const natija = [];
+  for (const v of variantlar) {
+    const parts = refs.map((b) => ({ inlineData: { mimeType: 'image/jpeg', data: b.toString('base64') } }));
+    parts.push({ text:
+      'The reference photos show the SAME man from different angles. Create a premium studio portrait of THIS exact man: identity must be unmistakable (face shape, eyes, nose, hairline, hair style). ' +
+      'Make him look his best: soft professional studio lighting, clean even natural skin with subtle realistic retouching (keep real texture, no plastic look), neat hair, fresh healthy look, sharp eyes. ' +
+      `Outfit: premium dark blazer over a black turtleneck. Pose: ${v}. Background: softly blurred modern architecture studio with warm gold bokeh, 9:16 vertical, magazine quality. No text, no logos.` });
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'}:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseModalities: ['IMAGE'] } }), signal: AbortSignal.timeout(90000) });
+      if (!res.ok) continue;
+      const d = await res.json();
+      const im = ((((d.candidates || [])[0] || {}).content || {}).parts || []).find((x) => x.inlineData && x.inlineData.data);
+      if (!im) continue;
+      const buf = await sharp(Buffer.from(im.inlineData.data, 'base64')).jpeg({ quality: 92 }).toBuffer();
+      const name = `${Date.now()}-${natija.length}.jpg`;
+      const up = await fetch(`${env.SUPABASE_URL}/storage/v1/object/public-media/yuz_ai/${name}`, {
+        method: 'POST', headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }, body: buf });
+      if (!up.ok) continue;
+      natija.push(name);
+      await tgSendPhoto(buf, `✨ ${v}\nYoqmasa ❌ bosing -- o'chiriladi.`, { inline_keyboard: [[{ text: "❌ O'chirish", callback_data: `yuzdel:${name}` }]] });
+    } catch (e) { /* keyingisi */ }
+  }
+  return natija.length;
 }

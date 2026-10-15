@@ -17,7 +17,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
-import { yuzTanla, aiOblojka } from './yuz.js';
+import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -463,7 +463,8 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
       // Juda yuqori o'lchamli manba bo'lsa, 1280px'gacha kichraytiramiz
       // (xotira va chiqish hajmini nazorat qilish uchun) -- aks holda
       // asl o'lcham saqlanadi.
-      '-vf', "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
+      // yengil rang tuzatish: iliq, biroz kontrastli, tiniq (yuz/teri chiroyli ko'rinsin)
+      '-vf', "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,eq=contrast=1.06:saturation=1.08:brightness=0.02:gamma=0.98,unsharp=3:3:0.4",
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
       // Manba (telefon) odatda bt709 rangda -- buni aniq ko'rsatmasak, ba'zi
       // pleyerlarda video xira/qorong'i ko'rinadi.
@@ -1434,5 +1435,15 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Animatsion video yaratilmadi: ${String((e && e.message) || e).slice(0, 300)}`).catch(() => {});
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+export async function bajarYuzStudio({ env, adminChatId }) {
+  try {
+    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "✨ Chiroyli AI portretlar tayyorlanmoqda (1-2 daqiqa)...");
+    const n = await yuzStudio(env, (buf, cap, kb) => tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, buf, cap, kb));
+    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, n ? `✅ ${n} ta portret saqlandi. Oblojka va videolarda shular ishlatiladi (xom rasmlar emas).` : "⚠️ Portret yaratilmadi (Gemini rasm modeli javob bermadi). Keyinroq /yuzstudio ni qayta yuboring.");
+  } catch (e) {
+    await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ ${String((e && e.message) || e).slice(0, 300)}`).catch(() => {});
   }
 }

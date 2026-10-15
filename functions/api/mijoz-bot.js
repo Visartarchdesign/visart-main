@@ -1873,6 +1873,13 @@ export async function onRequestPost({ request, env }) {
         await handleUstaKategoriya(env, cq, data);
         return json({ ok: true });
       }
+      if (data.startsWith('yuzdel:')) {
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: 'Faqat admin.', show_alert: true }); return json({ ok: true }); }
+        await fetch(`${env.SUPABASE_URL}/storage/v1/object/public-media/yuz_ai/${encodeURIComponent(data.slice(7))}`, { method: 'DELETE', headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } }).catch(() => {});
+        await removeKb(env, cq.message.chat.id, cq.message.message_id);
+        await answerCq(env, cq.id, { text: "O'chirildi." });
+        return json({ ok: true });
+      }
       if (data.startsWith('sty:')) {
         const [, amal, qid] = data.split(':');
         if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: 'Faqat admin.', show_alert: true }); return json({ ok: true }); }
@@ -2101,6 +2108,10 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\/yuzstudio\b/i.test(msg.text || '')) {
+      await mediaChaqir(env, '/yuz-studio', { adminChatId: msg.chat.id }, msg.chat.id);
+      return json({ ok: true });
+    }
     // Admin shaxsiy chatda rasm + izoh "yuz" yuborsa -- muallif yuzi kutubxonasiga saqlanadi
     // (AI oblojka va animatsion videolarda ishlatiladi).
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?yuz\b/i.test(msg.caption || '') &&
