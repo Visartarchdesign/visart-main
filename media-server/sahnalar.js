@@ -31,132 +31,187 @@ function xonaBaza(Wd, Dp, H, wallL = W2, wallR = W1, floor = FL) {
 }
 const bosh = (inner) => `<g>${inner}</g>`;
 
+
+const FF = 'Liberation Sans, Arial, sans-serif';
+// yozuvli ko'rsatkich: (px,py) -> (tx,ty) nishon, a = ko'rinish 0..1
+function etiket(px, py, matn, tx, ty, a = 1) {
+  if (a <= 0.02) return '';
+  const w = matn.length * 14 + 28;
+  return `<g opacity="${a.toFixed(2)}"><line x1="${px}" y1="${py}" x2="${tx}" y2="${ty}" stroke="${INK}" stroke-width="2.5"/><circle cx="${tx}" cy="${ty}" r="5" fill="${INK}"/>` +
+    `<rect x="${px - w / 2}" y="${py - 20}" width="${w}" height="38" rx="19" fill="#fff" stroke="${INK}" stroke-width="2.5"/>` +
+    `<text x="${px}" y="${py + 8}" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="22" fill="${INK}">${matn}</text></g>`;
+}
+const divan = (x, y, A, len = 2.4) => box(x, y, 0, 1.0, len, 0.5, mix(A, '#ffffff', 0.35), mix(A, '#000000', 0.12), mix(A, '#000000', 0.05)) +
+  box(x, y, 0.5, 0.32, len, 0.6, mix(A, '#ffffff', 0.2), mix(A, '#000000', 0.2), mix(A, '#000000', 0.1));
+const yostiq = (x, y, c) => box(x, y, 0.5, 0.35, 0.35, 0.3, mix(c, '#ffffff', 0.4), c, mix(c, '#000000', 0.1));
+const gilam = (x, y, w, d, c) => quad([x, y, 0.02], [x + w, y, 0.02], [x + w, y + d, 0.02], [x, y + d, 0.02], c);
+function osimlik(x, y) {
+  const [px, py] = P(x, y, 0.55);
+  return box(x, y, 0, 0.45, 0.45, 0.5, '#b88a63', '#a07650', '#ad8159') +
+    `<ellipse cx="${px}" cy="${py - 40}" rx="30" ry="42" fill="#6f9a63" stroke="${INK}" stroke-width="2.5"/><ellipse cx="${px - 16}" cy="${py - 18}" rx="18" ry="28" fill="#85ad76" stroke="${INK}" stroke-width="2.5"/>`;
+}
+function torsher(x, y, nur = '#ffe9b8', yoniq = 0) {
+  const [bx, by] = P(x, y, 0), [tx, ty] = P(x, y, 1.9);
+  return (yoniq ? `<circle cx="${tx}" cy="${ty + 6}" r="${70 * yoniq}" fill="${nur}" fill-opacity="0.35"/>` : '') +
+    `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${INK}" stroke-width="5"/><ellipse cx="${bx}" cy="${by}" rx="18" ry="8" fill="${INK}"/>` +
+    `<path d="M${tx - 26},${ty + 6} L${tx + 26},${ty + 6} L${tx + 15},${ty - 32} L${tx - 15},${ty - 32} Z" fill="${nur}" stroke="${INK}" stroke-width="3"/>`;
+}
+const oynaOyna = (x1, x2, z1, z2, rang) => quad([x1, 0, z1], [x2, 0, z1], [x2, 0, z2], [x1, 0, z2], rang) +
+  `<line x1="${P((x1 + x2) / 2, 0, z1)[0]}" y1="${P((x1 + x2) / 2, 0, z1)[1]}" x2="${P((x1 + x2) / 2, 0, z2)[0]}" y2="${P((x1 + x2) / 2, 0, z2)[1]}" stroke="${INK}" stroke-width="2.5"/>`;
 export const SAHNALAR = {
   quyosh_xona: {
-    tavsif: "izometrik xona, oynadan tushayotgan quyosh dog'i polda siljiydi (quyosh burchagi, yorug'lik, yo'nalish, janub/shimol oynalar)",
+    tavsif: "oynadan tushayotgan quyosh nuri polga uzayib boradi: quyosh burchagi, yorug'lik, janub/shimol oyna, kun davomida yorug'lik",
     svg(t, A) {
-      const e = ping(t);
-      const sun = [560 - 60 * e, 90 + 40 * e];
-      const k = 0.8 + 2.2 * e; // dog' siljishi
+      const k = 0.5 + 2.6 * seg(t, 0.05, 0.9);
+      const sun = [610 - 40 * seg(t, 0, 0.9), 80 + 90 * seg(t, 0, 0.9)];
       const win = [[1.2, 0, 1.0], [3.4, 0, 1.0], [3.4, 0, 2.5], [1.2, 0, 2.5]];
-      const patch = [[1.2 + k * 0.4, 0.2 + k, 0], [3.4 + k * 0.4, 0.2 + k, 0], [3.4 + k * 0.4 + 0.5, 0.2 + k + 1.1, 0], [1.2 + k * 0.4 + 0.5, 0.2 + k + 1.1, 0]];
+      const dx = 0.3 * k;
+      const patch = [[1.2 + dx, 0.2 + k, 0], [3.4 + dx, 0.2 + k, 0], [3.4 + dx + 0.4, 0.2 + k + 1.0, 0], [1.2 + dx + 0.4, 0.2 + k + 1.0, 0]];
+      const base = [[1.2, 0.05, 0], [3.4, 0.05, 0], [3.4 + dx, 0.2 + k, 0], [1.2 + dx, 0.2 + k, 0]];
       return bosh(
         `<circle cx="${sun[0]}" cy="${sun[1]}" r="46" fill="${A}" fill-opacity="0.25"/><circle cx="${sun[0]}" cy="${sun[1]}" r="26" fill="${A}"/>` +
-        xonaBaza(5, 5, 3) +
-        quad(...win, mix('#cfe6ee', '#fbe9c0', e), '') +
+        xonaBaza(5, 5, 3) + quad(...win, '#cfe6ee') +
         `<line x1="${P(2.3, 0, 1)[0]}" y1="${P(2.3, 0, 1)[1]}" x2="${P(2.3, 0, 2.5)[0]}" y2="${P(2.3, 0, 2.5)[1]}" stroke="${INK}" stroke-width="2.5"/>` +
-        quad(...patch, A, 'fill-opacity="0.38" stroke-opacity="0.35"') +
-        box(0.4, 2.6, 0, 1.0, 2.2, 0.8, '#b9b09a', '#a69d86', '#b3aa93') + box(0.3, 2.6, 0.8, 0.45, 2.2, 0.8, '#b9b09a', '#a69d86', '#b3aa93') +
-        box(3.4, 3.4, 0, 1.3, 1.3, 0.35, A, mix(A, '#000000', 0.18), mix(A, '#000000', 0.08)),
+        gilam(1.6, 2.0, 2.4, 2.2, mix(A, '#ffffff', 0.7)) +
+        quad(...base, A, 'fill-opacity="0.2" stroke="none"') + quad(...patch, A, 'fill-opacity="0.34" stroke="none"') +
+        divan(0.25, 1.5, '#8d8f86', 2.6) + yostiq(0.35, 1.7, A) + osimlik(4.3, 0.5) +
+        etiket(130, 520, 'Quyosh nuri', ...P(2.4 + dx, 0.2 + k + 0.4, 0), seg(t, 0.15, 0.3)) +
+        etiket(600, 380, 'Oyna', ...P(3.4, 0, 1.8), seg(t, 0.02, 0.12)) +
+        etiket(150, 150, 'Divan', ...P(0.7, 1.7, 1.0), seg(t, 0.6, 0.75)),
       );
     },
   },
   lampa_kelvin: {
-    tavsif: "lampa nur harorati: iliq 2700K dan sovuq 6500K gacha, devor va xona rangi o'zgaradi (oq/sariq chiroq, Kelvin)",
+    tavsif: "lampa nur harorati: iliq 2700K dan sovuq 6500K gacha, xona ko'rinishi o'zgaradi (oq/sariq chiroq, Kelvin, yoritish)",
     svg(t, A) {
-      const e = ping(t);
+      const e = seg(t, 0.1, 0.9);
       const nur = mix('#ffb46b', '#d6e8ff', e);
       const devor = mix('#efd9b8', '#dfe8f2', e);
       const kelv = Math.round(2700 + e * 3800);
       const kx = 120 + e * 480;
       return bosh(
-        `<rect x="40" y="60" width="640" height="420" rx="18" fill="${devor}" stroke="${INK}" stroke-width="2.5"/>` +
-        `<rect x="40" y="440" width="640" height="40" fill="${mix('#b9a98c', '#aab4c0', e)}" stroke="${INK}" stroke-width="2.5"/>` +
-        `<defs><radialGradient id="g"><stop offset="0" stop-color="${nur}" stop-opacity="0.95"/><stop offset="1" stop-color="${nur}" stop-opacity="0"/></radialGradient></defs>` +
-        `<circle cx="360" cy="220" r="${190 + 20 * Math.sin(t * 6.28)}" fill="url(#g)"/>` +
-        `<rect x="340" y="250" width="40" height="190" fill="${INK}" fill-opacity="0.8"/><rect x="300" y="430" width="120" height="14" rx="6" fill="${INK}"/>` +
-        `<path d="M300,250 L420,250 L395,160 L325,160 Z" fill="${nur}" stroke="${INK}" stroke-width="3"/>` +
-        `<rect x="110" y="520" width="500" height="22" rx="11" fill="url(#bar)" stroke="${INK}" stroke-width="2.5"/>` +
-        `<defs><linearGradient id="bar" x1="0" x2="1"><stop offset="0" stop-color="#ffb46b"/><stop offset="1" stop-color="#d6e8ff"/></linearGradient></defs>` +
-        `<circle cx="${kx}" cy="531" r="22" fill="#fff" stroke="${INK}" stroke-width="3.5"/>` +
-        ` <text x="${kx}" y="650" text-anchor="middle" font-family="Liberation Sans, Arial" font-weight="700" font-size="40" fill="${INK}">${kelv}K</text>` +
-        `<text x="110" y="574" font-family="Liberation Sans, Arial" font-size="22" fill="${INK}" fill-opacity="0.65">iliq</text><text x="610" y="574" text-anchor="end" font-family="Liberation Sans, Arial" font-size="22" fill="${INK}" fill-opacity="0.65">sovuq</text>`,
+        `<rect x="40" y="40" width="640" height="440" rx="18" fill="${devor}" stroke="${INK}" stroke-width="2.5"/>` +
+        `<rect x="40" y="420" width="640" height="60" fill="${mix('#b9a98c', '#aab4c0', e)}" stroke="${INK}" stroke-width="2.5"/>` +
+        `<defs><radialGradient id="g"><stop offset="0" stop-color="${nur}" stop-opacity="0.95"/><stop offset="1" stop-color="${nur}" stop-opacity="0"/></radialGradient>` +
+        `<linearGradient id="bar" x1="0" x2="1"><stop offset="0" stop-color="#ffb46b"/><stop offset="1" stop-color="#d6e8ff"/></linearGradient></defs>` +
+        `<circle cx="470" cy="190" r="200" fill="url(#g)"/>` +
+        // divan va rasm
+        `<rect x="70" y="290" width="300" height="130" rx="14" fill="${mix(A, '#ffffff', 0.35)}" stroke="${INK}" stroke-width="3"/><rect x="70" y="250" width="300" height="60" rx="14" fill="${mix(A, '#ffffff', 0.15)}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="120" y="90" width="150" height="110" fill="${mix(devor, '#ffffff', 0.4)}" stroke="${INK}" stroke-width="3"/><path d="M135,185 l35,-45 l30,30 l25,-25 l30,40 z" fill="${A}" fill-opacity="0.6"/>` +
+        // stol va lampa
+        `<rect x="430" y="330" width="130" height="14" fill="${INK}"/><rect x="440" y="344" width="10" height="76" fill="${INK}"/><rect x="540" y="344" width="10" height="76" fill="${INK}"/>` +
+        `<rect x="486" y="270" width="12" height="60" fill="${INK}"/><path d="M450,275 L535,275 L515,205 L470,205 Z" fill="${nur}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="110" y="545" width="500" height="22" rx="11" fill="url(#bar)" stroke="${INK}" stroke-width="2.5"/>` +
+        `<circle cx="${kx}" cy="556" r="22" fill="#fff" stroke="${INK}" stroke-width="3.5"/>` +
+        `<text x="${kx}" y="640" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="42" fill="${INK}">${kelv}K</text>` +
+        `<text x="110" y="604" font-family="${FF}" font-size="24" fill="${INK}" fill-opacity="0.7">iliq nur</text><text x="610" y="604" text-anchor="end" font-family="${FF}" font-size="24" fill="${INK}" fill-opacity="0.7">sovuq nur</text>` +
+        `<text x="360" y="700" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="30" fill="${INK}">${e < 0.5 ? 'Yashash xonasi: shu yerda to\'xtang' : 'Ofis va ish joyi uchun'}</text>`,
       );
     },
   },
   oyna_parda: {
-    tavsif: "katta oyna va parda ochilib-yopiladi, kunduzgi yorug'lik nuri polga tushadi (parda, jalyuzi, tabiiy yorug'lik, oyna o'lchami)",
+    tavsif: "katta oyna: parda yopiq holatdan ochiladi, kunduzgi yorug'lik xonaga kiradi (parda, jalyuzi, tabiiy yorug'lik, oyna o'lchami)",
     svg(t, A) {
-      const e = ping(t);
-      const ochiq = 150 * (1 - e) + 12;
+      const e = seg(t, 0.1, 0.85);
+      const ochiq = 12 + 138 * (1 - e) * 0 + (1 - e) * 138; // yopiq(0)-> ochiq(1): parda yig'iladi
+      const pw = 175 - 140 * e; // parda kengligi
       return bosh(
-        `<rect x="60" y="60" width="600" height="560" fill="${W1}" stroke="${INK}" stroke-width="2.5"/>` +
+        `<rect x="60" y="50" width="600" height="570" fill="${W1}" stroke="${INK}" stroke-width="2.5"/>` +
         `<rect x="60" y="560" width="600" height="60" fill="${FL}" stroke="${INK}" stroke-width="2.5"/>` +
-        `<rect x="180" y="120" width="360" height="360" fill="${mix('#bfe0ef', '#fff3cf', 1 - e)}" stroke="${INK}" stroke-width="6"/>` +
-        `<line x1="360" y1="120" x2="360" y2="480" stroke="${INK}" stroke-width="5"/><line x1="180" y1="300" x2="540" y2="300" stroke="${INK}" stroke-width="5"/>` +
-        `<circle cx="470" cy="190" r="30" fill="${A}"/>` +
-        `<polygon points="${180},${480} ${540},${480} ${620 + 20 * (1 - e)},620 ${100 - 20 * (1 - e)},620" fill="${A}" fill-opacity="${0.12 + 0.28 * (1 - e)}"/>` +
-        `<path d="M${180 - 60},100 h${60 + ochiq} v420 h-${60 + ochiq} z" fill="${mix(A, '#ffffff', 0.55)}" stroke="${INK}" stroke-width="3"/>` +
-        `<path d="M${540 + 60},100 h-${60 + ochiq} v420 h${60 + ochiq} z" fill="${mix(A, '#ffffff', 0.55)}" stroke="${INK}" stroke-width="3"/>` +
-        `<line x1="100" y1="100" x2="620" y2="100" stroke="${INK}" stroke-width="6" stroke-linecap="round"/>`,
+        `<rect x="170" y="110" width="380" height="380" fill="${mix('#9fb8c4', '#bfe0ef', e)}" stroke="${INK}" stroke-width="6"/>` +
+        `<line x1="360" y1="110" x2="360" y2="490" stroke="${INK}" stroke-width="5"/><line x1="170" y1="300" x2="550" y2="300" stroke="${INK}" stroke-width="5"/>` +
+        `<circle cx="470" cy="180" r="30" fill="${A}" fill-opacity="${0.3 + 0.7 * e}"/>` +
+        `<rect x="150" y="490" width="420" height="16" fill="${INK}"/>` +
+        `<polygon points="170,506 550,506 ${620 + 10 * e},620 ${100 - 10 * e},620" fill="${A}" fill-opacity="${0.04 + 0.3 * e}"/>` +
+        `<path d="M100,98 h${pw} v${420} h-${pw} z" fill="${mix(A, '#ffffff', 0.5)}" stroke="${INK}" stroke-width="3"/>` +
+        `<path d="M620,98 h-${pw} v${420} h${pw} z" fill="${mix(A, '#ffffff', 0.5)}" stroke="${INK}" stroke-width="3"/>` +
+        `<line x1="90" y1="98" x2="630" y2="98" stroke="${INK}" stroke-width="7" stroke-linecap="round"/>` +
+        etiket(150, 640, 'Parda', 110, 330, seg(t, 0.05, 0.15)) + etiket(560, 640, 'Kun nuri', 520, 580, seg(t, 0.5, 0.65)),
       );
     },
   },
   planirovka: {
-    tavsif: "yuqoridan ko'rinish: devorlar chiziladi, xonalar va mebel paydo bo'ladi (planirovka, xonalar joylashuvi, zonalash, o'lcham)",
+    tavsif: "yuqoridan ko'rinish: devorlar chiziladi, xonalar nomlanadi va mebel joylashadi (planirovka, xonalar joylashuvi, zonalash, 2 xonali/3 xonali)",
     svg(t, A) {
-      const dev = (d) => `stroke-dasharray="1400" stroke-dashoffset="${(1 - d) * 1400}"`;
-      const d1 = seg(t, 0.0, 0.5), d2 = seg(t, 0.35, 0.65);
-      const f = (a) => seg(t, a, a + 0.15);
+      const dev = (d) => `stroke-dasharray="1500" stroke-dashoffset="${(1 - d) * 1500}"`;
+      const d1 = seg(t, 0.0, 0.3), d2 = seg(t, 0.25, 0.45);
+      const f = (a) => seg(t, a, a + 0.1);
+      const lbl = (x, y, m, a) => `<text x="${x}" y="${y}" text-anchor="middle" opacity="${f(a)}" font-family="${FF}" font-weight="700" font-size="26" fill="${INK}">${m}</text>`;
       return bosh(
         `<rect x="90" y="90" width="540" height="540" fill="none" stroke="${INK}" stroke-width="12" ${dev(d1)}/>` +
         `<path d="M360,90 V420 M90,420 H360 M360,300 H630" fill="none" stroke="${INK}" stroke-width="8" ${dev(d2)}/>` +
-        `<g opacity="${f(0.6)}"><rect x="120" y="120" width="190" height="110" rx="8" fill="${A}" fill-opacity="0.75" stroke="${INK}" stroke-width="3"/><circle cx="220" cy="175" r="22" fill="#fff" fill-opacity="0.5"/></g>` +
-        `<g opacity="${f(0.7)}"><rect x="400" y="130" width="190" height="120" rx="8" fill="${W2}" stroke="${INK}" stroke-width="3"/><rect x="420" y="150" width="70" height="70" rx="35" fill="${A}" fill-opacity="0.5" stroke="${INK}" stroke-width="3"/></g>` +
-        `<g opacity="${f(0.8)}"><rect x="120" y="460" width="210" height="130" rx="8" fill="${W2}" stroke="${INK}" stroke-width="3"/><rect x="140" y="480" width="170" height="40" rx="6" fill="${A}" fill-opacity="0.6" stroke="${INK}" stroke-width="3"/></g>` +
-        `<g opacity="${f(0.85)}"><rect x="410" y="350" width="190" height="240" rx="8" fill="${W1}" stroke="${INK}" stroke-width="3"/><rect x="430" y="380" width="150" height="70" fill="${A}" fill-opacity="0.45" stroke="${INK}" stroke-width="3"/></g>` +
-        `<g opacity="${f(0.9)}" stroke="${INK}" stroke-width="2" fill="none"><path d="M90,650 H630 M90,640 v20 M630,640 v20"/><path d="M660,90 V630 M650,90 h20 M650,630 h20"/></g>`,
+        // yotoqxona: karavot
+        `<g opacity="${f(0.5)}"><rect x="120" y="130" width="190" height="140" rx="8" fill="${W2}" stroke="${INK}" stroke-width="3"/><rect x="140" y="150" width="150" height="100" rx="6" fill="${A}" fill-opacity="0.75" stroke="${INK}" stroke-width="3"/><rect x="150" y="158" width="52" height="30" rx="8" fill="#fff"/><rect x="228" y="158" width="52" height="30" rx="8" fill="#fff"/></g>` +
+        // oshxona
+        `<g opacity="${f(0.62)}"><rect x="395" y="115" width="215" height="44" fill="${W2}" stroke="${INK}" stroke-width="3"/><circle cx="440" cy="137" r="12" fill="${INK}"/><circle cx="480" cy="137" r="12" fill="${INK}"/><rect x="420" y="200" width="120" height="70" rx="8" fill="${A}" fill-opacity="0.55" stroke="${INK}" stroke-width="3"/></g>` +
+        // hammom
+        `<g opacity="${f(0.74)}"><rect x="395" y="320" width="215" height="75" rx="30" fill="#fff" stroke="${INK}" stroke-width="3"/><circle cx="130" cy="470" r="0"/></g>` +
+        // mehmonxona: divan, stol
+        `<g opacity="${f(0.8)}"><rect x="130" y="470" width="215" height="70" rx="10" fill="${mix(A, '#ffffff', 0.3)}" stroke="${INK}" stroke-width="3"/><rect x="190" y="560" width="95" height="45" rx="8" fill="${W2}" stroke="${INK}" stroke-width="3"/></g>` +
+        `<g opacity="${f(0.88)}"><rect x="410" y="470" width="190" height="130" rx="8" fill="${W1}" stroke="${INK}" stroke-width="3"/><circle cx="505" cy="535" r="38" fill="${A}" fill-opacity="0.5" stroke="${INK}" stroke-width="3"/></g>` +
+        lbl(215, 300, 'Yotoqxona', 0.5) + lbl(500, 190, 'Oshxona', 0.62) + lbl(500, 360, 'Hammom', 0.74) + lbl(235, 455, 'Mehmonxona', 0.8) + lbl(505, 455, 'Bolalar', 0.88),
       );
     },
   },
   kichik_xona: {
-    tavsif: "kichik xona: mebel ketma-ket joylashadi, joy tejash (kichik xona, multifunksional mebel, ixcham, 2 xonali dan 3 xonaliga)",
+    tavsif: "kichik xona: mebel ketma-ket joylashadi, joy tejash (kichik xona, ixcham mebel, karavot, ish stoli, shkaf, 2 xonali dan 3 xonaliga)",
     svg(t, A) {
-      const a = (s) => 1 - seg(t, s, s + 0.2);
-      const o = (v) => v * a(0);
+      const kir = (a, b) => 1 - seg(t, a, b);
+      const sq = (a, b) => seg(t, a, b);
       return bosh(
         xonaBaza(4, 4, 3) +
-        box(0.2 + a(0) * 5, 0.2, 0, 1.0, 2.2, 0.7, mix(A, '#fff', 0.55), mix(A, '#000', 0.12), mix(A, '#000', 0.04)) +
-        box(2.2, 0.15 - a(0.2) * 4, 0, 1.6, 0.8, 0.9, '#c0b59c', '#a99d83', '#b5a98f') +
-        box(0.15, 2.7 + a(0.4) * 5, 0, 1.3, 1.2, 0.5, A, mix(A, '#000', 0.2), mix(A, '#000', 0.1)) +
-        box(2.6 + a(0.55) * 5, 2.4, 0, 1.0, 1.0, 1.9, '#d9d0bb', '#c2b8a0', '#cdc3ab') +
-        `<g opacity="${seg(t, 0.8, 0.95)}"><path d="M${P(0, 4.5, 0)[0]},${P(0, 4.5, 0)[1] + 18} L${P(4, 4.5, 0)[0]},${P(4, 4.5, 0)[1] + 18}" stroke="${INK}" stroke-width="3"/><text x="${(P(0, 4.5, 0)[0] + P(4, 4.5, 0)[0]) / 2}" y="${P(2, 4.5, 0)[1] + 60}" text-anchor="middle" font-family="Liberation Sans, Arial" font-weight="700" font-size="34" fill="${INK}">4 × 4 m</text></g>`,
+        `<g opacity="${sq(0.05, 0.1)}">${quad([1.0, 0, 1.2], [2.6, 0, 1.2], [2.6, 0, 2.5], [1.0, 0, 2.5], '#cfe6ee')}</g>` +
+        // karavot (chap devor)
+        box(0.2, 0.5 - 5 * kir(0.05, 0.3), 0, 1.5, 2.0, 0.45, '#efe9da', '#d6cfbb', '#e2dcc8') + box(0.2, 0.5 - 5 * kir(0.05, 0.3), 0.45, 1.5, 0.0 + 0.4, 0.15, mix(A, '#ffffff', 0.4), A, A) +
+        // shkaf
+        box(0.15, 3.0, 0, 0.6, 1.0, 2.2 * sq(0.3, 0.5), '#d9d0bb', '#c2b8a0', '#cdc3ab') +
+        // ish stoli oyna ostida
+        box(3.1 + 4 * kir(0.5, 0.7), 0.15, 0.7, 0.8, 1.6, 0.1, '#e9dfcf', '#c8bda5', '#d6ccb4') + box(3.1 + 4 * kir(0.5, 0.7), 0.15, 0, 0.1, 0.1, 0.7, INK, INK, INK) + box(3.1 + 4 * kir(0.5, 0.7), 1.65, 0, 0.1, 0.1, 0.7, INK, INK, INK) +
+        // kreslo
+        box(2.6 + 4 * kir(0.65, 0.8), 1.0, 0, 0.6, 0.6, 0.5, A, mix(A, '#000000', 0.2), mix(A, '#000000', 0.1)) +
+        etiket(120, 600, 'Karavot', ...P(0.9, 1.0, 0.6), sq(0.3, 0.4)) + etiket(360, 625, 'Shkaf', ...P(0.4, 3.5, 1.7), sq(0.5, 0.6)) + etiket(600, 600, 'Ish stoli', ...P(3.5, 1.0, 0.85), sq(0.72, 0.82)) +
+        `<g opacity="${sq(0.85, 0.95)}"><text x="360" y="705" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${INK}">4 × 4 m — hammasi sig'di</text></g>`,
       );
     },
   },
   rang_palitra: {
-    tavsif: "rang palitrasi va xona devor rangi almashadi (rang tanlash, 60-30-10 qoidasi, iliq/sovuq ranglar, kontrast)",
+    tavsif: "60-30-10 qoidasi: devor, mebel va aksent ranglari ketma-ket qo'yiladi (rang tanlash, palitra, kontrast, iliq/sovuq ranglar)",
     svg(t, A) {
-      const pal = ['#d9c7a8', '#9bb3a4', A, '#2f3b52', '#e9dfcf'];
-      const idx = Math.min(4, Math.floor(t * 5));
-      const wall = pal[idx];
+      const devor = mix('#ece6d8', '#d9c9a6', seg(t, 0.05, 0.3));
+      const mebel = mix('#cfcabb', '#6f8f86', seg(t, 0.35, 0.6));
+      const aksent = mix('#cfcabb', A, seg(t, 0.65, 0.85));
+      const x = (n) => 50 + n * 225;
       return bosh(
-        xonaBaza(5, 5, 3, wall, mix(wall, '#ffffff', 0.25)) +
-        box(1, 1.8, 0, 2.2, 1.0, 0.7, mix(pal[(idx + 2) % 5], '#fff', 0.35), pal[(idx + 2) % 5], mix(pal[(idx + 2) % 5], '#000', 0.12)) +
-        pal.map((c, i) => {
-          const s = seg(t, i * 0.12, i * 0.12 + 0.2);
-          return `<circle cx="${130 + i * 115}" cy="${620 - 12 * (i === idx ? 1 : 0)}" r="${(i === idx ? 44 : 34) * s}" fill="${c}" stroke="${INK}" stroke-width="3"/>`;
-        }).join(''),
+        xonaBaza(5, 5, 3, mix(devor, '#000000', 0.06), devor, '#d2c8b0') +
+        quad([1.6, 0.0, 0.9], [3.4, 0, 0.9], [3.4, 0, 2.2], [1.6, 0, 2.2], '#cfe6ee') +
+        gilam(1.4, 1.8, 2.4, 2.2, mix(aksent, '#ffffff', 0.55)) +
+        divan(0.25, 1.4, mebel, 2.8) + yostiq(0.35, 1.7, aksent) + yostiq(0.35, 2.7, aksent) + osimlik(4.2, 0.45) +
+        // 60/30/10 chiziq
+        `<g font-family="${FF}" font-weight="700" font-size="26" fill="${INK}"><circle cx="${x(0)}" cy="640" r="${24 * seg(t, 0.05, 0.3)}" fill="${devor}" stroke="${INK}" stroke-width="3"/><text x="${x(0) + 36}" y="650" opacity="${seg(t, 0.1, 0.3)}">60% devor</text>` +
+        `<circle cx="${x(1) + 20}" cy="640" r="${24 * seg(t, 0.35, 0.6)}" fill="${mebel}" stroke="${INK}" stroke-width="3"/><text x="${x(1) + 56}" y="650" opacity="${seg(t, 0.4, 0.6)}">30% mebel</text>` +
+        `<circle cx="${x(2) + 40}" cy="640" r="${24 * seg(t, 0.65, 0.85)}" fill="${aksent}" stroke="${INK}" stroke-width="3"/><text x="${x(2) + 76}" y="650" opacity="${seg(t, 0.7, 0.85)}">10% aksent</text></g>`,
       );
     },
   },
   hovli_soya: {
-    tavsif: "uy va quyosh yoyi: soya uzunligi kun davomida o'zgaradi (hovli, soya, quyosh yo'nalishi, yoz issiqligi, ayvon, daraxt)",
+    tavsif: "uy va quyosh yoyi: kun davomida soya uzunligi o'zgaradi (hovli, soya, quyosh yo'nalishi, yoz issiqligi, ayvon, daraxt)",
     svg(t, A) {
-      const e = t; // 0 ertalab .. 1 kech
-      const ang = Math.PI * (0.12 + 0.76 * e);
-      const sx = 360 - Math.cos(ang) * 270, sy = 330 - Math.sin(ang) * 270;
-      const soya = 1.6 + 2.6 * Math.abs(0.5 - e) * 2; // tushda qisqa
+      const e = seg(t, 0.05, 0.92);
+      const ang = Math.PI * (0.1 + 0.8 * e);
+      const sx = 360 - Math.cos(ang) * 290, sy = 340 - Math.sin(ang) * 270;
+      const soya = 1.2 + 3.0 * Math.abs(0.5 - e) * 2;
       const dir = e < 0.5 ? 1 : -1;
+      const nom = e < 0.33 ? 'Ertalab: soya uzun' : e < 0.66 ? 'Tush: soya qisqa' : 'Kechga: soya yana uzayadi';
       return bosh(
-        `<path d="M90,330 A270,270 0 0 1 630,330" fill="none" stroke="${INK}" stroke-opacity="0.25" stroke-width="3" stroke-dasharray="8 10"/>` +
-        `<circle cx="${sx}" cy="${sy}" r="42" fill="${A}" fill-opacity="0.25"/><circle cx="${sx}" cy="${sy}" r="24" fill="${A}"/>` +
+        `<path d="M70,340 A290,270 0 0 1 650,340" fill="none" stroke="${INK}" stroke-opacity="0.25" stroke-width="3" stroke-dasharray="8 10"/>` +
+        `<circle cx="${sx}" cy="${sy}" r="44" fill="${A}" fill-opacity="0.25"/><circle cx="${sx}" cy="${sy}" r="25" fill="${A}"/>` +
         quad([-0.2, -0.2, 0], [5.2, -0.2, 0], [5.2, 5.2, 0], [-0.2, 5.2, 0], '#cfd8bd') +
-        quad([1.5, 1.5, 0], [1.5 + dir * soya * 0.6, 1.5 + soya, 0], [3.5 + dir * soya * 0.6, 1.5 + soya, 0], [3.5, 1.5, 0], INK, 'fill-opacity="0.22" stroke="none"') +
+        quad([1.5, 1.5, 0], [1.5 + dir * soya * 0.6, 1.5 + soya, 0], [3.5 + dir * soya * 0.6, 1.5 + soya, 0], [3.5, 1.5, 0], INK, 'fill-opacity="0.24" stroke="none"') +
         box(1.5, 1.5, 0, 2.0, 2.0, 1.6, '#eee6d3', '#d8cfb8', '#e2d9c3') +
-        poly([P(1.3, 1.3, 1.6), P(3.7, 1.3, 1.6), P(2.5, 2.5, 2.6)], A) +
-        poly([P(1.3, 3.7, 1.6), P(3.7, 3.7, 1.6), P(2.5, 2.5, 2.6)], mix(A, '#000', 0.15)) +
-        `<circle cx="${P(4.4, 4.2, 0)[0]}" cy="${P(4.4, 4.2, 1.6)[1]}" r="46" fill="#7f9c6b" stroke="${INK}" stroke-width="2.5"/><rect x="${P(4.4, 4.2, 0)[0] - 5}" y="${P(4.4, 4.2, 1.6)[1] + 40}" width="10" height="${P(4.4, 4.2, 0)[1] - P(4.4, 4.2, 1.6)[1] - 40}" fill="${INK}"/>`,
+        quad([3.5, 2.1, 0.0], [3.5, 2.9, 0.0], [3.5, 2.9, 1.2], [3.5, 2.1, 1.2], mix(A, '#ffffff', 0.2)) +
+        poly([P(1.3, 1.3, 1.6), P(3.7, 1.3, 1.6), P(2.5, 2.5, 2.6)], A) + poly([P(1.3, 3.7, 1.6), P(3.7, 3.7, 1.6), P(2.5, 2.5, 2.6)], mix(A, '#000000', 0.15)) +
+        osimlik(4.4, 4.2) +
+        `<text x="360" y="650" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${INK}">${nom}</text>`,
       );
     },
   },
