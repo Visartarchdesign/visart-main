@@ -15,6 +15,8 @@ import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import sharp from 'sharp';
+sharp.cache(false);
+sharp.concurrency(1);
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
 import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
