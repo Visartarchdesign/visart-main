@@ -1366,23 +1366,25 @@ let rasmKvotaTugagan = false; // 429/402 bo'lsa shu jarayonda qayta urinmaymiz
 async function svgIllyustratsiya(env, mavzu) {
   const prompt = `Create a flat, minimalist architectural line-and-color illustration as ONE SVG for this subject: ${mavzu}. ` +
     'Canvas: viewBox="0 0 720 720", no background rect (transparent). Style: clean isometric or front-view diagram, thin dark strokes (#16150f, stroke-width 3), flat fills in warm neutrals (#d9d4c7, #c9c2b0) with ONE accent color (#0e6b5c teal or #c4572b terracotta), simple shapes only (rect, polygon, path, circle, line), clear readable composition filling the canvas, subtle soft shadow shapes. No text, no letters, no images, no scripts. Output ONLY the <svg>...</svg> markup.';
-  let xato = '';
+  const xatolar = [];
   for (const model of GEMINI_MODELLAR) {
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } }), signal: AbortSignal.timeout(60000) });
-      if (!res.ok) { xato = `SVG ${model} HTTP ${res.status}`; continue; }
-      const d = await res.json();
-      const text = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('');
-      const m = text.match(/<svg[\s\S]*<\/svg>/i);
-      if (!m) { xato = 'SVG qaytmadi'; continue; }
-      const svg = m[0].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<image[\s\S]*?>/gi, '').replace(/<svg\b/i, '<svg width="720" height="720"');
-      const png = await sharp(Buffer.from(svg)).resize(720, 720, { fit: 'contain', background: { r: 236, g: 235, b: 230, alpha: 0 } }).png().toBuffer();
-      return await sharp({ create: { width: 720, height: 1280, channels: 3, background: '#ecebe6' } }).composite([{ input: png, left: 0, top: 440 }]).png().toBuffer();
-    } catch (e) { xato = 'SVG: ' + String((e && e.message) || e).slice(0, 80); }
+    for (let u = 0; u < 2; u++) {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } }), signal: AbortSignal.timeout(60000) });
+        if (!res.ok) { xatolar.push(`${model} HTTP ${res.status}`); break; }
+        const d = await res.json();
+        const text = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('');
+        const m = text.match(/<svg[\s\S]*<\/svg>/i);
+        if (!m) { xatolar.push(`${model} svg yo'q: ${text.slice(0, 60).replace(/\s+/g, ' ')}`); continue; }
+        const svg = m[0].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<image[\s\S]*?>/gi, '').replace(/<svg\b[^>]*>/i, (t) => (/xmlns=/.test(t) ? t : t.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')).replace(/\s(width|height)="[^"]*"/g, '').replace('<svg', '<svg width="720" height="720"'));
+        const png = await sharp(Buffer.from(svg)).resize(720, 720, { fit: 'contain', background: { r: 236, g: 235, b: 230, alpha: 0 } }).png().toBuffer();
+        return await sharp({ create: { width: 720, height: 1280, channels: 3, background: '#ecebe6' } }).composite([{ input: png, left: 0, top: 440 }]).png().toBuffer();
+      } catch (e) { xatolar.push(`${model} ${String((e && e.message) || e).slice(0, 70)}`); }
+    }
   }
-  throw new Error(xato || 'SVG yaratilmadi');
+  throw new Error('SVG: ' + xatolar.join('; '));
 }
 
 async function rasmYarat(env, prompt, mavzu) {
