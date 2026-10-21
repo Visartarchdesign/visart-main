@@ -56,6 +56,19 @@ function torsher(x, y, nur = '#ffe9b8', yoniq = 0) {
     `<line x1="${bx}" y1="${by}" x2="${tx}" y2="${ty}" stroke="${INK}" stroke-width="5"/><ellipse cx="${bx}" cy="${by}" rx="18" ry="8" fill="${INK}"/>` +
     `<path d="M${tx - 26},${ty + 6} L${tx + 26},${ty + 6} L${tx + 15},${ty - 32} L${tx - 15},${ty - 32} Z" fill="${nur}" stroke="${INK}" stroke-width="3"/>`;
 }
+
+// Haqiqiyroq daraxt (ekran koordinatalarida): tanasi, shoxlari, qatlamli barg, yorug' tomoni
+function daraxt(cx, baseY, h, kattalik = 1) {
+  const th = h * 0.42, r = h * 0.34 * kattalik;
+  const top = baseY - th;
+  return `<ellipse cx="${cx}" cy="${baseY + 4}" rx="${r * 0.9}" ry="${r * 0.18}" fill="#000" fill-opacity="0.16"/>` +
+    `<path d="M${cx - 9},${baseY} C${cx - 7},${baseY - th * 0.5} ${cx - 5},${baseY - th * 0.8} ${cx - 4},${top} L${cx + 4},${top} C${cx + 5},${baseY - th * 0.8} ${cx + 8},${baseY - th * 0.5} ${cx + 10},${baseY} Z" fill="#6b4a2f" stroke="${INK}" stroke-width="2.5"/>` +
+    `<path d="M${cx},${top + 10} l-${r * 0.55},-${r * 0.5} M${cx},${top + 6} l${r * 0.5},-${r * 0.55}" stroke="#6b4a2f" stroke-width="6" stroke-linecap="round"/>` +
+    `<circle cx="${cx - r * 0.55}" cy="${top - r * 0.2}" r="${r * 0.62}" fill="#5f8f55" stroke="${INK}" stroke-width="2.5"/>` +
+    `<circle cx="${cx + r * 0.55}" cy="${top - r * 0.25}" r="${r * 0.6}" fill="#5f8f55" stroke="${INK}" stroke-width="2.5"/>` +
+    `<circle cx="${cx}" cy="${top - r * 0.75}" r="${r * 0.72}" fill="#6fa363" stroke="${INK}" stroke-width="2.5"/>` +
+    `<circle cx="${cx - r * 0.25}" cy="${top - r * 0.95}" r="${r * 0.38}" fill="#8cc07b" fill-opacity="0.85"/><circle cx="${cx + r * 0.35}" cy="${top - r * 0.45}" r="${r * 0.28}" fill="#8cc07b" fill-opacity="0.7"/>`;
+}
 const oynaOyna = (x1, x2, z1, z2, rang) => quad([x1, 0, z1], [x2, 0, z1], [x2, 0, z2], [x1, 0, z2], rang) +
   `<line x1="${P((x1 + x2) / 2, 0, z1)[0]}" y1="${P((x1 + x2) / 2, 0, z1)[1]}" x2="${P((x1 + x2) / 2, 0, z2)[0]}" y2="${P((x1 + x2) / 2, 0, z2)[1]}" stroke="${INK}" stroke-width="2.5"/>`;
 export const SAHNALAR = {
@@ -306,24 +319,107 @@ export const SAHNALAR = {
     },
   },
   hovli_soya: {
-    tavsif: "uy va quyosh yoyi: kun davomida soya uzunligi o'zgaradi (hovli, soya, quyosh yo'nalishi, yoz issiqligi, ayvon, daraxt)",
+    tavsif: "uy va quyosh yoyi: kun davomida soya uzunligi o'zgaradi (hovli, soya, quyosh yo'nalishi, yoz issiqligi, daraxt)",
     svg(t, A) {
       const e = seg(t, 0.05, 0.92);
       const ang = Math.PI * (0.1 + 0.8 * e);
-      const sx = 360 - Math.cos(ang) * 290, sy = 340 - Math.sin(ang) * 270;
-      const soya = 1.2 + 3.0 * Math.abs(0.5 - e) * 2;
+      const sx = 360 - Math.cos(ang) * 290, sy = 330 - Math.sin(ang) * 260;
+      const soya = 1.1 + 3.2 * Math.abs(0.5 - e) * 2;
       const dir = e < 0.5 ? 1 : -1;
       const nom = e < 0.33 ? 'Ertalab: soya uzun' : e < 0.66 ? 'Tush: soya qisqa' : 'Kechga: soya yana uzayadi';
+      const oyna = (x1, x2, z1, z2) => quad([3.5, x1, z1], [3.5, x2, z1], [3.5, x2, z2], [3.5, x1, z2], '#bcdcea');
+      const oynaFr = (x1, x2, z1, z2) => quad([x1, 3.5, z1], [x2, 3.5, z1], [x2, 3.5, z2], [x1, 3.5, z2], '#bcdcea');
+      const tomLines = [0.2, 0.4, 0.6, 0.8].map((k) => `<line x1="${P(1.3 + 2.4 * k, 1.3, 1.6 + 1.0 * k * 0)[0]}" y1="0" x2="0" y2="0" stroke="none"/>`).join('');
       return bosh(
-        `<path d="M70,340 A290,270 0 0 1 650,340" fill="none" stroke="${INK}" stroke-opacity="0.25" stroke-width="3" stroke-dasharray="8 10"/>` +
-        `<circle cx="${sx}" cy="${sy}" r="44" fill="${A}" fill-opacity="0.25"/><circle cx="${sx}" cy="${sy}" r="25" fill="${A}"/>` +
-        quad([-0.2, -0.2, 0], [5.2, -0.2, 0], [5.2, 5.2, 0], [-0.2, 5.2, 0], '#cfd8bd') +
+        `<defs><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfd3a3"/><stop offset="1" stop-color="#9fbb84"/></linearGradient></defs>` +
+        `<path d="M70,340 A290,260 0 0 1 650,340" fill="none" stroke="${INK}" stroke-opacity="0.25" stroke-width="3" stroke-dasharray="8 10"/>` +
+        `<circle cx="${sx}" cy="${sy}" r="46" fill="${A}" fill-opacity="0.22"/><circle cx="${sx}" cy="${sy}" r="26" fill="${A}"/>` +
+        quad([-0.4, -0.4, 0], [5.4, -0.4, 0], [5.4, 5.4, 0], [-0.4, 5.4, 0], 'url(#gr)') +
+        quad([3.8, 2.0, 0.01], [5.4, 2.0, 0.01], [5.4, 3.0, 0.01], [3.8, 3.0, 0.01], '#d8cdb8') +
         quad([1.5, 1.5, 0], [1.5 + dir * soya * 0.6, 1.5 + soya, 0], [3.5 + dir * soya * 0.6, 1.5 + soya, 0], [3.5, 1.5, 0], INK, 'fill-opacity="0.24" stroke="none"') +
-        box(1.5, 1.5, 0, 2.0, 2.0, 1.6, '#eee6d3', '#d8cfb8', '#e2d9c3') +
-        quad([3.5, 2.1, 0.0], [3.5, 2.9, 0.0], [3.5, 2.9, 1.2], [3.5, 2.1, 1.2], mix(A, '#ffffff', 0.2)) +
-        poly([P(1.3, 1.3, 1.6), P(3.7, 1.3, 1.6), P(2.5, 2.5, 2.6)], A) + poly([P(1.3, 3.7, 1.6), P(3.7, 3.7, 1.6), P(2.5, 2.5, 2.6)], mix(A, '#000000', 0.15)) +
-        osimlik(4.4, 4.2) +
-        `<text x="360" y="650" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${INK}">${nom}</text>`,
+        box(1.5, 1.5, 0, 2.0, 2.0, 1.5, '#f1e9d6', '#ddd2b9', '#e8dfc9') +
+        oyna(1.8, 2.6, 0.55, 1.15) + `<line x1="${P(3.5, 2.2, 0.55)[0]}" y1="${P(3.5, 2.2, 0.55)[1]}" x2="${P(3.5, 2.2, 1.15)[0]}" y2="${P(3.5, 2.2, 1.15)[1]}" stroke="${INK}" stroke-width="2"/>` +
+        quad([3.5, 2.9, 0], [3.5, 3.4, 0], [3.5, 3.4, 1.05], [3.5, 2.9, 1.05], mix(A, '#000000', 0.15)) +
+        oynaFr(1.8, 2.8, 0.55, 1.15) + oynaFr(2.9, 3.3, 0.55, 1.15) +
+        poly([P(1.25, 1.25, 1.5), P(3.75, 1.25, 1.5), P(2.5, 2.5, 2.55)], mix(A, '#000000', 0.05)) +
+        poly([P(1.25, 3.75, 1.5), P(3.75, 3.75, 1.5), P(3.75, 1.25, 1.5), P(2.5, 2.5, 2.55)].slice(0, 3), mix(A, '#000000', 0.2)) +
+        poly([P(3.75, 1.25, 1.5), P(3.75, 3.75, 1.5), P(2.5, 2.5, 2.55)], mix(A, '#000000', 0.12)) +
+        box(1.55, 1.6, 2.0, 0.28, 0.28, 0.55, '#b9a58c', '#a08b72', '#ab9680') +
+        daraxt(P(5.0, 0.4, 0)[0], P(5.0, 0.4, 0)[1], 150) + daraxt(P(0.2, 4.6, 0)[0], P(0.2, 4.6, 0)[1], 110) +
+        `<text x="360" y="665" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="32" fill="${INK}">${nom}</text>`,
+      );
+    },
+  },
+  ayvon_kesim: {
+    tavsif: "uy kesimi: ayvon (soyabon) yozgi baland quyoshni to'sadi, bargli daraxt past quyoshni to'sadi, xona salqin qoladi (issiqdan himoya, ayvon, daraxt, deraza, quyosh nuri, issiq yozda uyni salqin saqlash)",
+    svg(t, A) {
+      const uz = seg(t, 0.18, 0.42); // ayvon uzayadi
+      const dr = seg(t, 0.68, 0.85); // daraxt o'sadi
+      const ang = (t < 0.62 ? 68 : 26) * Math.PI / 180; // yozgi baland -> kechki past quyosh
+      const L = 150 * uz;
+      const WX = 360, WY1 = 350, WY2 = 460, FL = 560;
+      const trH = 190 * dr;
+      const tr = { cx: 520, cy: FL - 130 * dr, rx: 70 * dr, ry: 85 * dr };
+      const nur = [];
+      const cs = Math.cos(ang), sn = Math.sin(ang);
+      for (let i = 0; i < 6; i++) {
+        const ty = 330 + i * 28;
+        let hit = null, db = 900;
+        for (let d = 0; d < 900; d += 2) {
+          const x = WX + d * cs, y = ty - d * sn;
+          if (uz > 0.02 && x >= WX && x <= WX + L && y >= 258 && y <= 276) { hit = 'ayvon'; db = d; break; }
+          if (dr > 0.05 && ((x - tr.cx) / tr.rx) ** 2 + ((y - tr.cy) / tr.ry) ** 2 <= 1) { hit = 'daraxt'; db = d; break; }
+        }
+        let df = 0; while (df < 900 && WX + df * cs <= 700 && ty - df * sn >= 30) df += 2;
+        if (!hit) { hit = 'oyna'; db = 0; }
+        nur.push({ x0: WX + df * cs, y0: ty - df * sn, x: WX + db * cs, y: ty - db * sn, hit });
+      }
+      const kirdi = nur.filter((n) => n.hit === 'oyna').length;
+      const qiz = kirdi > 0;
+      const rangN = qiz ? '#e8730c' : '#2f7fb0';
+      return bosh(
+        `<rect x="40" y="${FL}" width="640" height="14" fill="#9fbb84" stroke="${INK}" stroke-width="2.5"/>` +
+        // uy
+        `<rect x="60" y="270" width="${WX - 60}" height="${FL - 270}" fill="#f1e9d6" stroke="${INK}" stroke-width="3"/>` +
+        `<polygon points="40,270 ${WX + 12},270 ${(40 + WX + 12) / 2},170" fill="${mix(A, '#000000', 0.1)}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="${WX - 14}" y="${WY1}" width="14" height="${WY2 - WY1}" fill="#bcdcea" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="110" y="${WY1}" width="${WX - 150}" height="${FL - WY1}" fill="${qiz ? '#f6d9b0' : '#d9e7ef'}" fill-opacity="0.65"/>` +
+        `<rect x="120" y="${FL - 190}" width="70" height="190" fill="#c9b79b" stroke="${INK}" stroke-width="3"/>` +
+        (kirdi ? `<polygon points="${WX - 14},${WY1 + 10} ${WX - 14 - 150},${FL - 4} ${WX - 14 - 60},${FL - 4} ${WX - 14},${WY1 + 60}" fill="#ffb347" fill-opacity="0.35"/>` : '') +
+        // ayvon
+        `<rect x="${WX}" y="262" width="${L}" height="14" fill="#8d8f86" stroke="${INK}" stroke-width="3"/>` +
+        (uz > 0.4 ? `<rect x="${WX + L - 10}" y="276" width="10" height="${FL - 276}" fill="#6b6c64" stroke="${INK}" stroke-width="2"/>` : '') +
+        // daraxt
+        (dr > 0.02 ? `<path d="M${tr.cx - 8},${FL} L${tr.cx - 4},${tr.cy + tr.ry - 20} L${tr.cx + 4},${tr.cy + tr.ry - 20} L${tr.cx + 9},${FL} Z" fill="#6b4a2f" stroke="${INK}" stroke-width="2.5"/>` +
+          `<ellipse cx="${tr.cx}" cy="${tr.cy}" rx="${tr.rx}" ry="${tr.ry}" fill="#6fa363" stroke="${INK}" stroke-width="3"/><ellipse cx="${tr.cx - tr.rx * 0.3}" cy="${tr.cy - tr.ry * 0.3}" rx="${tr.rx * 0.45}" ry="${tr.ry * 0.4}" fill="#8cc07b" fill-opacity="0.8"/>` : '') +
+        // quyosh va nurlar
+        `<circle cx="${nur[2].x0}" cy="${nur[2].y0}" r="34" fill="${A}"/><circle cx="${nur[2].x0}" cy="${nur[2].y0}" r="56" fill="${A}" fill-opacity="0.2"/>` +
+        nur.map((n) => `<line x1="${n.x0}" y1="${n.y0}" x2="${n.x}" y2="${n.y}" stroke="#ff9a1f" stroke-width="4" stroke-linecap="round" stroke-opacity="0.85"/>`).join('') +
+        `<text x="360" y="640" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${rangN}">${qiz ? 'Nur xonani qizdiryapti' : 'Nur to\'silgan: xona salqin'}</text>` +
+        (uz > 0.5 ? etiket(560, 190, 'Ayvon', WX + L - 30, 268, seg(t, 0.4, 0.5) * (1 - seg(t, 0.65, 0.7))) : '') +
+        etiket(590, 300, 'Bargli daraxt', tr.cx, tr.cy - 30, seg(t, 0.75, 0.88)),
+      );
+    },
+  },
+  shamollatish: {
+    tavsif: "yuqoridan ko'rinish: qarama-qarshi ikki oyna ochilganda havo xonadan o'tib issiqni olib chiqadi (shamollatish, tortma shamol, salqinlatish, ventilyatsiya, issiq xona)",
+    svg(t, A) {
+      const o1 = seg(t, 0.1, 0.25), o2 = seg(t, 0.4, 0.55);
+      const oqim = seg(t, 0.55, 0.95);
+      const sov = mix('#f4a46a', '#cfe6f3', oqim);
+      const x0 = 110, x1 = 610, y0 = 170, y1 = 520;
+      const yo = [300, 390];
+      const dash = `stroke-dasharray="18 14" stroke-dashoffset="${-t * 420}"`;
+      const sh = (y, a) => `<path d="M40,${y} C200,${y - 30} 300,${y + 30} 360,${y} S520,${y - 30} 680,${y}" fill="none" stroke="#2f7fb0" stroke-width="7" ${dash} stroke-linecap="round" opacity="${a}"/>`;
+      return bosh(
+        `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" fill="${sov}" stroke="${INK}" stroke-width="12"/>` +
+        `<rect x="${x0 - 8}" y="${yo[0]}" width="16" height="${yo[1] - yo[0]}" fill="${o1 > 0.5 ? '#f3f0e6' : '#bcdcea'}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="${x1 - 8}" y="${yo[0]}" width="16" height="${yo[1] - yo[0]}" fill="${o2 > 0.5 ? '#f3f0e6' : '#bcdcea'}" stroke="${INK}" stroke-width="3"/>` +
+        // mebel
+        `<rect x="${x0 + 40}" y="${y0 + 30}" width="140" height="70" rx="8" fill="${mix(A, '#ffffff', 0.4)}" stroke="${INK}" stroke-width="3"/><rect x="${x1 - 190}" y="${y1 - 100}" width="140" height="70" rx="8" fill="#d6cfbd" stroke="${INK}" stroke-width="3"/>` +
+        (o1 > 0.5 ? sh(yo[0] + 45, 0.35 + 0.65 * Math.min(1, oqim * 1.6)) : '') + (o1 > 0.5 && o2 > 0.5 ? sh(yo[0] + 25, oqim) + sh(yo[0] + 65, oqim) : '') +
+        etiket(150, 120, 'Ochiq oyna', x0, yo[0] + 40, o1) + etiket(570, 120, 'Qarshi oyna', x1, yo[0] + 40, o2) +
+        `<text x="360" y="610" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${oqim > 0.5 ? '#1f7a4d' : '#b3261e'}">${oqim > 0.5 ? 'Havo oqimi issiqni olib chiqadi' : (o1 > 0.5 ? 'Bitta oyna: havo harakatlanmaydi' : 'Xona issiq')}</text>`,
       );
     },
   },

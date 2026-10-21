@@ -1434,11 +1434,30 @@ async function matnQatlami(sl, ovOut, ai = true) {
     <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient></defs>
     <rect width="${W}" height="760" fill="url(#t)"/>
     <rect y="${H - 360}" width="${W}" height="360" fill="url(#b)"/>
-    ${logoB64 ? `<image href="data:image/png;base64,${logoB64}" x="52" y="186" width="40" height="35"/>` : ''}
-    <text x="${logoB64 ? 104 : 52}" y="212" font-family="Liberation Sans, Arial, sans-serif" font-size="15" font-weight="700" fill="#16150f" letter-spacing="4">VISART DESIGN</text>${tx}
+    ${logoB64 ? `<image href="data:image/png;base64,${logoB64}" x="344" y="172" width="32" height="28"/>` : ''}
+    <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="#16150f" letter-spacing="3.5">VISART DESIGN</text>${tx}
     <text x="${W - 40}" y="${H - 190}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">${ai ? 'AI ' : ''}ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
   </svg>`);
   await sharp(ov).resize(1080, 1920).png().toFile(ovOut);
+}
+
+// Mavzuga mos alohida STATIK oblojka: sahnaning eng mazmunli kadri + katta o'qiladigan mavzu
+async function mavzuOblojka(nom, aksent, sarlavha, vurgu) {
+  const logoB64 = logoYukla();
+  const fs1 = 80;
+  const qat = qatorBol(xmlEscape(sarlavha || ''), Math.floor(640 / (fs1 * 0.58))).split('\n').slice(0, 4);
+  const vr = vurgu ? xmlEscape(vurgu).toLowerCase() : '';
+  const tx = qat.map((q, i) => `<text x="360" y="${330 + i * (fs1 + 12)}" text-anchor="middle" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
+  const sc = await sharp(Buffer.from(sahnaSvg(nom, 0.95, aksent)), { density: 108 }).resize(1080, 1080).png().toBuffer();
+  const ov = Buffer.from(`<svg width="720" height="1280" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6"/><stop offset="0.85" stop-color="#ecebe6" stop-opacity="0.9"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient></defs>
+    <rect width="720" height="640" fill="url(#t)"/>
+    ${logoB64 ? `<image href="data:image/png;base64,${logoB64}" x="344" y="172" width="32" height="28"/>` : ''}
+    <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="#16150f" letter-spacing="3.5">VISART DESIGN</text>${tx}
+  </svg>`);
+  const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
+  const ovp = await sharp(ov).resize(1080, 1920).png().toBuffer();
+  return sharp(baza).composite([{ input: sc, left: 0, top: 780 }, { input: await sharp({ create: { width: 1080, height: 240, channels: 3, background: SAHNA_BG } }).png().toBuffer(), left: 0, top: 1680 }, { input: ovp, left: 0, top: 0 }]).jpeg({ quality: 92 }).toBuffer();
 }
 
 // Mavzuga mos AI illyustratsiya (ma'lumot uchun) -> bg (2x, barqaror zoom uchun) + alohida STATIK matn qatlami.
@@ -1461,8 +1480,8 @@ async function sahnaKadrlar(nom, aksent, dur, dir, t0 = 0, t1 = 1) {
   fs.mkdirSync(dir, { recursive: true });
   const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
   for (let k = 0; k < n; k++) {
-    const sc = await sharp(Buffer.from(sahnaSvg(nom, t0 + (t1 - t0) * Math.min(1, k / (n - 1) / 0.9), aksent)), { density: 108 }).resize(1000, 1000).png().toBuffer();
-    await sharp(baza).composite([{ input: sc, left: 40, top: 800 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
+    const sc = await sharp(Buffer.from(sahnaSvg(nom, t0 + (t1 - t0) * Math.min(1, k / (n - 1) / 0.9), aksent)), { density: 108 }).resize(880, 880).png().toBuffer();
+    await sharp(baza).composite([{ input: sc, left: 100, top: 740 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
   }
   return fps;
 }
@@ -1475,10 +1494,10 @@ async function animatsionSenariy(env, mavzu) {
     oxirgilar = ((await r.json()) || []).map((x) => x.sarlavha).filter(Boolean).join('; ');
   } catch (e) { /* ixtiyoriy */ }
   const prompt = KREATIV_PROMPT +
-    "\n\nAVTOMATIK REJIM: savol bermang, to'liq mustaqil ishlang. Brend: Visart Design (Toshkent). Material (video/foto) yo'q -- animatsion, ovozli, foydali video kerak. Sizning kodingiz tayyor animatsion SAHNALAR kutubxonasidan foydalanadi (pastda); har slayd uchun bittasini tanlang. Jami ovoz 20-40 soniya, 4-7 slayd.\n" +
+    "\n\nAVTOMATIK REJIM: savol bermang, to'liq mustaqil ishlang. Brend: Visart Design (Toshkent). Material (video/foto) yo'q -- animatsion, ovozli, foydali video kerak. Sizning kodingiz tayyor animatsion SAHNALAR kutubxonasidan foydalanadi (pastda); har slayd uchun bittasini tanlang. Jami ovoz 25-45 soniya, 5-8 slayd.\n" +
     (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
     "SAHNALAR (animatsion, har slayd uchun bittasini tanlang). MUHIM: mavzu SAHNALARDAN 2-4 tasi bilan to'liq tushuntiriladigan bo'lsin; ovoz AYNAN sahnada ko'rinayotgan narsani aytsin (sahna ichidagi yozuvlar -- oyna, divan, parda, karavot, quyosh nuri, hammom... -- ovozda tilga olinsin), shunda tomoshabin nima ko'rayotganini darrov tushunadi. Sahnadagi harakat ovoz davomida rivojlanadi (quyosh pastlaydi, parda ochiladi, mebel joylashadi), shuning uchun gap shu jarayonni izohlasin:\n" + SAHNA_MENYU + "\n" +
-    "TIL: jonli so'zlashuv o'zbekchasi, ustaga/mijozga tushuntirayotgandek iliq, 'Siz'lab. Tarjima uslubi, rasmiy va kitobiy so'zlar ('ushbu', 'mazkur', 'amalga oshirmoq', 'taqdim etmoq') yo'q. Qisqa gaplar, kelishik va egalik qo'shimchalari to'g'ri (-ning, -ni, -ga, -da, -dan, -i/-si). Oddiy so'zlar: remont, planirovka, kvadrat metr, chiroq, parda, divan, shkaf, oshxona, mehmonxona. Yaxshi: 'Uyingizdagi chiroq rangi xonani arzon ko'rsatib qo'yishi mumkin.' Yomon: 'Ushbu yoritish moslamasi interyerni arzon his ettiradi.' Ovozdagi raqamlar SO'Z bilan yoziladi (2700K -> 'ikki ming yetti yuz kelvin', 4x4 -> 'to'rtga to'rt').\n" + "PROFESSIONAL QOIDALAR: hook birinchi 1.5 soniyada qiziqtirsin (3 soniya ichida butun hook aytiladi, 8 so'zdan oshmasin); har slaydning 'ovoz'i BITTA qisqa gap (6-11 so'z, ~3 soniya) -- vizual har 2-3 soniyada almashadi; ortiqcha, to'ldiruvchi so'z yo'q; oxirgi gap bitta esda qoladigan xulosa yoki tabiiy savol bo'lsin (reklama yoki 'saqlang/yuboring' chaqirig'i MAJBURIY EMAS), hook bilan mazmunan bog'lansin. Emotsiya birinchi: odamga 'bu menga tegishli' degan his bering.\nStruktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd XULOSA. Jami ovoz 20-40 soniya (slaydlar soni 4-7).\n" +
+    "TIL: jonli so'zlashuv o'zbekchasi, ustaga/mijozga tushuntirayotgandek iliq, 'Siz'lab. Tarjima uslubi, rasmiy va kitobiy so'zlar ('ushbu', 'mazkur', 'amalga oshirmoq', 'taqdim etmoq') yo'q. Qisqa gaplar, kelishik va egalik qo'shimchalari to'g'ri (-ning, -ni, -ga, -da, -dan, -i/-si). Oddiy so'zlar: remont, planirovka, kvadrat metr, chiroq, parda, divan, shkaf, oshxona, mehmonxona. Yaxshi: 'Uyingizdagi chiroq rangi xonani arzon ko'rsatib qo'yishi mumkin.' Yomon: 'Ushbu yoritish moslamasi interyerni arzon his ettiradi.' Ovozdagi raqamlar SO'Z bilan yoziladi (2700K -> 'ikki ming yetti yuz kelvin', 4x4 -> 'to'rtga to'rt').\n" + "PROFESSIONAL QOIDALAR: hook birinchi 1.5 soniyada qiziqtirsin (3 soniya ichida butun hook aytiladi, 8 so'zdan oshmasin); har slaydning 'ovoz'i BITTA qisqa gap (6-11 so'z, ~3 soniya) -- vizual har 2-3 soniyada almashadi; ortiqcha, to'ldiruvchi so'z yo'q; oxirgi gap bitta esda qoladigan xulosa yoki tabiiy savol bo'lsin (reklama yoki 'saqlang/yuboring' chaqirig'i MAJBURIY EMAS), hook bilan mazmunan bog'lansin. Emotsiya birinchi: odamga 'bu menga tegishli' degan his bering.\nStruktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 1-2 slayd MUAMMO VA SABAB (nima uchun shunday), 2-3 slayd YECHIM (arxitektura, interyer yoki qurilishda NIMA QILISH KERAK -- aniq, amaliy, umumiy qabul qilingan usullar), oxirgi slayd FOYDA-XULOSA (shu yechimdan odam nima yutadi: qulaylik, tejam, salqinlik, kenglik...). Faqat muammoni aytib tashlab ketish MAN ETILADI: video albatta 'qanday qursa/qilsa natija bo'ladi' bilan tugasin. Raqam va faktlarni to'qimang; umumiy tan olingan qoidalarni ayting. Jami ovoz 25-45 soniya (slaydlar soni 5-8).\n" +
     'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|xulosa","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
@@ -1516,6 +1535,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
 
     const yuzBuf = await yuzTanla(env);
     let qopqoqAsos = null;
+    let qopqoqSahna = null;
     const segFiles = [];
     const subtitr = [];
     let t = 0;
@@ -1535,6 +1555,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
         await matnQatlami(sl, ov, false);
         const fdir = path.join(tmpDir, `fr${i}`);
         const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir, Number.isFinite(sl.t0) ? sl.t0 : 0, Number.isFinite(sl.t1) ? sl.t1 : 1);
+        if (!qopqoqSahna) qopqoqSahna = [sahnaNom, aksent];
         if (i === 0) qopqoqAsos = await sharp(path.join(fdir, 'f0000.png')).jpeg({ quality: 90 }).toBuffer();
         await execFileAsync('ffmpeg', [
           '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
@@ -1589,7 +1610,8 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     const sarlavha = meta.post_sarlavha || slaydlar[0].sarlavha || 'Visart Design';
     let qopqoqBuf = null;
     try {
-      qopqoqBuf = await aiOblojka(env, { sarlavha, aksent: meta.vurgu || '', yuz: yuzBuf }).catch(() => null);
+      if (qopqoqSahna) qopqoqBuf = await mavzuOblojka(qopqoqSahna[0], qopqoqSahna[1], sarlavha, meta.vurgu || slaydlar[0].vurgu || '').catch(() => null);
+      if (!qopqoqBuf) qopqoqBuf = await aiOblojka(env, { sarlavha, aksent: meta.vurgu || '', yuz: yuzBuf }).catch(() => null);
       if (!qopqoqBuf) qopqoqBuf = await qopqoqYarat({ rasmBuf: qopqoqAsos, rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: meta.vurgu || '', raqam: '' });
     } catch (e) { qopqoqBuf = null; }
     if (qopqoqBuf) await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, qopqoqBuf, `🖼️ Qopqoq -- ${sarlavha}`);
