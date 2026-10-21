@@ -29,15 +29,15 @@ export const SENARIYLAR = [
     ],
   },
   {
-    id: 'parda-osish', post_sarlavha: 'Pardani shunday osing', vurgu: 'kattaroq',
-    tavsif: "To'g'ri osilgan parda oynani kattaroq, xonani esa balandroq ko'rsatadi.\nSizning pardangiz oynadan kengmi?",
+    id: 'parda-osish', post_sarlavha: 'Oyna nega kichik ko\'rinadi?', vurgu: 'kichik',
+    tavsif: "Pardani to'g'ri osish oynani kattaroq, shiftni balandroq ko'rsatadi. Karnizni shiftga yaqin, oynadan 20-30 sm kengroq o'rnating.\nSizning pardangiz qanday osilgan?",
     hashtaglar: '#interyer #parda #oyna #uydizayni #dizayn #remont #visartdesign',
     slaydlar: [
-      S('hook', 'Parda xonani kattalashtiradi', 'kattalashtiradi', 'oyna_parda', 0, 0.05, "Pardani to'g'ri osing, xona kattaroq ko'rinadi."),
-      S('mazmun', 'Oynadan kengroq', 'kengroq', 'oyna_parda', 0.05, 0.4, "Pardani oynadan kengroq qilib oling, ikki yonga bir tekis yig'iladigan bo'lsin."),
-      S('mazmun', 'Yorug'+"'"+'lik to\'liq kiradi', 'to\'liq', 'oyna_parda', 0.4, 0.85, "Parda ochilganda oyna to'liq ochiladi va kun nuri xonaga erkin kiradi."),
-      S('mazmun', 'Karniz shiftga yaqin', 'shiftga', 'oyna_parda', 0.85, 1, "Karnizni shiftga yaqin o'rnating, shunda shift balandroq tuyuladi."),
-      S('cta', 'Saqlab qo\'ying', 'saqlab', 'oyna_parda', 1, 1, "Parda olishdan oldin shu videoni saqlab qo'ying."),
+      S('hook', 'Oyna nega kichik ko\'rinadi?', 'kichik', 'parda_taqqos', 0, 0.1, "Parda noto'g'ri osilsa, oynangiz kichik ko'rinadi."),
+      S('mazmun', 'Karniz shiftga yaqin', 'shiftga', 'parda_taqqos', 0.1, 0.5, "Birinchi xato: karniz oynaning tepasiga taqab o'rnatiladi. Uni shiftga yaqinroq osing."),
+      S('mazmun', 'Oynadan kengroq', 'kengroq', 'parda_taqqos', 0.5, 0.8, "Ikkinchi xato: parda oyna kengligicha olinadi. Ikki yonga yigirma-o'ttiz santimetr kengroq qiling."),
+      S('mazmun', 'Oyna katta, shift baland', 'baland', 'parda_taqqos', 0.8, 1, "Natijada oyna to'liq ochiladi, shift esa balandroq ko'rinadi."),
+      S('cta', 'Saqlab qo\'ying', 'saqlab', 'parda_taqqos', 1, 1, "Parda olishdan oldin shu videoni saqlab qo'ying."),
     ],
   },
   {

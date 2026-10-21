@@ -130,6 +130,34 @@ export const SAHNALAR = {
       );
     },
   },
+  parda_taqqos: {
+    tavsif: "parda to'g'ri va noto'g'ri osilishi yonma-yon: karniz shiftga yaqin va oynadan kengroq bo'lsa oyna katta, shift baland ko'rinadi (parda, karniz, oyna ko'rinishi)",
+    svg(t, A) {
+      const up = seg(t, 0.12, 0.5), wide = seg(t, 0.45, 0.78), fin = seg(t, 0.82, 0.95);
+      const panel = (x0, tog) => {
+        const cx = x0 + 165, wl = cx - 70, wr = cx + 70, wt = 240, wb = 430;
+        const rodY = tog ? 215 - 120 * up : 215;
+        const ext = tog ? 95 * wide : 6;
+        const cw = tog ? 56 : 52; // parda kengligi
+        const bot = tog ? 535 : 470;
+        const pc = mix(A, '#ffffff', 0.45);
+        return `<rect x="${x0}" y="60" width="330" height="480" fill="${W1}" stroke="${INK}" stroke-width="2.5"/>` +
+          `<rect x="${x0}" y="540" width="330" height="40" fill="${FL}" stroke="${INK}" stroke-width="2.5"/>` +
+          `<rect x="${wl}" y="${wt}" width="140" height="190" fill="#bfe0ef" stroke="${INK}" stroke-width="5"/><line x1="${cx}" y1="${wt}" x2="${cx}" y2="${wb}" stroke="${INK}" stroke-width="4"/>` +
+          `<line x1="${wl - ext - 8}" y1="${rodY}" x2="${wr + ext + 8}" y2="${rodY}" stroke="${INK}" stroke-width="7" stroke-linecap="round"/>` +
+          `<rect x="${wl - ext}" y="${rodY + 4}" width="${cw}" height="${bot - rodY - 4}" fill="${pc}" stroke="${INK}" stroke-width="3"/>` +
+          `<rect x="${wr + ext - cw}" y="${rodY + 4}" width="${cw}" height="${bot - rodY - 4}" fill="${pc}" stroke="${INK}" stroke-width="3"/>`;
+      };
+      const yoz = (x, y, m, c, a = 1) => `<text x="${x}" y="${y}" text-anchor="middle" opacity="${a}" font-family="${FF}" font-weight="700" font-size="30" fill="${c}">${m}</text>`;
+      return bosh(
+        panel(20, false) + panel(370, true) +
+        yoz(185, 40, "Noto'g'ri", '#b3261e') + yoz(535, 40, "To'g'ri", '#1f7a4d', seg(t, 0.1, 0.2)) +
+        etiket(535, 640, 'Shiftga yaqin', 520, 120, seg(t, 0.3, 0.45) * (1 - seg(t, 0.6, 0.7))) +
+        etiket(185, 640, 'Oynadan tor', 150, 330, seg(t, 0.05, 0.15) * (1 - seg(t, 0.45, 0.55))) +
+        `<g opacity="${fin}"><text x="360" y="690" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="36" fill="${INK}">Oyna katta, shift baland</text></g>`,
+      );
+    },
+  },
   planirovka: {
     tavsif: "yuqoridan ko'rinish: devorlar chiziladi, xonalar nomlanadi va mebel joylashadi (planirovka, xonalar joylashuvi, zonalash, 2 xonali/3 xonali)",
     svg(t, A) {
