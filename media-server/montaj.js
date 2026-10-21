@@ -18,6 +18,7 @@ import sharp from 'sharp';
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
 import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
+import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, sahnaSvg } from './sahnalar.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -1413,6 +1414,24 @@ async function rasmYarat(env, prompt, mavzu) {
   return { sabab: sabablar.join(' | ') };
 }
 
+async function matnQatlami(sl, ovOut, ai = true) {
+  const W = 720, H = 1280;
+  const fs1 = sl.tur === 'hook' ? 70 : 58;
+  const qat = qatorBol(xmlEscape(sl.sarlavha || ''), Math.floor(620 / (fs1 * 0.6))).split('\n');
+  const vr = sl.vurgu ? xmlEscape(sl.vurgu).toLowerCase() : '';
+  const tx = qat.map((q, i) => `<text x="52" y="${340 + i * (fs1 + 14)}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
+  const ov = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6" stop-opacity="0.96"/><stop offset="0.7" stop-color="#ecebe6" stop-opacity="0.6"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient></defs>
+    <rect width="${W}" height="760" fill="url(#t)"/>
+    <rect y="${H - 360}" width="${W}" height="360" fill="url(#b)"/>
+    <text x="52" y="212" font-family="Liberation Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#16150f" letter-spacing="6">VISART DESIGN</text>
+    <rect x="52" y="232" width="64" height="4" fill="#c4572b"/>${tx}
+    <text x="${W - 40}" y="${H - 190}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">${ai ? 'AI ' : ''}ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
+  </svg>`);
+  await sharp(ov).resize(1080, 1920).png().toFile(ovOut);
+}
+
 // Mavzuga mos AI illyustratsiya (ma'lumot uchun) -> bg (2x, barqaror zoom uchun) + alohida STATIK matn qatlami.
 async function animatsiyaAiRasm(env, sl, bgOut, ovOut) {
   const prompt = `Clean educational illustration for an architecture/interior tips video, vertical 9:16. Subject: ${sl.rasm || sl.sarlavha}. ` +
@@ -1423,20 +1442,20 @@ async function animatsiyaAiRasm(env, sl, bgOut, ovOut) {
   if (!r.buf) throw new Error('AI rasm yaratilmadi: ' + r.sabab);
   const W = 720, H = 1280;
   await sharp(r.buf).resize(W * 2, H * 2, { fit: 'cover', position: 'centre' }).jpeg({ quality: 92 }).toFile(bgOut);
-  const fs1 = sl.tur === 'hook' ? 70 : 58;
-  const qat = qatorBol(xmlEscape(sl.sarlavha || ''), Math.floor(620 / (fs1 * 0.6))).split('\n');
-  const vr = sl.vurgu ? xmlEscape(sl.vurgu).toLowerCase() : '';
-  const tx = qat.map((q, i) => `<text x="52" y="${340 + i * (fs1 + 14)}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
-  const ov = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6" stop-opacity="0.96"/><stop offset="0.7" stop-color="#ecebe6" stop-opacity="0.6"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient>
-    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.62"/></linearGradient></defs>
-    <rect width="${W}" height="760" fill="url(#t)"/>
-    <rect y="${H - 480}" width="${W}" height="480" fill="url(#b)"/>
-    <text x="52" y="212" font-family="Liberation Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#16150f" letter-spacing="6">VISART DESIGN</text>
-    <rect x="52" y="232" width="64" height="4" fill="#c4572b"/>${tx}
-    <text x="${W - 40}" y="${H - 190}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">AI ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
-  </svg>`);
-  await sharp(ov).resize(1080, 1920).png().toFile(ovOut);
+  await matnQatlami(sl, ovOut);
+}
+
+// Kod bilan chizilgan animatsion sahnani kadrlarga aylantiradi (12.5 fps), 1080x1920 fon + sahna
+async function sahnaKadrlar(nom, aksent, dur, dir) {
+  const fps = 12.5;
+  const n = Math.max(2, Math.round(dur * fps));
+  fs.mkdirSync(dir, { recursive: true });
+  const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
+  for (let k = 0; k < n; k++) {
+    const sc = await sharp(Buffer.from(sahnaSvg(nom, k / (n - 1), aksent)), { density: 108 }).resize(1000, 1000).png().toBuffer();
+    await sharp(baza).composite([{ input: sc, left: 40, top: 800 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
+  }
+  return fps;
 }
 
 async function animatsionSenariy(env, mavzu) {
@@ -1451,8 +1470,8 @@ async function animatsionSenariy(env, mavzu) {
     (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
     "Qoidalar: odamlarni QIZIQTIRADIGAN, amaliy maslahat (masalan 'Oshxonada 3 ta keng tarqalgan xato'). FAKT/RAQAM/STATISTIKA o'ylab topmang -- faqat umume'tirof etilgan dizayn va qurilish tamoyillari. Tabiiy, sodda, zamonaviy o'zbek (lotin), kalka yo'q, 'ajoyib/mukammal' kabi hype so'zlar yo'q.\n" +
     "MAVZU USLUBI (makon_vizual kabi): hayotiy savol/afsona va uning ARXITEKTURA-FIZIKA javobi, masalan: \"Nega ba'zi hovlilar yozda juda issiq?\" (quyosh burchagi, soya), \"Oq chiroq uyingizni arzon ko'rsatadi\" (2700K va 6500K), \"Katta deraza. Yarimi parda?\", \"Uyingizga ichki dizayn kerakmi?\", \"1 xona -- 5 xil oila\" (planirovka variantlari). Qisqa, aniq, vizual tushuntiriladigan mavzu.\n" +
-    "PROFESSIONAL QOIDALAR: hook birinchi 1.5 soniyada qiziqtirsin (3 soniya ichida butun hook aytiladi, 8 so'zdan oshmasin); har slaydning 'ovoz'i BITTA qisqa gap (6-11 so'z, ~3 soniya) -- vizual har 2-3 soniyada almashadi; ortiqcha, to'ldiruvchi so'z yo'q; oxirgi gap savol yoki aniq harakatga chaqiriq (saqlang/yuboring) bo'lib, hook bilan mazmunan bog'lansin (loop). Emotsiya birinchi: odamga 'bu menga tegishli' degan his bering.\nStruktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd CTA (saqlang/ustangizga yuboring/DM). Jami ovoz 15-40 soniya (mavzu va foydali ma'lumot hajmiga qarab: oddiy lifehack 15-22 s, chuqurroq tushuntirish 30-40 s; slaydlar soni 3-8).\n" +
-    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","rasm":"<INGLIZCHA: shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
+    "SAHNALAR (animatsion, har slayd uchun bittasini tanlang; mazmunga eng mosi, takrorlanmasin):\n" + SAHNA_MENYU + "\n" + "PROFESSIONAL QOIDALAR: hook birinchi 1.5 soniyada qiziqtirsin (3 soniya ichida butun hook aytiladi, 8 so'zdan oshmasin); har slaydning 'ovoz'i BITTA qisqa gap (6-11 so'z, ~3 soniya) -- vizual har 2-3 soniyada almashadi; ortiqcha, to'ldiruvchi so'z yo'q; oxirgi gap savol yoki aniq harakatga chaqiriq (saqlang/yuboring) bo'lib, hook bilan mazmunan bog'lansin (loop). Emotsiya birinchi: odamga 'bu menga tegishli' degan his bering.\nStruktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 3-5 ta mazmun slaydi, oxirgi slayd CTA (saqlang/ustangizga yuboring/DM). Jami ovoz 15-40 soniya (mavzu va foydali ma'lumot hajmiga qarab: oddiy lifehack 15-22 s, chuqurroq tushuntirish 30-40 s; slaydlar soni 3-8).\n" +
+    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|cta","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
@@ -1477,19 +1496,36 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
       const seg = path.join(tmpDir, `seg${i}.mp4`);
       const bg = path.join(tmpDir, `bg${i}.jpg`);
       const ov = path.join(tmpDir, `ov${i}.png`);
-      await animatsiyaAiRasm(env, sl, bg, ov);
-      if (i === 0) qopqoqAsos = fs.readFileSync(bg);
+      const sahnaNom = SAHNALAR[sl.sahna] ? sl.sahna : null;
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
       const kadr = Math.round(dur * 25);
-      const z = i % 2 === 0 ? `1+0.07*on/${kadr}` : `1.07-0.07*on/${kadr}`;
-      await execFileAsync('ffmpeg', [
-        '-y', '-i', bg, '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
-        '-filter_complex', `[0:v]zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${kadr}:s=1080x1920:fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]`,
-        '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
-        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
-        '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
-      ], { maxBuffer: 1024 * 1024 * 20 });
+      const aksent = ['#c4572b', '#0e6b5c'][i % 2];
+      if (sahnaNom) {
+        await matnQatlami(sl, ov, false);
+        const fdir = path.join(tmpDir, `fr${i}`);
+        const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir);
+        if (i === 0) qopqoqAsos = await sharp(path.join(fdir, 'f0000.png')).jpeg({ quality: 90 }).toBuffer();
+        await execFileAsync('ffmpeg', [
+          '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
+          '-filter_complex', '[0:v]fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]',
+          '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
+          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1',
+          '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
+        ], { maxBuffer: 1024 * 1024 * 20 });
+        fs.rmSync(fdir, { recursive: true, force: true });
+      } else {
+        await animatsiyaAiRasm(env, sl, bg, ov);
+        if (i === 0) qopqoqAsos = fs.readFileSync(bg);
+        const z = i % 2 === 0 ? `1+0.07*on/${kadr}` : `1.07-0.07*on/${kadr}`;
+        await execFileAsync('ffmpeg', [
+          '-y', '-i', bg, '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
+          '-filter_complex', `[0:v]zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${kadr}:s=1080x1920:fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]`,
+          '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
+          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+          '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
+        ], { maxBuffer: 1024 * 1024 * 20 });
+      }
       segFiles.push(seg);
       {
         const sz = String(sl.ovoz).split(/\s+/).filter(Boolean);
