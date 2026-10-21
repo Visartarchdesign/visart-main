@@ -123,7 +123,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Yechim: ayvon', 'ayvon', 'ayvon_kesim', 0.12, 0.5, "Yechim bor: oyna tepasida ayvon qiling. U yozgi baland quyoshni to'sib qoladi."),
       S('mazmun', 'Daraxt soya beradi', 'daraxt', 'ayvon_kesim', 0.58, 0.95, "Kechki past quyoshni esa bargli daraxt to'sadi. Uni quyosh tushadigan tomonga o'tqazing."),
       S('mazmun', 'Shamollatish', 'shamol', 'shamollatish', 0, 0.95, "Qarama-qarshi ikkita oynani oching, tortma shamol issiqni uydan olib chiqadi."),
-      S('xulosa', 'Uy o\'zi salqin bo\'ladi', 'salqin', 'shamollatish', 1, 1, "Ayvon, daraxt va shamollatish bilan uy o'zi salqin qoladi, kondisionerga yuk va elektr xarajati kamayadi. Sizning uyingiz yozda qanday?"),
+      S('xulosa', 'Uy o\'zi salqin bo\'ladi', 'salqin', 'shamollatish', 1, 1, "Soya va shamollatishni birga rejalash yozgi issiqni kamaytirishga yordam berishi mumkin. Natija uy yo'nalishi va iqlimga bog'liq. Sizning uyingiz yozda qanday?"),
     ],
   },
 ];
