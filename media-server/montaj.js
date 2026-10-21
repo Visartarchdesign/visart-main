@@ -700,11 +700,11 @@ function qatorBol(m, maks = 26) {
   return q.join('\n');
 }
 
-async function srtVideogaKuydir(videoPath, segmentlar, outPath) {
+async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
-  const fontSize = Math.round(width * 0.052);
-  const marginV = Math.round(height * 0.11);
+  const fontSize = Math.round(width * (toza ? 0.064 : 0.052));
+  const marginV = Math.round(height * (toza ? 0.13 : 0.11));
   const marginLR = Math.round(width * 0.055);
   const assQatorlar = segmentlar.map((s) =>
     `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(qatorBol(s.matn))}`
@@ -712,7 +712,7 @@ async function srtVideogaKuydir(videoPath, segmentlar, outPath) {
   const assMatn =
     `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nScaledBorderAndShadow: yes\n\n` +
     `[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n` +
-    `Style: Default,Liberation Sans,${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H78000000,1,0,0,0,100,100,0,0,1,5,2,2,${marginLR},${marginLR},${marginV},1\n\n` +
+    `Style: Default,Liberation Sans,${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H78000000,1,0,0,0,100,100,0,0,1,${toza ? '0,3' : '5,2'},2,${marginLR},${marginLR},${marginV},1\n\n` +
     `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${assQatorlar}\n`;
   const assPath = outPath.replace(/\.mp4$/, '.ass');
   fs.writeFileSync(assPath, assMatn, 'utf8');
@@ -1361,34 +1361,55 @@ async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath, vurgu = '',
   await sharp(buf).png().toFile(outPath);
 }
 
-// Mavzuga mos AI illyustratsiya (ma'lumot uchun, bizning ish emas) + bizning matn qatlamimiz.
-async function animatsiyaAiRasm(env, sl, indeks, jami, outPath) {
-  if (!env.GEMINI_API_KEY || !sl.rasm) return false;
-  const prompt = `Clean educational illustration for an architecture/interior tips video, vertical 9:16. Subject: ${sl.rasm}. ` +
-    'Style: minimalist 3D isometric / soft-render concept illustration, light warm beige background, muted natural palette with one teal or terracotta accent, soft shadows, lots of empty space in the TOP 45% of the frame (text will be added). ' +
+// Rasm manbai: avval Gemini, bo'lmasa bepul Pollinations. {buf} yoki {sabab}.
+async function rasmYarat(env, prompt) {
+  const sabablar = [];
+  if (env.GEMINI_API_KEY) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'}:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }), signal: AbortSignal.timeout(60000) });
+      if (res.ok) {
+        const d = await res.json();
+        const im = ((((d.candidates || [])[0] || {}).content || {}).parts || []).find((x) => x.inlineData && x.inlineData.data);
+        if (im) return { buf: Buffer.from(im.inlineData.data, 'base64') };
+        sabablar.push('Gemini rasm qaytarmadi');
+      } else sabablar.push(`Gemini HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 120)}`);
+    } catch (e) { sabablar.push('Gemini: ' + String((e && e.message) || e).slice(0, 80)); }
+  }
+  try {
+    const seed = Math.floor(Math.random() * 1e6);
+    const r = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 900))}?width=720&height=1280&nologo=true&model=flux&seed=${seed}`, { signal: AbortSignal.timeout(90000) });
+    if (r.ok && /image/.test(r.headers.get('content-type') || '')) return { buf: Buffer.from(await r.arrayBuffer()) };
+    sabablar.push(`Pollinations HTTP ${r.status}`);
+  } catch (e) { sabablar.push('Pollinations: ' + String((e && e.message) || e).slice(0, 80)); }
+  return { sabab: sabablar.join(' | ') };
+}
+
+// Mavzuga mos AI illyustratsiya (ma'lumot uchun) -> bg (2x, barqaror zoom uchun) + alohida STATIK matn qatlami.
+async function animatsiyaAiRasm(env, sl, bgOut, ovOut) {
+  const prompt = `Clean educational illustration for an architecture/interior tips video, vertical 9:16. Subject: ${sl.rasm || sl.sarlavha}. ` +
+    'Style: minimalist 3D isometric / soft-render concept illustration, light warm beige background, muted natural palette with one teal or terracotta accent, soft shadows, lots of empty space in the TOP 40% of the frame (text will be added). ' +
     'No text, no letters, no numbers, no logos, no people faces.';
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'}:generateContent?key=${env.GEMINI_API_KEY}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['IMAGE'] } }), signal: AbortSignal.timeout(60000) });
-  if (!res.ok) return false;
-  const d = await res.json();
-  const im = ((((d.candidates || [])[0] || {}).content || {}).parts || []).find((x) => x.inlineData && x.inlineData.data);
-  if (!im) return false;
+  let r = await rasmYarat(env, prompt);
+  if (!r.buf) r = await rasmYarat(env, prompt);
+  if (!r.buf) throw new Error('AI rasm yaratilmadi: ' + r.sabab);
   const W = 720, H = 1280;
+  await sharp(r.buf).resize(W * 2, H * 2, { fit: 'cover', position: 'centre' }).jpeg({ quality: 92 }).toFile(bgOut);
   const fs1 = sl.tur === 'hook' ? 70 : 58;
   const qat = qatorBol(xmlEscape(sl.sarlavha || ''), Math.floor(620 / (fs1 * 0.6))).split('\n');
   const vr = sl.vurgu ? xmlEscape(sl.vurgu).toLowerCase() : '';
   const tx = qat.map((q, i) => `<text x="52" y="${250 + i * (fs1 + 14)}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
   const ov = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6" stop-opacity="0.95"/><stop offset="0.7" stop-color="#ecebe6" stop-opacity="0.55"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6" stop-opacity="0.96"/><stop offset="0.7" stop-color="#ecebe6" stop-opacity="0.6"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient>
+    <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.62"/></linearGradient></defs>
     <rect width="${W}" height="620" fill="url(#t)"/>
+    <rect y="${H - 480}" width="${W}" height="480" fill="url(#b)"/>
     <text x="52" y="92" font-family="Liberation Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#16150f" letter-spacing="6">VISART DESIGN</text>
     <rect x="52" y="112" width="64" height="4" fill="#c4572b"/>${tx}
-    <text x="${W - 52}" y="${H - 40}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="16" fill="#6b665a" letter-spacing="2">AI ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
+    <text x="${W - 40}" y="${H - 36}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">AI ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
   </svg>`);
-  const baza = await sharp(Buffer.from(im.inlineData.data, 'base64')).resize(W, H, { fit: 'cover', position: 'centre' }).toBuffer();
-  await sharp(baza).composite([{ input: ov }]).png().toFile(outPath);
-  return true;
+  await sharp(ov).png().toFile(ovOut);
 }
 
 async function animatsionSenariy(env, mavzu) {
@@ -1418,6 +1439,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
 
     const yuzBuf = await yuzTanla(env);
+    let qopqoqAsos = null;
     const segFiles = [];
     const subtitr = [];
     let t = 0;
@@ -1426,20 +1448,31 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
       const png = path.join(tmpDir, `s${i}.png`);
       const mp3 = path.join(tmpDir, `v${i}.mp3`);
       const seg = path.join(tmpDir, `seg${i}.mp4`);
-      const aiRasm = await animatsiyaAiRasm(env, sl, i, slaydlar.length, png).catch(() => false);
-      if (!aiRasm) await slaydRasm(sl.tur, sl.sarlavha || '', sl.matn || '', i, slaydlar.length, png, sl.vurgu || '', (sl.tur === 'hook' || sl.tur === 'cta') ? yuzBuf : null);
+      const bg = path.join(tmpDir, `bg${i}.jpg`);
+      const ov = path.join(tmpDir, `ov${i}.png`);
+      await animatsiyaAiRasm(env, sl, bg, ov);
+      if (i === 0) qopqoqAsos = fs.readFileSync(bg);
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
       const kadr = Math.round(dur * 25);
+      const z = i % 2 === 0 ? `1+0.07*on/${kadr}` : `1.07-0.07*on/${kadr}`;
       await execFileAsync('ffmpeg', [
-        '-y', '-loop', '1', '-i', png, '-i', mp3,
-        '-vf', `zoompan=z='min(zoom+0.0007,1.09)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${kadr}:s=720x1280:fps=25,format=yuv420p`,
-        '-af', 'apad,aresample=44100', '-t', String(dur),
-        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+        '-y', '-i', bg, '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
+        '-filter_complex', `[0:v]zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${kadr}:s=1080x1920:fps=25,scale=720:1280:flags=lanczos[b];[b][1:v]overlay=format=auto,format=yuv420p[v]`,
+        '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
         '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
       ], { maxBuffer: 1024 * 1024 * 20 });
       segFiles.push(seg);
-      subtitr.push({ bosh: t + 0.1, tugash: t + dur - 0.15, matn: sl.ovoz });
+      {
+        const sz = String(sl.ovoz).split(/\s+/).filter(Boolean);
+        const bol = [];
+        for (let k = 0; k < sz.length; k += 4) bol.push(sz.slice(k, k + 4).join(' '));
+        const jamiH = bol.reduce((q, x) => q + x.length, 0) || 1;
+        let tt = t + 0.1;
+        const mavjud = dur - 0.5;
+        for (const x of bol) { const d = (x.length / jamiH) * mavjud; subtitr.push({ bosh: tt, tugash: tt + d, matn: x }); tt += d; }
+      }
       t += dur;
     }
     const list = path.join(tmpDir, 'list.txt');
@@ -1457,16 +1490,14 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     let chiqish = mixed;
     try {
       const sub = path.join(tmpDir, 'final.mp4');
-      if (await srtVideogaKuydir(mixed, subtitr, sub)) chiqish = sub;
+      if (await srtVideogaKuydir(mixed, subtitr, sub, true)) chiqish = sub;
     } catch (e) { /* subtitrsiz ham yaroqli */ }
 
     const sarlavha = meta.post_sarlavha || slaydlar[0].sarlavha || 'Visart Design';
     let qopqoqBuf = null;
     try {
-      const fp = path.join(tmpDir, 'f.jpg');
-      await ffmpegKadrOl(chiqish, fp, 0.1);
       qopqoqBuf = await aiOblojka(env, { sarlavha, aksent: meta.vurgu || '', yuz: yuzBuf }).catch(() => null);
-      if (!qopqoqBuf) qopqoqBuf = await qopqoqYarat({ rasmBuf: fs.readFileSync(fp), rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: '', raqam: '' });
+      if (!qopqoqBuf) qopqoqBuf = await qopqoqYarat({ rasmBuf: qopqoqAsos, rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: meta.vurgu || '', raqam: '' });
     } catch (e) { qopqoqBuf = null; }
     if (qopqoqBuf) await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, qopqoqBuf, `🖼️ Qopqoq -- ${sarlavha}`);
     await tasdiqqaYubor(env, adminChatId, chiqish, qopqoqBuf, {
