@@ -13,7 +13,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Iliq nur: 2700K', '2700K', 'lampa_kelvin', 0.06, 0.4, "Iliq nur, ya'ni ikki ming yetti yuz kelvin, xonani yumshoq va issiq qiladi."),
       S('mazmun', 'Kelvin oshadi', 'oshadi', 'lampa_kelvin', 0.4, 0.8, "Kelvin oshgani sari nur sovuqlashadi, devorlar muzdek ko'rina boshlaydi."),
       S('mazmun', 'Sovuq nur: 6500K', '6500K', 'lampa_kelvin', 0.8, 1, "Olti ming besh yuz kelvinda esa xona ofisga o'xshab qoladi."),
-      S('cta', 'Yotoqxonaga iliq nur', 'iliq', 'lampa_kelvin', 1, 1, "Yotoqxona va mehmonxonaga iliq nur tanlang. Videoni saqlab qo'ying."),
+      S('xulosa', 'Yotoqxonaga iliq nur', 'iliq', 'lampa_kelvin', 1, 1, "Yotoqxona va mehmonxonaga iliq nur tanlang, ish joyiga sovuqroq. Sizning uyingizda qaysi nur yonadi?"),
     ],
   },
   {
@@ -25,7 +25,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Tushda nur qisqa', 'qisqa', 'quyosh_xona', 0.08, 0.4, "Tushda quyosh baland turadi va oynadan tushgan nur polga qisqa tushadi."),
       S('mazmun', 'Kechga nur uzayadi', 'uzayadi', 'quyosh_xona', 0.4, 0.85, "Kech tomon quyosh pasayadi, nur uzayib, xonaning ichkarisigacha kirib boradi."),
       S('mazmun', 'Divanni uzoqroq', 'uzoqroq', 'quyosh_xona', 0.85, 1, "Shuning uchun divanni oynadan uzoqroq qo'ying, mato tez o'chib ketmasin."),
-      S('cta', 'Avval quyosh yo\'lini kuzating', 'kuzating', 'quyosh_xona', 1, 1, "Mebel olishdan oldin quyosh yo'lini kuzating. Do'stingizga yuboring."),
+      S('xulosa', 'Avval quyosh yo\'lini kuzating', 'kuzating', 'quyosh_xona', 1, 1, "Mebel qo'yishdan oldin quyosh yo'lini kuzating. Sizning xonangizga quyosh qachon kiradi?"),
     ],
   },
   {
@@ -37,7 +37,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Karniz shiftga yaqin', 'shiftga', 'parda_taqqos', 0.1, 0.5, "Birinchi xato: karniz oynaning tepasiga taqab o'rnatiladi. Uni shiftga yaqinroq osing."),
       S('mazmun', 'Oynadan kengroq', 'kengroq', 'parda_taqqos', 0.5, 0.8, "Ikkinchi xato: parda oyna kengligicha olinadi. Ikki yonga yigirma-o'ttiz santimetr kengroq qiling."),
       S('mazmun', 'Oyna katta, shift baland', 'baland', 'parda_taqqos', 0.8, 1, "Natijada oyna to'liq ochiladi, shift esa balandroq ko'rinadi."),
-      S('cta', 'Saqlab qo\'ying', 'saqlab', 'parda_taqqos', 1, 1, "Parda olishdan oldin shu videoni saqlab qo'ying."),
+      S('xulosa', 'Saqlab qo\'ying', 'saqlab', 'parda_taqqos', 1, 1, "Pardani oynadan kengroq va shiftga yaqin osing. Sizniki qanday osilgan?"),
     ],
   },
   {
@@ -49,7 +49,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Devorlar joyi', 'devorlar', 'planirovka', 0.05, 0.4, "Avval devorlar joyini aniq belgilang, qolgan hamma narsa shunga bog'lanadi."),
       S('mazmun', 'Yotoqxona uzoqroq', 'uzoqroq', 'planirovka', 0.4, 0.7, "Yotoqxonani mehmonxonadan uzoqroq qo'ying, tinch uxlaysiz."),
       S('mazmun', 'Oshxona va hammom', 'yaqin', 'planirovka', 0.7, 1, "Oshxona va hammom yaqin tursin, suv quvuri qisqa va arzon bo'ladi."),
-      S('cta', 'Avval reja', 'reja', 'planirovka', 1, 1, "Reja tayyor bo'lmasa, mebelga pul sarflamang. Saqlab qo'ying."),
+      S('xulosa', 'Avval reja', 'reja', 'planirovka', 1, 1, "Reja tayyor bo'lmasdan turib, mebel olmang. Avval devor, keyin qolgani."),
     ],
   },
   {
@@ -61,7 +61,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Karavot devor bo\'ylab', 'karavot', 'kichik_xona', 0.08, 0.35, "Sig'adi. Avval karavotni devor bo'ylab qo'ying."),
       S('mazmun', 'Shkaf balandligi', 'shkaf', 'kichik_xona', 0.35, 0.62, "Shkafni tor devorga qo'ying, balandligi bilan joyni tejaydi."),
       S('mazmun', 'Ish stoli oyna yonida', 'oyna', 'kichik_xona', 0.62, 0.9, "Ish stolini oyna yoniga qo'ying, kun nuri qo'shimcha chiroq o'rnini bosadi."),
-      S('cta', 'Xona tor emas', 'tor', 'kichik_xona', 1, 1, "Xona tor emas, shunchaki to'g'ri joylashtirilmagan. Do'stingizga yuboring."),
+      S('xulosa', 'Xona tor emas', 'tor', 'kichik_xona', 1, 1, "Xona tor emas, shunchaki to'g'ri joylashtirilmagan. Sizning xonangiz necha metr?"),
     ],
   },
   {
@@ -73,7 +73,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Oltmish foiz: devor', 'devor', 'rang_palitra', 0.04, 0.35, "Oltmish foiz bu devor va katta yuzalar. Xotirjam, och rang tanlang."),
       S('mazmun', 'O\'ttiz foiz: mebel', 'mebel', 'rang_palitra', 0.35, 0.65, "O'ttiz foiz bu mebel. Divan devordan biroz to'qroq bo'lsin."),
       S('mazmun', 'O\'n foiz: aksent', 'aksent', 'rang_palitra', 0.65, 0.95, "O'n foiz bu yostiq, parda yoki o'simlik. Yorqin rangni aynan shu yerga qo'ying."),
-      S('cta', 'Xona uyg\'un bo\'ladi', 'uyg\'un', 'rang_palitra', 1, 1, "Shunda xona tartibli ko'rinadi. Saqlab qo'ying."),
+      S('xulosa', 'Xona uyg\'un bo\'ladi', 'uyg\'un', 'rang_palitra', 1, 1, "Oltmish, o'ttiz, o'n. Shunda xona tartibli va uyg'un ko'rinadi."),
     ],
   },
   {
@@ -85,7 +85,7 @@ export const SENARIYLAR = [
       S('mazmun', 'Ertalab soya uzun', 'uzun', 'hovli_soya', 0.06, 0.3, "Ertalab quyosh past turadi, soya uzun bo'ladi."),
       S('mazmun', 'Tushda soya qisqa', 'qisqa', 'hovli_soya', 0.3, 0.65, "Tushda soya deyarli yo'qoladi, aynan shu payt ayvon va daraxt kerak bo'ladi."),
       S('mazmun', 'Kechga yana uzayadi', 'uzayadi', 'hovli_soya', 0.65, 0.95, "Kechga soya yana uzayadi. Daraxtni quyosh tushadigan tomonga o'tqazing."),
-      S('cta', 'Soyani kuzating', 'kuzating', 'hovli_soya', 1, 1, "Qurishdan oldin soyani kuzating. Saqlab qo'ying."),
+      S('xulosa', 'Soyani kuzating', 'kuzating', 'hovli_soya', 1, 1, "Qurishdan oldin soyani kuzating. Sizning hovlingizda soya qayerga tushadi?"),
     ],
   },
 ];
