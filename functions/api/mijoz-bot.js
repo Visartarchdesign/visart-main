@@ -719,6 +719,29 @@ async function montajBoshlash(env, taklifId, adminChatId, korsatma) {
 // bo'lsa Montajchini ko'rsatma bilan qayta ishga tushiradi, rasm/karusel
 // bo'lsa Claude orqali matnni (sarlavha+post_matni) qayta yozdiradi va
 // Oblojkani qaytadan yuborib qo'yadi.
+// Animatsion video (taklifsiz) rad etilgach/tasdiq xabariga REPLY: ko'rsatma bilan qayta tayyorlash yoki bugungi nashrni bekor qilish.
+async function animatsiyaTuzatish(env, nid, adminChatId, korsatma) {
+  try {
+    if (/(bugun|hozir|shu kun).*(qo'?yma|joylama|chiqarma|kerak emas|bekor|rad|otmen|atmen)|^\s*(bekor|rad|otmen|atmen)\b/i.test(korsatma || '')) {
+      const kunBosh = new Date(Date.now() + 5 * 3600e3); kunBosh.setUTCHours(0, 0, 0, 0);
+      const bosh = new Date(kunBosh.getTime() - 5 * 3600e3).toISOString();
+      const oxir = new Date(kunBosh.getTime() + 19 * 3600e3).toISOString();
+      const bek = await sbFetch(env, `nashr_navbati?holat=in.(tasdiq_kutilmoqda,kutilmoqda)&nashr_vaqti=gte.${bosh}&nashr_vaqti=lt.${oxir}`, {
+        method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => []);
+      await sbFetch(env, `nashr_navbati?id=eq.${nid}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
+      await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `🚫 Bugungi nashr bekor qilindi (${(bek || []).length} ta navbat).`);
+      return;
+    }
+    const rr = await sbFetch(env, `nashr_navbati?id=eq.${nid}&select=payload`).catch(() => null);
+    const sarlavha = rr && rr[0] && rr[0].payload && rr[0].payload.sarlavha;
+    await sbFetch(env, `nashr_navbati?id=eq.${nid}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
+    await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "🔧 Ko'rsatmangiz bilan animatsion video qayta tayyorlanmoqda (3–6 daqiqa)...");
+    await mediaChaqir(env, '/animatsion', { adminChatId, mavzu: sarlavha || undefined, korsatma }, adminChatId);
+  } catch (e) {
+    await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Animatsiyani qayta tayyorlashda xato: ${String((e && e.message) || e).slice(0, 300)}`);
+  }
+}
+
 async function tuzatishBajar(env, taklifId, adminChatId, korsatma) {
   try {
     const taklifRows = await sbFetch(env, `media_taklif?id=eq.${taklifId}&select=*`);
@@ -2003,7 +2026,7 @@ export async function onRequestPost({ request, env }) {
           const rr = await sbFetch(env, `nashr_navbati?id=eq.${nid}&select=payload`).catch(() => null);
           const tid = rr && rr[0] && rr[0].payload && rr[0].payload.taklifId;
           await tgSend(env.MIJOZ_BOT_TOKEN, chatId,
-            `❌ Rad etildi. Sababi nima va nimani to'g'rilash kerak?\nShu xabarga REPLY qilib yozing (masalan: "montaj qisqaroq bo'lsin", "subtitrda xato bor", "sarlavhani o'zgartir") -- AI shu ko'rsatma bo'yicha qayta tayyorlab, yana tasdiqqa yuboradi.\nBugun umuman qo'yilmasin desangiz: "bugun qo'yma" deb yozing.${tid ? `\n\n🆔${tid}` : ''}`);
+            `❌ Rad etildi. Sababi nima va nimani to'g'rilash kerak?\nShu xabarga REPLY qilib yozing (masalan: "montaj qisqaroq bo'lsin", "subtitrda xato bor", "sarlavhani o'zgartir") -- AI shu ko'rsatma bo'yicha qayta tayyorlab, yana tasdiqqa yuboradi.\nBugun umuman qo'yilmasin desangiz: "bugun qo'yma" deb yozing.${tid ? `\n\n🆔${tid}` : `\n\n🎞️${nid}`}`);
         }
         return json({ ok: true });
       }
@@ -2067,6 +2090,11 @@ export async function onRequestPost({ request, env }) {
           .filter((x) => x.id !== oid && String(x.mijoz_tel || '').replace(/\D/g, '').slice(-9) === d.slice(-9));
         await sbFetch(env, `obyektlar?id=eq.${encodeURIComponent(oid)}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ mijoz_tel: '+' + d }) }).catch(() => {});
         await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `✅ Raqam yangilandi: +${d}${boshqa.length ? `\n\nℹ️ Shu raqam boshqa obyektda ham bor: ${escH(boshqa.map((x) => x.nom || x.id).join(', '))} (mijoz ikkalasini ham ko'radi).` : ''}`);
+        return json({ ok: true });
+      }
+      const animMatch = manba.match(/🎞\uFE0F?(\d+)/);
+      if (animMatch) {
+        await animatsiyaTuzatish(env, animMatch[1], msg.chat.id, msg.text);
         return json({ ok: true });
       }
       const taklifMatch = manba.match(/🆔(\d+)/);

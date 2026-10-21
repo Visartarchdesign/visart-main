@@ -967,7 +967,7 @@ async function tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha
         if (!resp.ok) throw new Error(`navbat xato: ${resp.status} ${(await resp.text().catch(() => '')).slice(0, 150)}`);
         const nid = (await resp.json())[0].id;
         await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"\n\nKamchilik bo'lsa -- shu xabarga REPLY qilib nimani to'g'rilashni yozing (montaj/sarlavha/izoh) -- qayta tayyorlayman.${taklifId ? `\n\n🆔${taklifId}` : ''}`,
+          `✅ Video va qopqoq tayyor. Instagram Reels + Story, Facebook va YouTube'ga joylaymizmi?\n\n"${sarlavha}"\n\nKamchilik bo'lsa -- shu xabarga REPLY qilib nimani to'g'rilashni yozing (montaj/sarlavha/izoh) -- qayta tayyorlayman.${taklifId ? `\n\n🆔${taklifId}` : `\n\n🎞️${nid}`}`,
           { inline_keyboard: [[
             { text: '✅ Joylash', callback_data: `vnash:${nid}:ok` },
             { text: '❌ Bekor', callback_data: `vnash:${nid}:no` },
@@ -1506,10 +1506,10 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
         headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }, signal: AbortSignal.timeout(10000) });
       oxirgi = ((await rr.json()) || []).map((x) => x && x.payload && x.payload.sarlavha);
     } catch (e) { /* ixtiyoriy */ }
-    const bank = senariyTanla(oxirgi, [mavzu, korsatma].filter(Boolean).join(' '));
+    const bank = korsatma ? null : senariyTanla(oxirgi, [mavzu].filter(Boolean).join(' '));
     const raw = bank
       ? [...bank.slaydlar, { tur: 'meta', post_sarlavha: bank.post_sarlavha, vurgu: bank.vurgu, tavsif: bank.tavsif, hashtaglar: bank.hashtaglar }]
-      : await animatsionSenariy(env, [mavzu, korsatma].filter(Boolean).join('. '));
+      : await animatsionSenariy(env, [mavzu, korsatma ? `ADMIN TUZATISH KO'RSATMASI (albatta bajaring, avvalgi variant yoqmadi): ${korsatma}` : ''].filter(Boolean).join('. '));
     const meta = raw.find((x) => x.tur === 'meta') || {};
     let slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 8);
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
