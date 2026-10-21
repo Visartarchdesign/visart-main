@@ -18,6 +18,7 @@ import sharp from 'sharp';
 import { nodewhisper } from 'nodejs-whisper';
 import { qopqoqYarat } from './qopqoqlar.js';
 import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
+import { senariyTanla } from './senariylar.js';
 import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, sahnaSvg } from './sahnalar.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
@@ -1453,13 +1454,13 @@ async function animatsiyaAiRasm(env, sl, bgOut, ovOut) {
 }
 
 // Kod bilan chizilgan animatsion sahnani kadrlarga aylantiradi (12.5 fps), 1080x1920 fon + sahna
-async function sahnaKadrlar(nom, aksent, dur, dir) {
+async function sahnaKadrlar(nom, aksent, dur, dir, t0 = 0, t1 = 1) {
   const fps = 12.5;
   const n = Math.max(2, Math.round(dur * fps));
   fs.mkdirSync(dir, { recursive: true });
   const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
   for (let k = 0; k < n; k++) {
-    const sc = await sharp(Buffer.from(sahnaSvg(nom, Math.min(1, k / (n - 1) / 0.85), aksent)), { density: 108 }).resize(1000, 1000).png().toBuffer();
+    const sc = await sharp(Buffer.from(sahnaSvg(nom, t0 + (t1 - t0) * Math.min(1, k / (n - 1) / 0.9), aksent)), { density: 108 }).resize(1000, 1000).png().toBuffer();
     await sharp(baza).composite([{ input: sc, left: 40, top: 800 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
   }
   return fps;
@@ -1499,11 +1500,20 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'anim-'));
   try {
     await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "🎞️ Material yo'q -- animatsion ovozli video tayyorlanmoqda...");
-    const raw = await animatsionSenariy(env, [mavzu, korsatma].filter(Boolean).join('. '));
+    let oxirgi = [];
+    try {
+      const rr = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?select=payload&turi=eq.video_nashr&order=created_at.desc&limit=40`, {
+        headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }, signal: AbortSignal.timeout(10000) });
+      oxirgi = ((await rr.json()) || []).map((x) => x && x.payload && x.payload.sarlavha);
+    } catch (e) { /* ixtiyoriy */ }
+    const bank = senariyTanla(oxirgi, [mavzu, korsatma].filter(Boolean).join(' '));
+    const raw = bank
+      ? [...bank.slaydlar, { tur: 'meta', post_sarlavha: bank.post_sarlavha, vurgu: bank.vurgu, tavsif: bank.tavsif, hashtaglar: bank.hashtaglar }]
+      : await animatsionSenariy(env, [mavzu, korsatma].filter(Boolean).join('. '));
     const meta = raw.find((x) => x.tur === 'meta') || {};
     let slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 8);
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
-    slaydlar = await ovozTahrir(env, slaydlar);
+    if (!bank) slaydlar = await ovozTahrir(env, slaydlar);
 
     const yuzBuf = await yuzTanla(env);
     let qopqoqAsos = null;
@@ -1525,7 +1535,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
       if (sahnaNom) {
         await matnQatlami(sl, ov, false);
         const fdir = path.join(tmpDir, `fr${i}`);
-        const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir);
+        const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir, Number.isFinite(sl.t0) ? sl.t0 : 0, Number.isFinite(sl.t1) ? sl.t1 : 1);
         if (i === 0) qopqoqAsos = await sharp(path.join(fdir, 'f0000.png')).jpeg({ quality: 90 }).toBuffer();
         await execFileAsync('ffmpeg', [
           '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
