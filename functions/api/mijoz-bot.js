@@ -1839,6 +1839,7 @@ async function takroriyUpdate(env, updateId) {
 const H = { tgSend, sbFetch, answerCq, upsertDialog, removeKb, getDialog };
 
 export async function onRequestPost({ request, env }) {
+  let _upd = null;
   try {
     const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
     if (!env.MIJOZ_BOT_SECRET || secret !== env.MIJOZ_BOT_SECRET) {
@@ -1846,6 +1847,7 @@ export async function onRequestPost({ request, env }) {
     }
     const update = await request.json().catch(() => null);
     if (!update) return json({ ok: true });
+    _upd = update;
     if (await takroriyUpdate(env, update.update_id)) return json({ ok: true });
     env = await adminlarBilan(env);
 
@@ -2108,13 +2110,13 @@ export async function onRequestPost({ request, env }) {
       }
     }
 
-    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\/animatsiya\b/i.test(msg.text || '')) {
-      const mavzu = (msg.text || '').replace(/^\/animatsiya(@\w+)?\s*/i, '').trim();
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?animatsiya\b/i.test(msg.text || '')) {
+      const mavzu = (msg.text || '').replace(/^\s*\/?animatsiya(@\w+)?\s*/i, '').trim();
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⏳ Animatsion video buyurtmasi qabul qilindi${mavzu ? ` (mavzu: ${escH(mavzu)})` : ' (mavzuni AI tanlaydi)'}. 3–6 daqiqada tasdiqqa keladi.`);
       await mediaChaqir(env, '/animatsion', { adminChatId: msg.chat.id, mavzu: mavzu || undefined }, msg.chat.id);
       return json({ ok: true });
     }
-    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\/yuzstudio\b/i.test(msg.text || '')) {
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?yuz\s?studio\b/i.test(msg.text || '')) {
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, "⏳ /yuzstudio qabul qilindi. Media-server uyg'onmoqda, portretlar 1–3 daqiqada keladi...");
       const yr = await mediaChaqir(env, '/yuz-studio', { adminChatId: msg.chat.id }, msg.chat.id);
       if (yr && yr.ok) await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, '🚀 Media-server so\'rovni oldi, ishlayapti.');
@@ -2304,6 +2306,13 @@ export async function onRequestPost({ request, env }) {
   } catch (e) {
     // 500 qaytarsak Telegram bir necha marta qayta yuboradi (takroriy post xavfi) -- doim 200.
     await xatoYoz(env, 'mijoz-bot', e);
+    try {
+      const m = _upd && (_upd.message || (_upd.callback_query && _upd.callback_query.message));
+      const fid = _upd && ((_upd.message && _upd.message.from) || (_upd.callback_query && _upd.callback_query.from));
+      if (m && m.chat && m.chat.type === 'private' && fid && String(env.ADMIN_TELEGRAM_IDS || '').split(',').map((x) => x.trim()).includes(String(fid.id))) {
+        await tgSend(env.MIJOZ_BOT_TOKEN, m.chat.id, `⚠️ Bot xatosi: ${String((e && e.message) || e).slice(0, 400)}`);
+      }
+    } catch (e2) { /* xabar yuborib bo'lmadi */ }
     return json({ ok: true, error: 'server_error' });
   }
 }
