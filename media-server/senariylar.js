@@ -41,6 +41,42 @@ export const SENARIYLAR = [
     ],
   },
   {
+    id: 'yolak-90', post_sarlavha: 'Uyda yo\'lak necha santimetr bo\'lsin?', vurgu: 'yo\'lak',
+    tavsif: "Asosiy yo'lakni kamida 90 sm qilib rejalang. Mebel orasi tor bo'lsa, odam yon bilan o'tadi.\nSizning uyingizda yo'lak necha santimetr?",
+    hashtaglar: '#interyer #planirovka #mebel #uydizayni #ergonomika #toshkent #visartdesign',
+    slaydlar: [
+      S('hook', 'Yo\'lak nega tor tuyuladi?', 'tor', 'yolak_kengligi', 0, 0.05, "Uyingizda yurish noqulaymi? Gap yo'lak kengligida bo'lishi mumkin."),
+      S('mazmun', 'Oltmish santimetr', 'oltmish', 'yolak_kengligi', 0.05, 0.4, "Divan bilan shkaf orasi atigi oltmish santimetr bo'lsa, odam yon bilan o'tadi."),
+      S('mazmun', 'Kamida to\'qson', 'to\'qson', 'yolak_kengligi', 0.4, 0.8, "Asosiy yo'lakni kamida to'qson santimetr qiling. Divanni devor tomonga surish yetarli."),
+      S('mazmun', 'Yurish erkin', 'erkin', 'yolak_kengligi', 0.8, 1, "Endi yurish erkin, xona esa kengroq tuyuladi."),
+      S('xulosa', 'Avval o\'lchang', 'o\'lchang', 'yolak_kengligi', 1, 1, "Mebel olishdan oldin yo'lakni o'lchang. Sizning uyingizda yo'lak necha santimetr?"),
+    ],
+  },
+  {
+    id: 'ish-stoli', post_sarlavha: 'Ish stoli sizga mosmi?', vurgu: 'mosmi',
+    tavsif: "Stol balandligi taxminan 75 sm, o'rindiqni esa tirsak to'g'ri burchak bo'lguncha sozlang. Shunda yelka bo'sh turadi.\nSizning stolingiz qanday balandlikda?",
+    hashtaglar: '#ishjoyi #ergonomika #interyer #ofis #dizayn #toshkent #visartdesign',
+    slaydlar: [
+      S('hook', 'Ish stoli sizga mosmi?', 'mosmi', 'ish_stoli', 0, 0.05, "Ish stoli sizga mos kelmasa, yelka va bo'yin tez charchaydi."),
+      S('mazmun', 'Qo\'l ko\'tarilib turibdi', 'ko\'tarilib', 'ish_stoli', 0.05, 0.3, "Stol baland yoki o'rindiq past bo'lsa, qo'l doim yuqoriga ko'tarilib turadi."),
+      S('mazmun', 'Stol: 75 sm', '75', 'ish_stoli', 0.3, 0.85, "Stol balandligi taxminan yetmish besh santimetr bo'lsin, o'rindiqni asta ko'taring."),
+      S('mazmun', 'Tirsak 90°', '90', 'ish_stoli', 0.85, 1, "Tirsak taxminan to'g'ri burchak hosil qilganda, yelka bo'shashadi."),
+      S('xulosa', 'Avval o\'rindiq', 'o\'rindiq', 'ish_stoli', 1, 1, "Avval o'rindiq balandligini sozlang, keyin stolga qarang. Sizniki qanday turadi?"),
+    ],
+  },
+  {
+    id: 'oshxona-uchburchak', post_sarlavha: 'Oshxona nega charchatadi?', vurgu: 'charchatadi',
+    tavsif: "Muzlatgich, rakovina va plita orasidagi 'ish uchburchagi' ixcham bo'lsa, ovqat tayyorlash qulay bo'ladi. Har tomon taxminan 1,2-2,7 m.\nSizning oshxonangizda ular qanchalik uzoq?",
+    hashtaglar: '#oshxona #oshxonadizayni #interyer #planirovka #uydizayni #toshkent #visartdesign',
+    slaydlar: [
+      S('hook', 'Oshxona nega charchatadi?', 'charchatadi', 'oshxona_uchburchak', 0, 0.05, "Oshxonada ovqat tayyorlash charchatadimi? Ish uchburchagi buzilgan bo'lishi mumkin."),
+      S('mazmun', 'Uchburchak: 3 nuqta', 'uchburchak', 'oshxona_uchburchak', 0.05, 0.35, "Uchburchak: muzlatgich, rakovina va plita. Uchalasi orasidagi masofa muhim."),
+      S('mazmun', 'Uzoq bo\'lsa', 'uzoq', 'oshxona_uchburchak', 0.35, 0.65, "Rakovina uzoqda bo'lsa, ovqat tayyorlashda ortiqcha yurasiz."),
+      S('mazmun', 'Har tomon 1,5-2,5 m', '2,5', 'oshxona_uchburchak', 0.65, 1, "Har tomon bir yarimdan ikki yarim metrgacha bo'lsa, hammasi qo'l ostida bo'ladi."),
+      S('xulosa', 'Rejani tekshiring', 'tekshiring', 'oshxona_uchburchak', 1, 1, "Oshxona rejasini chizishdan oldin shu uchburchakni tekshiring."),
+    ],
+  },
+  {
     id: 'planirovka-birinchi', post_sarlavha: 'Remontdan oldin planirovka', vurgu: 'planirovka',
     tavsif: "Planirovka tayyor bo'lmasdan turib mebel va jihozga pul sarflamang. Xonalar joylashuvi kundalik qulaylikni belgilaydi.\nUyingiz planirovkasi sizga qulaymi?",
     hashtaglar: '#planirovka #remont #interyer #uydizayni #arxitektura #toshkent #visartdesign',

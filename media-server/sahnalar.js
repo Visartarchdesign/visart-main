@@ -158,6 +158,90 @@ export const SAHNALAR = {
       );
     },
   },
+  yolak_kengligi: {
+    tavsif: "yuqoridan ko'rinish: divan va shkaf orasidagi yo'lak 60 sm dan 90 sm gacha kengayadi, odam o'tadi (yo'lak kengligi, mebel orasidagi masofa, harakat erkinligi)",
+    svg(t, A) {
+      const e = seg(t, 0.35, 0.75);
+      const cm = 1.2; // 1 sm = 1.2 px
+      const gap = (60 + 30 * e) * cm; // 60 -> 90 sm
+      const x0 = 130, y0 = 90, y1 = 560; // xona ichki chegaralari
+      const mid = 360;
+      const left = mid - gap / 2, right = mid + gap / 2;
+      const ok = e > 0.95;
+      const rang = ok ? '#1f7a4d' : '#b3261e';
+      const py = 520 - 360 * seg(t, 0.05, 0.95); // odam yurishi
+      const sm = Math.round(gap / cm);
+      return bosh(
+        `<rect x="${x0 - 70}" y="${y0 - 30}" width="${520 + 60}" height="${y1 - y0 + 60}" fill="${W1}" stroke="${INK}" stroke-width="10"/>` +
+        `<rect x="${x0 - 60}" y="${y0 + 20}" width="${left - (x0 - 60)}" height="190" rx="10" fill="${mix(A, '#ffffff', 0.35)}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="${x0 - 60}" y="${y0 + 20}" width="34" height="190" rx="10" fill="${mix(A, '#ffffff', 0.1)}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="${x0 - 60}" y="${y0 + 250}" width="${left - (x0 - 60)}" height="200" rx="6" fill="${W2}" stroke="${INK}" stroke-width="3"/>` +
+        `<rect x="${right}" y="${y0 + 20}" width="${x0 + 520 - 60 - right}" height="${y1 - y0 - 50}" rx="6" fill="${W2}" stroke="${INK}" stroke-width="3"/>` +
+        `<ellipse cx="${mid}" cy="${py}" rx="30" ry="18" fill="#fff" stroke="${rang}" stroke-width="5"/><circle cx="${mid}" cy="${py}" r="11" fill="${rang}"/>` +
+        `<g stroke="${rang}" stroke-width="4"><line x1="${left}" y1="${y1 - 20}" x2="${right}" y2="${y1 - 20}"/><line x1="${left}" y1="${y1 - 32}" x2="${left}" y2="${y1 - 8}"/><line x1="${right}" y1="${y1 - 32}" x2="${right}" y2="${y1 - 8}"/></g>` +
+        `<text x="${mid}" y="${y1 + 50}" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="48" fill="${rang}">${sm} sm</text>` +
+        `<text x="${mid}" y="${y1 + 95}" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="28" fill="${INK}">${ok ? "Erkin o'tadi" : 'Tor yo\'lak'}</text>` +
+        etiket(150, 640, 'Divan', x0 + 40, y0 + 110, seg(t, 0.02, 0.1)) + etiket(570, 640, 'Shkaf', right + 60, y0 + 250, seg(t, 0.05, 0.12)),
+      );
+    },
+  },
+  ish_stoli: {
+    tavsif: "yon ko'rinish: ish stoli balandligi 75 sm, o'rindiq balandligi sozlanadi, tirsak to'g'ri burchak bo'ladi (ergonomika, ish joyi, stol va stul balandligi)",
+    svg(t, A) {
+      const e = seg(t, 0.3, 0.85);
+      const h = 36 + 11 * e; // o'rindiq balandligi sm
+      const k = 4; const fl = 600;
+      const seatY = fl - h * k, hipX = 250;
+      const shY = seatY - 220, elbY = shY + 120;
+      const deskY = fl - 75 * k, deskX = 330;
+      const handX = deskX + 90, handY = deskY - 8;
+      const elbX = hipX + 35;
+      const ok = e > 0.95;
+      const rang = ok ? '#1f7a4d' : '#b3261e';
+      return bosh(
+        `<line x1="40" y1="${fl}" x2="680" y2="${fl}" stroke="${INK}" stroke-width="5"/>` +
+        // stol
+        `<rect x="${deskX}" y="${deskY}" width="260" height="14" fill="#d9c7a8" stroke="${INK}" stroke-width="3"/><rect x="${deskX + 230}" y="${deskY + 14}" width="12" height="${fl - deskY - 14}" fill="${INK}"/><rect x="${deskX + 20}" y="${deskY + 14}" width="12" height="${fl - deskY - 14}" fill="${INK}"/>` +
+        `<rect x="${deskX + 150}" y="${deskY - 150}" width="12" height="136" fill="${INK}"/><rect x="${deskX + 110}" y="${deskY - 220}" width="170" height="110" rx="6" fill="#222" stroke="${INK}" stroke-width="3"/>` +
+        // stul
+        `<rect x="${hipX - 70}" y="${seatY}" width="130" height="14" rx="6" fill="${A}" stroke="${INK}" stroke-width="3"/><rect x="${hipX - 70}" y="${seatY - 150}" width="14" height="150" rx="6" fill="${A}" stroke="${INK}" stroke-width="3"/><rect x="${hipX - 8}" y="${seatY + 14}" width="12" height="${fl - seatY - 14}" fill="${INK}"/>` +
+        // odam
+        `<g stroke="${INK}" stroke-width="12" stroke-linecap="round" fill="none"><line x1="${hipX}" y1="${seatY - 2}" x2="${hipX}" y2="${shY}"/><line x1="${hipX}" y1="${seatY - 2}" x2="${hipX + 110}" y2="${seatY - 2}"/><line x1="${hipX + 110}" y1="${seatY - 2}" x2="${hipX + 110}" y2="${fl - 4}"/>` +
+        `<line x1="${hipX}" y1="${shY}" x2="${elbX}" y2="${elbY}"/><line x1="${elbX}" y1="${elbY}" x2="${handX}" y2="${handY}" stroke="${rang}"/></g>` +
+        `<circle cx="${hipX + 6}" cy="${shY - 42}" r="32" fill="#f1d9c0" stroke="${INK}" stroke-width="4"/>` +
+        // o'lchamlar
+        `<g stroke="${INK}" stroke-width="3"><line x1="690" y1="${deskY}" x2="690" y2="${fl}"/><line x1="680" y1="${deskY}" x2="700" y2="${deskY}"/><line x1="680" y1="${fl}" x2="700" y2="${fl}"/></g>` +
+        `<text x="672" y="${(deskY + fl) / 2}" text-anchor="end" font-family="${FF}" font-weight="700" font-size="34" fill="${INK}">75 sm</text>` +
+        `<text x="360" y="655" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${rang}">${ok ? 'Tirsak ≈ 90°: yelka bo\'sh' : 'Qo\'l ko\'tarilib turibdi'}</text>` +
+        `<text x="40" y="700" font-family="${FF}" font-weight="700" font-size="28" fill="${INK}">o'rindiq ${Math.round(h)} sm</text>`,
+      );
+    },
+  },
+  oshxona_uchburchak: {
+    tavsif: "yuqoridan ko'rinish: muzlatgich, rakovina va plita orasidagi 'ish uchburchagi', masofalar qisqaradi (oshxona rejasi, qulaylik, harakat)",
+    svg(t, A) {
+      const e = seg(t, 0.35, 0.8);
+      const m = 100; // 1 m = 100 px
+      const A1 = [150 + 80 * e, 170], B1 = [360 - 5 * e, 520 - 190 * e], C1 = [570 - 90 * e, 170];
+      const d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) / m;
+      const dlar = [d(A1, B1), d(B1, C1), d(C1, A1)];
+      const jami = dlar[0] + dlar[1] + dlar[2];
+      const ok = e > 0.95;
+      const rang = ok ? '#1f7a4d' : '#b3261e';
+      const fmt = (v) => v.toFixed(1).replace('.', ',');
+      const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+      const lab = (p, q, v) => { const c = mid(p, q); return `<rect x="${c[0] - 40}" y="${c[1] - 20}" width="80" height="36" rx="18" fill="#fff" stroke="${rang}" stroke-width="3"/><text x="${c[0]}" y="${c[1] + 8}" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="24" fill="${rang}">${fmt(v)} m</text>`; };
+      const blok = (c, w, h, f, nom) => `<rect x="${c[0] - w / 2}" y="${c[1] - h / 2}" width="${w}" height="${h}" rx="8" fill="${f}" stroke="${INK}" stroke-width="3"/><text x="${c[0]}" y="${c[1] + h / 2 + 30}" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="22" fill="${INK}">${nom}</text>`;
+      return bosh(
+        `<rect x="50" y="60" width="620" height="540" fill="${W1}" stroke="${INK}" stroke-width="10"/>` +
+        `<rect x="50" y="60" width="620" height="60" fill="${W2}" stroke="${INK}" stroke-width="3"/>` +
+        `<polygon points="${A1.join(',')} ${B1.join(',')} ${C1.join(',')}" fill="${rang}" fill-opacity="0.12" stroke="${rang}" stroke-width="5" stroke-dasharray="14 8"/>` +
+        blok(A1, 100, 80, '#d6dce0', 'Muzlatgich') + blok(B1, 110, 70, '#bcd6e4', 'Rakovina') + blok(C1, 100, 80, mix(A, '#ffffff', 0.4), 'Plita') +
+        lab(A1, B1, dlar[0]) + lab(B1, C1, dlar[1]) + lab(C1, A1, dlar[2]) +
+        `<text x="360" y="660" text-anchor="middle" font-family="${FF}" font-weight="700" font-size="34" fill="${rang}">${ok ? 'Qulay: uchburchak ixcham' : 'Uzoq: ortiqcha yurasiz'}</text>`,
+      );
+    },
+  },
   planirovka: {
     tavsif: "yuqoridan ko'rinish: devorlar chiziladi, xonalar nomlanadi va mebel joylashadi (planirovka, xonalar joylashuvi, zonalash, 2 xonali/3 xonali)",
     svg(t, A) {
