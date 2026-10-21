@@ -1,6 +1,6 @@
 // Render (bepul tarif) uxlab qolishi mumkin -- avval /health bilan uyg'otamiz,
 // keyin 2 marta urinamiz. Muvaffaqiyatsiz bo'lsa adminga ANIQ xabar beramiz.
-async function tgSend(token, chatId, text) {
+export async function tgSend(token, chatId, text) {
   return fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text }),
@@ -38,4 +38,20 @@ export async function mediaChaqir(env, yol, body, adminChatId) {
       `⚠️ Media-server javob bermadi (${yol}): ${sabab}.\nRender bepul tarifi uxlab qolgan bo'lishi mumkin -- 1 daqiqadan so'ng qayta bosing.`).catch(() => {});
   }
   return { ok: false, sabab };
+}
+
+
+// Animatsiya buyurtmasi: ish navbatga yoziladi; server o'chib (OOM/uxlash) video kelmasa, cron 3 martagacha qayta boshlaydi.
+export async function animatsiyaBuyurtma(env, adminChatId, mavzu, korsatma) {
+  let ishId = null;
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, {
+      method: 'POST',
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify([{ turi: 'animatsiya_ish', holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 9 * 60e3).toISOString(), payload: { adminChatId, mavzu: mavzu || null, korsatma: korsatma || null, urinish: 1 } }]),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) { const j = await r.json(); ishId = j && j[0] && j[0].id; }
+  } catch (e) { /* navbatsiz ham ishlaydi */ }
+  return mediaChaqir(env, '/animatsion', { adminChatId, mavzu: mavzu || undefined, korsatma: korsatma || undefined, ishId: ishId || undefined }, adminChatId);
 }

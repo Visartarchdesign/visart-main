@@ -49,7 +49,7 @@
 import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
-import { mediaChaqir } from '../_lib/media.js';
+import { mediaChaqir, animatsiyaBuyurtma } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat } from '../_lib/mijozMenyu.js';
 
@@ -736,7 +736,7 @@ async function animatsiyaTuzatish(env, nid, adminChatId, korsatma) {
     const sarlavha = rr && rr[0] && rr[0].payload && rr[0].payload.sarlavha;
     await sbFetch(env, `nashr_navbati?id=eq.${nid}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'bekor' }) }).catch(() => {});
     await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, "🔧 Ko'rsatmangiz bilan animatsion video qayta tayyorlanmoqda (3–6 daqiqa)...");
-    await mediaChaqir(env, '/animatsion', { adminChatId, mavzu: sarlavha || undefined, korsatma }, adminChatId);
+    await animatsiyaBuyurtma(env, adminChatId, sarlavha || undefined, korsatma);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Animatsiyani qayta tayyorlashda xato: ${String((e && e.message) || e).slice(0, 300)}`);
   }
@@ -2141,7 +2141,7 @@ export async function onRequestPost({ request, env }) {
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?animatsiya\b/i.test(msg.text || '')) {
       const mavzu = (msg.text || '').replace(/^\s*\/?animatsiya(@\w+)?\s*/i, '').trim();
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⏳ Animatsion video buyurtmasi qabul qilindi${mavzu ? ` (mavzu: ${escH(mavzu)})` : ' (mavzuni AI tanlaydi)'}. 3–6 daqiqada tasdiqqa keladi.`);
-      await mediaChaqir(env, '/animatsion', { adminChatId: msg.chat.id, mavzu: mavzu || undefined }, msg.chat.id);
+      await animatsiyaBuyurtma(env, msg.chat.id, mavzu || undefined);
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?yuz\s?studio\b/i.test(msg.text || '')) {

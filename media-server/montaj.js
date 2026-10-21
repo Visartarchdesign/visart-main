@@ -1524,7 +1524,8 @@ async function ovozTahrir(env, slaydlar, sarlavhaSaqla = false) {
   return slaydlar;
 }
 
-export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
+export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId }) {
+  const ishYop = (holat) => ishId ? fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?id=eq.${ishId}`, { method: 'PATCH', headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ holat }), signal: AbortSignal.timeout(8000) }).catch(() => {}) : null;
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'anim-'));
   try {
     await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, "🎞️ Material yo'q -- animatsion ovozli video tayyorlanmoqda...");
@@ -1628,8 +1629,10 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     await tasdiqqaYubor(env, adminChatId, chiqish, qopqoqBuf, {
       sarlavha, tavsif: meta.tavsif, hashtaglar: meta.hashtaglar,
       izoh: `Animatsion (${Math.round(t)} s) -- AI mavzu va ovoz. Ovozni tinglab, xato bo'lsa ❌ bosing va sababini yozing.`, taklifId: null });
+    await ishYop('bajarildi');
   } catch (e) {
     await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Animatsion video yaratilmadi: ${String((e && e.message) || e).slice(0, 300)}`).catch(() => {});
+    await ishYop('xato');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

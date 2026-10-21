@@ -3,7 +3,7 @@ import { navbatniYubor } from '../_lib/outbox.js';
 import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
-import { mediaUygot, mediaChaqir } from '../_lib/media.js';
+import { mediaUygot, mediaChaqir, animatsiyaBuyurtma, tgSend } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
 // Cloudflare Pages Function — /api/nashr-navbati
@@ -309,6 +309,18 @@ export async function onRequestGet({ request, env, waitUntil }) {
         await sbFetch(env, 'nashr_navbati', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify([{ turi: 'kunlik_xulosa', payload: {}, nashr_vaqti: keyingiToshkent(9, 0), holat: 'kutilmoqda' }]) }).catch(() => {});
       } else if (q.turi === 'usta_eslatma') {
         await bajarUstaEslatma(env, q.payload);
+      } else if (q.turi === 'animatsiya_ish') {
+        const p = q.payload || {};
+        const u = Number(p.urinish) || 1;
+        if (u >= 3) {
+          await tgSend(env.MIJOZ_BOT_TOKEN, p.adminChatId, "⚠️ Animatsion video 3 urinishda ham chiqmadi (server xotirasi yetmayotgan bo'lishi mumkin). Keyinroq `animatsiya` deb qayta yozing.").catch(() => {});
+        } else {
+          await tgSend(env.MIJOZ_BOT_TOKEN, p.adminChatId, `🔁 Animatsiya hali tayyor emas (server o'chib qolgan bo'lishi mumkin). Qayta boshlayman (${u + 1}/3).`).catch(() => {});
+          await mediaChaqir(env, '/animatsion', { adminChatId: p.adminChatId, mavzu: p.mavzu || undefined, korsatma: p.korsatma || undefined, ishId: q.id }, p.adminChatId);
+          await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 9 * 60e3).toISOString(), payload: { ...p, urinish: u + 1 } }) });
+          natijalar.push({ id: q.id, holat: 'qayta' });
+          continue;
+        }
       } else if (q.turi === 'instagram_story') {
         await bajarInstagramStory(env, q.payload);
       } else {
@@ -363,5 +375,5 @@ async function kunlikAnimatsiya(env) {
     q(`media_taklif?holat=in.(kutilmoqda,tasdiqlangan)&created_at=gte.${kunBosh}&select=id&limit=1`),
   ]);
   if ((vid && vid.length) || (tak && tak.length)) return;
-  await mediaChaqir(env, '/animatsion', { adminChatId: admin }, admin);
+  await animatsiyaBuyurtma(env, admin, undefined);
 }

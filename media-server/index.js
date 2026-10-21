@@ -111,10 +111,10 @@ app.post('/story-variant', (req, res) => {
 // POST /animatsion -- material yo'q kuni AI mavzu + ovoz + animatsion video (admin tasdig'iga)
 app.post('/animatsion', (req, res) => {
   if (!tekshirSecret(req, res)) return;
-  const { adminChatId, mavzu, korsatma } = req.body || {};
+  const { adminChatId, mavzu, korsatma, ishId } = req.body || {};
   if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  ish('Animatsiya', req, (env) => bajarAnimatsion({ env, adminChatId, mavzu, korsatma }));
+  ish('Animatsiya', req, (env) => bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId }));
 });
 
 app.post('/yuz-studio', (req, res) => {
