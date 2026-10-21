@@ -1285,6 +1285,13 @@ async function tgSoniya(file) {
   return parseFloat(stdout) || 0;
 }
 
+// Diktor uchun matn: tinish belgilari orqali jonli pauzalar (kitobiy bir tekis o'qishni yumshatadi)
+function ovozMatni(m) {
+  return String(m || '').replace(/\s+/g, ' ')
+    .replace(/\s*:\s*/g, ', ').replace(/\s*[—–-]\s+/g, ', ')
+    .replace(/([.!?])\s+/g, '$1 ... ').replace(/\?\s*\.\.\./g, '? ...').trim();
+}
+
 async function ovozYarat(env, matn, outPath, tmpDir) {
   // 0) Muallifning o'z ovozi (ElevenLabs klon) -- kalit va ovoz ID qo'yilgan bo'lsa
   if (env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID) {
@@ -1302,7 +1309,8 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
     const dir = fs.mkdtempSync(path.join(tmpDir, 'tts-'));
-    const r = await tts.toFile(dir, matn);
+    const pr = { rate: process.env.TTS_TEZLIK || '-8%', pitch: process.env.TTS_PITCH || '-2Hz' };
+    const r = await tts.toFile(dir, ovozMatni(matn), pr).catch(() => tts.toFile(dir, ovozMatni(matn)));
     fs.copyFileSync(r.audioFilePath, outPath);
     return;
   } catch (e) { /* Gemini TTS'ga o'tamiz */ }
@@ -1502,13 +1510,13 @@ async function animatsionSenariy(env, mavzu) {
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
-async function ovozTahrir(env, slaydlar) {
+async function ovozTahrir(env, slaydlar, sarlavhaSaqla = false) {
   try {
     const tuz = await geminiJsonSora(env.GEMINI_API_KEY, [{ text:
-      "Siz o'zbek tilining tajribali muharririsiz (Toshkent shevasiga yaqin, jonli so'zlashuv). Quyidagi video diktor matnlarini tabiiy, grammatik to'g'ri, jonli o'zbekchaga keltiring: tarjima va kitobiy uslubni olib tashlang, kelishik/egalik qo'shimchalarini to'g'rilang, 'Siz'lab, qisqa gaplar, ma'noni va sahnada ko'rinadigan narsalarning nomlarini saqlang, so'z sonini oshirmang (har biri 6-12 so'z), raqamlar so'z bilan. " +
+      "Siz o'zbek tilining tajribali muharririsiz (Toshkent shevasiga yaqin, jonli so'zlashuv). Quyidagi video diktor matnlarini USTA DO'STIGA GAPIRGANDEK tabiiy, grammatik to'g'ri, jonli o'zbekchaga keltiring: kitobiy va tarjima uslubini olib tashlang (ushbu, mazkur, amalga oshirmoq, taqdim etmoq, mavjud, kabi), -moqda/-ayotgan o'rniga -yapti/-ayotgan jonli shakl, gap tartibi so'zlashuvdagidek (fe'l oxirda), 'bo'lishi mumkin' o'rniga 'bo'lishi ham mumkin'/'bo'lib qolishi mumkin' kabi tabiiy burilishlar, yordamchi so'zlar ('axir', 'ya'ni', 'mana', 'shunda') o'rinli ishlating, uzun gapni ikkiga bo'ling, kelishik/egalik qo'shimchalarini to'g'rilang, 'Siz'lab, qisqa gaplar, ma'noni va sahnada ko'rinadigan narsalarning nomlarini saqlang, so'z sonini oshirmang (har biri 6-12 so'z), raqamlar so'z bilan. " +
       "Faqat JSON massiv qaytaring: aynan " + slaydlar.length + " ta obyekt [{\"sarlavha\":\"...\",\"ovoz\":\"...\"}], tartib saqlansin. Kirish: " + JSON.stringify(slaydlar.map((x) => ({ sarlavha: x.sarlavha, ovoz: x.ovoz }))) }]);
     if (Array.isArray(tuz) && tuz.length === slaydlar.length) {
-      return slaydlar.map((x, i) => ({ ...x, sarlavha: String((tuz[i] && tuz[i].sarlavha) || x.sarlavha).trim(), ovoz: String((tuz[i] && tuz[i].ovoz) || x.ovoz).trim() }));
+      return slaydlar.map((x, i) => ({ ...x, sarlavha: sarlavhaSaqla ? x.sarlavha : String((tuz[i] && tuz[i].sarlavha) || x.sarlavha).trim(), ovoz: String((tuz[i] && tuz[i].ovoz) || x.ovoz).trim() }));
     }
   } catch (e) { /* tahrir ixtiyoriy */ }
   return slaydlar;
@@ -1531,7 +1539,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma }) {
     const meta = raw.find((x) => x.tur === 'meta') || {};
     let slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 8);
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
-    if (!bank) slaydlar = await ovozTahrir(env, slaydlar);
+    slaydlar = await ovozTahrir(env, slaydlar, !!bank);
 
     const yuzBuf = await yuzTanla(env);
     let qopqoqAsos = null;
