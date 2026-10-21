@@ -15,11 +15,11 @@ const app = express();
 app.use(express.json({ limit: '20mb' }));
 
 // Render'da SUPABASE_*/MIJOZ_BOT_TOKEN/GEMINI_API_KEY sozlanmagan bo'lsa ham ishlashi uchun, Cloudflare bot
-// ularni (MEDIA_SECRET bilan himoyalangan HTTPS so'rovda) uzatadi. Render'ning o'z qiymatlari ustun turadi.
+// ularni (MEDIA_SECRET bilan himoyalangan HTTPS so'rovda) uzatadi. Cloudflare qiymatlari ustun (Render'dagi eski/almashtirilgan token 401 bermasligi uchun).
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
   const out = { ...process.env };
-  for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY']) if (!out[k] && x[k]) out[k] = x[k];
+  for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY']) if (x[k]) out[k] = x[k];
   return out;
 }
 
