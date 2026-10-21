@@ -1362,9 +1362,32 @@ async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath, vurgu = '',
 }
 
 // Rasm manbai: avval Gemini, bo'lmasa bepul Pollinations. {buf} yoki {sabab}.
-async function rasmYarat(env, prompt) {
+let rasmKvotaTugagan = false; // 429/402 bo'lsa shu jarayonda qayta urinmaymiz
+async function svgIllyustratsiya(env, mavzu) {
+  const prompt = `Create a flat, minimalist architectural line-and-color illustration as ONE SVG for this subject: ${mavzu}. ` +
+    'Canvas: viewBox="0 0 720 720", no background rect (transparent). Style: clean isometric or front-view diagram, thin dark strokes (#16150f, stroke-width 3), flat fills in warm neutrals (#d9d4c7, #c9c2b0) with ONE accent color (#0e6b5c teal or #c4572b terracotta), simple shapes only (rect, polygon, path, circle, line), clear readable composition filling the canvas, subtle soft shadow shapes. No text, no letters, no images, no scripts. Output ONLY the <svg>...</svg> markup.';
+  let xato = '';
+  for (const model of GEMINI_MODELLAR) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7 } }), signal: AbortSignal.timeout(60000) });
+      if (!res.ok) { xato = `SVG ${model} HTTP ${res.status}`; continue; }
+      const d = await res.json();
+      const text = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('');
+      const m = text.match(/<svg[\s\S]*<\/svg>/i);
+      if (!m) { xato = 'SVG qaytmadi'; continue; }
+      const svg = m[0].replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<image[\s\S]*?>/gi, '').replace(/<svg\b/i, '<svg width="720" height="720"');
+      const png = await sharp(Buffer.from(svg)).resize(720, 720, { fit: 'contain', background: { r: 236, g: 235, b: 230, alpha: 0 } }).png().toBuffer();
+      return await sharp({ create: { width: 720, height: 1280, channels: 3, background: '#ecebe6' } }).composite([{ input: png, left: 0, top: 440 }]).png().toBuffer();
+    } catch (e) { xato = 'SVG: ' + String((e && e.message) || e).slice(0, 80); }
+  }
+  throw new Error(xato || 'SVG yaratilmadi');
+}
+
+async function rasmYarat(env, prompt, mavzu) {
   const sabablar = [];
-  if (env.GEMINI_API_KEY) {
+  if (env.GEMINI_API_KEY && !rasmKvotaTugagan) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'}:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1374,15 +1397,17 @@ async function rasmYarat(env, prompt) {
         const im = ((((d.candidates || [])[0] || {}).content || {}).parts || []).find((x) => x.inlineData && x.inlineData.data);
         if (im) return { buf: Buffer.from(im.inlineData.data, 'base64') };
         sabablar.push('Gemini rasm qaytarmadi');
-      } else sabablar.push(`Gemini HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 120)}`);
+      } else { if (res.status === 429) rasmKvotaTugagan = true; sabablar.push(`Gemini HTTP ${res.status} ${(await res.text().catch(() => '')).slice(0, 120)}`); }
     } catch (e) { sabablar.push('Gemini: ' + String((e && e.message) || e).slice(0, 80)); }
   }
-  try {
+  if (!rasmKvotaTugagan) try {
     const seed = Math.floor(Math.random() * 1e6);
     const r = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 900))}?width=720&height=1280&nologo=true&model=flux&seed=${seed}`, { signal: AbortSignal.timeout(90000) });
     if (r.ok && /image/.test(r.headers.get('content-type') || '')) return { buf: Buffer.from(await r.arrayBuffer()) };
+    if (r.status === 402 || r.status === 429) rasmKvotaTugagan = true;
     sabablar.push(`Pollinations HTTP ${r.status}`);
   } catch (e) { sabablar.push('Pollinations: ' + String((e && e.message) || e).slice(0, 80)); }
+  try { return { buf: await svgIllyustratsiya(env, mavzu || prompt.slice(0, 200)), svg: true }; } catch (e) { sabablar.push(String((e && e.message) || e)); }
   return { sabab: sabablar.join(' | ') };
 }
 
@@ -1391,8 +1416,8 @@ async function animatsiyaAiRasm(env, sl, bgOut, ovOut) {
   const prompt = `Clean educational illustration for an architecture/interior tips video, vertical 9:16. Subject: ${sl.rasm || sl.sarlavha}. ` +
     'Style: minimalist 3D isometric / soft-render concept illustration, light warm beige background, muted natural palette with one teal or terracotta accent, soft shadows, lots of empty space in the TOP 40% of the frame (text will be added). ' +
     'No text, no letters, no numbers, no logos, no people faces.';
-  let r = await rasmYarat(env, prompt);
-  if (!r.buf) r = await rasmYarat(env, prompt);
+  let r = await rasmYarat(env, prompt, sl.rasm || sl.sarlavha);
+  if (!r.buf) r = await rasmYarat(env, prompt, sl.rasm || sl.sarlavha);
   if (!r.buf) throw new Error('AI rasm yaratilmadi: ' + r.sabab);
   const W = 720, H = 1280;
   await sharp(r.buf).resize(W * 2, H * 2, { fit: 'cover', position: 'centre' }).jpeg({ quality: 92 }).toFile(bgOut);
