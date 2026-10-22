@@ -1637,11 +1637,19 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
     await execFileAsync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', birlashgan]);
 
     // Fon muzika: ovoz 100%, muzika past
-    const muz = await muzikaSintez('sokin', Math.ceil(t) + 1, path.join(tmpDir, 'm.mp3'));
     const mixed = path.join(tmpDir, 'mixed.mp4');
-    await execFileAsync('ffmpeg', ['-y', '-i', birlashgan, '-i', muz,
-      '-filter_complex', '[1:a]volume=0.16[m];[0:a][m]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]',
-      '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mixed]);
+    const haqiqiy = muzikaTanla('sokin');
+    if (haqiqiy) {
+      // Haqiqiy trek: ovoz ustida avtomatik pasayadi (ducking), kirishda yumshoq ko'tariladi, oxirida so'nadi
+      await execFileAsync('ffmpeg', ['-y', '-i', birlashgan, '-stream_loop', '-1', '-i', haqiqiy,
+        '-filter_complex', `[0:a]asplit=2[v1][v2];[1:a]volume=0.5,afade=t=in:d=1.5,afade=t=out:st=${Math.max(1, Math.floor(t) - 2)}:d=2[m];[m][v2]sidechaincompress=threshold=0.02:ratio=10:attack=20:release=500[d];[v1][d]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]`,
+        '-map', '0:v', '-map', '[a]', '-t', String(Math.ceil(t) + 1), '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mixed]);
+    } else {
+      const muz = await muzikaSintez('sokin', Math.ceil(t) + 1, path.join(tmpDir, 'm.mp3'));
+      await execFileAsync('ffmpeg', ['-y', '-i', birlashgan, '-i', muz,
+        '-filter_complex', '[1:a]volume=0.16[m];[0:a][m]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]',
+        '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', mixed]);
+    }
 
     let chiqish = mixed;
     try {
