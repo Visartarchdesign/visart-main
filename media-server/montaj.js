@@ -725,8 +725,8 @@ async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
     await execFileAsync('ffmpeg', [
       '-y', '-i', videoPath,
       '-vf', `ass=${assPath}`,
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-pix_fmt', 'yuv420p',
-      '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+      '-c:v', 'libx264', '-preset', 'superfast', '-crf', '26', '-pix_fmt', 'yuv420p',
+      '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
       '-c:a', 'copy', '-movflags', '+faststart',
       outPath,
     ], { maxBuffer: 1024 * 1024 * 20 });
@@ -1572,7 +1572,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
           '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
           '-filter_complex', '[0:v]fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]',
           '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
-          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1',
+          '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
           '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
         ], { maxBuffer: 1024 * 1024 * 20 });
         fs.rmSync(fdir, { recursive: true, force: true });
@@ -1584,7 +1584,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
           '-y', '-i', bg, '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
           '-filter_complex', `[0:v]zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${kadr}:s=1080x1920:fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]`,
           '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
-          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1',
+          '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
           '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
         ], { maxBuffer: 1024 * 1024 * 20 });
       }
