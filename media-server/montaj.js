@@ -1484,14 +1484,15 @@ async function animatsiyaAiRasm(env, sl, bgOut, ovOut) {
 }
 
 // Kod bilan chizilgan animatsion sahnani kadrlarga aylantiradi (12.5 fps), 1080x1920 fon + sahna
-async function sahnaKadrlar(nom, aksent, dur, dir, t0 = 0, t1 = 1) {
+async function sahnaKadrlar(nom, aksent, dur, dir, t0 = 0, t1 = 1, ovPath = null) {
   const fps = 12.5;
   const n = Math.max(2, Math.round(dur * fps));
   fs.mkdirSync(dir, { recursive: true });
   const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
+  const ovBuf = ovPath ? fs.readFileSync(ovPath) : null;
   for (let k = 0; k < n; k++) {
     const sc = await sharp(Buffer.from(sahnaSvg(nom, t0 + (t1 - t0) * Math.min(1, k / (n - 1) / 0.9), aksent)), { density: 108 }).resize(880, 880).png().toBuffer();
-    await sharp(baza).composite([{ input: sc, left: 100, top: 740 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
+    await sharp(baza).composite(ovBuf ? [{ input: sc, left: 100, top: 740 }, { input: ovBuf, left: 0, top: 0 }] : [{ input: sc, left: 100, top: 740 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
   }
   return fps;
 }
@@ -1565,14 +1566,14 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       if (sahnaNom) {
         await matnQatlami(sl, ov, false);
         const fdir = path.join(tmpDir, `fr${i}`);
-        const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir, Number.isFinite(sl.t0) ? sl.t0 : 0, Number.isFinite(sl.t1) ? sl.t1 : 1);
+        const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir, Number.isFinite(sl.t0) ? sl.t0 : 0, Number.isFinite(sl.t1) ? sl.t1 : 1, ov);
         if (!qopqoqSahna) qopqoqSahna = [sahnaNom, aksent];
         if (i === 0) qopqoqAsos = await sharp(path.join(fdir, 'f0000.png')).jpeg({ quality: 90 }).toBuffer();
         await execFileAsync('ffmpeg', [
-          '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
-          '-filter_complex', '[0:v]fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]',
-          '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
-          '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
+          '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-i', mp3,
+          '-filter_complex', '[0:v]fps=25,format=yuv420p[v]',
+          '-map', '[v]', '-map', '1:a', '-af', 'apad,aresample=44100', '-t', String(dur),
+          '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=0:ref=1:bframes=0',
           '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
         ], { maxBuffer: 1024 * 1024 * 20 });
         fs.rmSync(fdir, { recursive: true, force: true });
