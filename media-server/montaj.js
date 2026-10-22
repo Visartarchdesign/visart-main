@@ -1333,18 +1333,31 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
 }
 
 // Atrof-muhit effekti (shamol, suv...) -- music/sfx/<nom>*.mp3 bo'lsa shu, bo'lmasa sintez; diktor ovoziga past qatlam bo'lib qo'shiladi
-async function sfxQosh(nom, mp3, dur, tmpDir) {
-  if (!nom) return;
+async function sfxQosh(nom, mp3, dur, tmpDir, fx = []) {
   const sfxDir = path.join(path.dirname(new URL(import.meta.url).pathname), 'music', 'sfx');
-  let fayl = null;
-  try { const f = fs.readdirSync(sfxDir).filter((x) => x.toLowerCase().startsWith(nom) && /\.(mp3|wav|m4a)$/i.test(x)); if (f.length) fayl = path.join(sfxDir, f[Math.floor(Math.random() * f.length)]); } catch (e) { /* papka yo'q */ }
+  const topish = (k) => { try { const f = fs.readdirSync(sfxDir).filter((x) => x.toLowerCase().startsWith(k) && /\.(mp3|wav|m4a)$/i.test(x)); return f.length ? path.join(sfxDir, f[Math.floor(Math.random() * f.length)]) : null; } catch (e) { return null; } };
   const sintez = { shamol: 'highpass=f=250,lowpass=f=1800,tremolo=f=0.35:d=0.7,aecho=0.6:0.5:60:0.3', suv: 'highpass=f=600,lowpass=f=6000,tremolo=f=7:d=0.4' }[nom];
-  if (!fayl && !sintez) return;
+  const fayl = nom ? topish(nom) : null;
+  const bir = (Array.isArray(fx) ? fx : []).map((x) => ({ f: topish(String(x.k || '')), t: Math.max(0, Number(x.t) || 0) })).filter((x) => x.f && x.t < dur - 0.3);
+  if (!nom || (!fayl && !sintez)) { if (!bir.length) return; }
   const out = mp3.replace(/\.mp3$/, '.fx.mp3');
-  const kirish = fayl ? ['-stream_loop', '-1', '-i', fayl] : ['-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=0.8:d=${Math.ceil(dur) + 1}:r=44100,${sintez}`];
-  await execFileAsync('ffmpeg', ['-y', '-i', mp3, ...kirish,
-    '-filter_complex', `[1:a]volume=${fayl ? 0.35 : 1.6},afade=t=in:d=0.6,afade=t=out:st=${Math.max(0.5, dur - 0.8)}:d=0.8[s];[0:a][s]amix=inputs=2:duration=first:normalize=0[a]`,
-    '-map', '[a]', '-t', String(dur), '-ac', '2', '-ar', '44100', out]);
+  const args = ['-y', '-i', mp3];
+  const fl = [];
+  const tarkib = ['[0:a]'];
+  let idx = 1;
+  if (nom && (fayl || sintez)) {
+    args.push(...(fayl ? ['-stream_loop', '-1', '-i', fayl] : ['-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=0.8:d=${Math.ceil(dur) + 1}:r=44100,${sintez}`]));
+    fl.push(`[${idx}:a]volume=${fayl ? 0.3 : 1.6},afade=t=in:d=0.6,afade=t=out:st=${Math.max(0.5, dur - 0.8)}:d=0.8[s${idx}]`);
+    tarkib.push(`[s${idx}]`); idx++;
+  }
+  for (const x of bir) {
+    args.push('-i', x.f);
+    fl.push(`[${idx}:a]volume=0.6,adelay=${Math.round(x.t * 1000)}|${Math.round(x.t * 1000)}[s${idx}]`);
+    tarkib.push(`[s${idx}]`); idx++;
+  }
+  fl.push(`${tarkib.join('')}amix=inputs=${tarkib.length}:duration=first:normalize=0[a]`);
+  args.push('-filter_complex', fl.join(';'), '-map', '[a]', '-t', String(dur), '-ac', '2', '-ar', '44100', out);
+  await execFileAsync('ffmpeg', args);
   fs.renameSync(out, mp3);
 }
 
@@ -1550,7 +1563,7 @@ async function animatsionSenariy(env, mavzu) {
     (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
     "SAHNALAR (animatsion, har slayd uchun bittasini tanlang). MUHIM: mavzu SAHNALARDAN 2-4 tasi bilan to'liq tushuntiriladigan bo'lsin; ovoz AYNAN sahnada ko'rinayotgan narsani aytsin (sahna ichidagi yozuvlar -- oyna, divan, parda, karavot, quyosh nuri, hammom... -- ovozda tilga olinsin), shunda tomoshabin nima ko'rayotganini darrov tushunadi. Sahnadagi harakat ovoz davomida rivojlanadi (quyosh pastlaydi, parda ochiladi, mebel joylashadi), shuning uchun gap shu jarayonni izohlasin:\n" + SAHNA_MENYU + "\n" +
     "TIL: jonli so'zlashuv o'zbekchasi, ustaga/mijozga tushuntirayotgandek iliq, 'Siz'lab. Tarjima uslubi, rasmiy va kitobiy so'zlar ('ushbu', 'mazkur', 'amalga oshirmoq', 'taqdim etmoq') yo'q. Qisqa gaplar, kelishik va egalik qo'shimchalari to'g'ri (-ning, -ni, -ga, -da, -dan, -i/-si). Oddiy so'zlar: remont, planirovka, kvadrat metr, chiroq, parda, divan, shkaf, oshxona, mehmonxona. Yaxshi: 'Uyingizdagi chiroq rangi xonani arzon ko'rsatib qo'yishi mumkin.' Yomon: 'Ushbu yoritish moslamasi interyerni arzon his ettiradi.' Ovozdagi raqamlar SO'Z bilan yoziladi (2700K -> 'ikki ming yetti yuz kelvin', 4x4 -> 'to'rtga to'rt').\n" + "PROFESSIONAL QOIDALAR: hook birinchi 1.5 soniyada qiziqtirsin (3 soniya ichida butun hook aytiladi, 8 so'zdan oshmasin); har slaydning 'ovoz'i BITTA qisqa gap (6-11 so'z, ~3 soniya) -- vizual har 2-3 soniyada almashadi; ortiqcha, to'ldiruvchi so'z yo'q; oxirgi gap bitta esda qoladigan xulosa yoki tabiiy savol bo'lsin (reklama yoki 'saqlang/yuboring' chaqirig'i MAJBURIY EMAS), hook bilan mazmunan bog'lansin. Emotsiya birinchi: odamga 'bu menga tegishli' degan his bering.\nStruktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 1-2 slayd MUAMMO VA SABAB (nima uchun shunday), 2-3 slayd YECHIM (arxitektura, interyer yoki qurilishda NIMA QILISH KERAK -- aniq, amaliy, umumiy qabul qilingan usullar), oxirgi slayd FOYDA-XULOSA (shu yechimdan odam nima yutadi: qulaylik, tejam, salqinlik, kenglik...). Faqat muammoni aytib tashlab ketish MAN ETILADI: video albatta 'qanday qursa/qilsa natija bo'ladi' bilan tugasin. Raqam va faktlarni to'qimang; umumiy tan olingan qoidalarni ayting. Jami ovoz 25-45 soniya (slaydlar soni 5-8).\n" +
-    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|xulosa","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
+    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|xulosa","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>","fx":"<ixtiyoriy: [{\"k\":\"eshik|qadam|qurilish|suv|shamol|qushlar|yomgir|oshxona|sahifa|klik|pol|bogh\",\"t\":soniya}] -- FAQAT ekrandagi harakatga HAQIQATAN mos tovush (eshik ochilsa eshik); ortiqcha effekt qo\'shmang>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
@@ -1607,7 +1620,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       }
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
-      await sfxQosh(SAHNA_SFX[sl.sahna], mp3, dur, tmpDir).catch(() => {});
+      await sfxQosh(SAHNA_SFX[sl.sahna], mp3, dur, tmpDir, sl.fx).catch(() => {});
       const kadr = Math.round(dur * 25);
       const aksent = ['#c4572b', '#0e6b5c'][i % 2];
       if (sahnaNom && !fotoBuf) {
