@@ -432,3 +432,20 @@ export function sahnaSvg(nom, t, aksent) {
   const s = SAHNALAR[nom];
   return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720">${s.svg(clamp(t), aksent)}</svg>`;
 }
+
+// Haqiqiy ko'rinishdagi AI rasm uchun (hook/xulosa slaydlari va oblojka): sahna nomi -> prompt
+export const SAHNA_RASM = {
+  hovli_soya: 'a real modern private house with a courtyard in Uzbekistan, a mature leafy shade tree next to the house, covered veranda overhang, bright summer sun, soft realistic shadows on the ground',
+  ayvon_kesim: 'a real modern house facade with a deep covered veranda over large windows, a leafy tree casting shade, bright summer day',
+  shamollatish: 'a bright real living room with two opposite open windows, light curtains moving in the breeze, summer light',
+  quyosh_xona: 'a real bright living room with sunlight from a large window falling on a wooden floor and a sofa',
+  lampa_kelvin: 'a cozy real living room with warm light from ceiling spotlights and a floor lamp, modern interior',
+  oyna_parda: 'a real modern living room with floor-to-ceiling curtains hung high above a large window',
+  parda_taqqos: 'a real modern living room with long curtains hung from ceiling to floor, wide window, elegant interior',
+  yolak_kengligi: 'a real modern apartment hallway with wardrobes and a comfortable wide passage, warm light',
+  ish_stoli: 'a real modern home office with a desk, ergonomic chair and a monitor, daylight from a window',
+  oshxona_uchburchak: 'a real modern kitchen with sink, stove and refrigerator in a practical work triangle layout, bright',
+  planirovka: 'a real apartment interior under renovation, bright empty rooms, clean walls, wooden floor',
+  kichik_xona: 'a real small but well organized modern bedroom, light colors, smart furniture placement',
+  rang_palitra: 'a real modern living room with a balanced color palette: neutral walls, grey sofa, one terracotta accent',
+};

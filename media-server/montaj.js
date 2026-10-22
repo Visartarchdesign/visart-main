@@ -22,7 +22,7 @@ import { qopqoqYarat } from './qopqoqlar.js';
 import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
 import { senariyTanla } from './senariylar.js';
 import { KREATIV_PROMPT } from './animatsiyaPrompt.js';
-import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, sahnaSvg } from './sahnalar.js';
+import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, SAHNA_RASM, sahnaSvg } from './sahnalar.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -1400,8 +1400,21 @@ async function svgIllyustratsiya(env, mavzu) {
   throw new Error('SVG: ' + xatolar.join('; '));
 }
 
-async function rasmYarat(env, prompt, mavzu) {
+async function rasmYarat(env, prompt, mavzu, faqatFoto = false) {
   const sabablar = [];
+  if (env.CF_ACCOUNT_ID && env.CF_AI_TOKEN) {
+    try {
+      const r = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell`, {
+        method: 'POST', headers: { Authorization: `Bearer ${env.CF_AI_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.slice(0, 1800), steps: 6 }), signal: AbortSignal.timeout(60000) });
+      if (r.ok) {
+        const d = await r.json();
+        const b64 = d && d.result && d.result.image;
+        if (b64) return { buf: Buffer.from(b64, 'base64') };
+        sabablar.push('Cloudflare AI rasm qaytarmadi');
+      } else sabablar.push(`Cloudflare AI HTTP ${r.status} ${(await r.text().catch(() => '')).slice(0, 120)}`);
+    } catch (e) { sabablar.push('Cloudflare AI: ' + String((e && e.message) || e).slice(0, 80)); }
+  }
   if (env.GEMINI_API_KEY && !rasmKvotaTugagan) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image'}:generateContent?key=${env.GEMINI_API_KEY}`, {
@@ -1422,6 +1435,7 @@ async function rasmYarat(env, prompt, mavzu) {
     if (r.status === 402 || r.status === 429) rasmKvotaTugagan = true;
     sabablar.push(`Pollinations HTTP ${r.status}`);
   } catch (e) { sabablar.push('Pollinations: ' + String((e && e.message) || e).slice(0, 80)); }
+  if (faqatFoto) return { sabab: sabablar.join(' | ') };
   try { return { buf: await svgIllyustratsiya(env, mavzu || prompt.slice(0, 200)), svg: true }; } catch (e) { sabablar.push(String((e && e.message) || e)); }
   return { sabab: sabablar.join(' | ') };
 }
@@ -1452,13 +1466,13 @@ async function matnQatlami(sl, ovOut, ai = true) {
 }
 
 // Mavzuga mos alohida STATIK oblojka: sahnaning eng mazmunli kadri + katta o'qiladigan mavzu
-async function mavzuOblojka(nom, aksent, sarlavha, vurgu) {
+async function mavzuOblojka(nom, aksent, sarlavha, vurgu, fotoBuf = null) {
   const logoB64 = logoYukla();
   const fs1 = 80;
   const qat = qatorBol(xmlEscape(sarlavha || ''), Math.floor(640 / (fs1 * 0.58))).split('\n').slice(0, 4);
   const vr = vurgu ? xmlEscape(vurgu).toLowerCase() : '';
   const tx = qat.map((q, i) => `<text x="360" y="${330 + i * (fs1 + 12)}" text-anchor="middle" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
-  const sc = await sharp(Buffer.from(sahnaSvg(nom, 0.95, aksent)), { density: 108 }).resize(1080, 1080).png().toBuffer();
+  const sc = fotoBuf ? await sharp(fotoBuf).resize(1080, 1080, { fit: 'cover' }).png().toBuffer() : await sharp(Buffer.from(sahnaSvg(nom, 0.95, aksent)), { density: 108 }).resize(1080, 1080).png().toBuffer();
   const ov = Buffer.from(`<svg width="720" height="1280" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6"/><stop offset="0.85" stop-color="#ecebe6" stop-opacity="0.9"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient></defs>
     <rect width="720" height="640" fill="url(#t)"/>
@@ -1467,7 +1481,18 @@ async function mavzuOblojka(nom, aksent, sarlavha, vurgu) {
   </svg>`);
   const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
   const ovp = await sharp(ov).resize(1080, 1920).png().toBuffer();
-  return sharp(baza).composite([{ input: sc, left: 0, top: 780 }, { input: await sharp({ create: { width: 1080, height: 240, channels: 3, background: SAHNA_BG } }).png().toBuffer(), left: 0, top: 1680 }, { input: ovp, left: 0, top: 0 }]).jpeg({ quality: 92 }).toBuffer();
+  return sharp(baza).composite([{ input: sc, left: 0, top: 780 }, ...(fotoBuf ? [] : [{ input: await sharp({ create: { width: 1080, height: 240, channels: 3, background: SAHNA_BG } }).png().toBuffer(), left: 0, top: 1680 }]), { input: ovp, left: 0, top: 0 }]).jpeg({ quality: 92 }).toBuffer();
+}
+
+// Haqiqiy ko'rinishdagi AI foto (faqat Cloudflare/Gemini foto; vektor zaxira yo'q) -> bg + matn qatlami
+async function fotoSlayd(env, sl, bgOut, ovOut) {
+  const prompt = `Photorealistic professional architectural photograph, ${SAHNA_RASM[sl.sahna]}. Natural light, 35mm lens, high detail, realistic materials, vertical composition, calm empty space in the top 35% of the frame. No text, no letters, no logos, no people.`;
+  let r = await rasmYarat(env, prompt, null, true);
+  if (!r.buf) r = await rasmYarat(env, prompt, null, true);
+  if (!r.buf) throw new Error('Foto yaratilmadi: ' + r.sabab);
+  await sharp(r.buf).resize(1440, 2560, { fit: 'cover', position: 'centre' }).jpeg({ quality: 92 }).toFile(bgOut);
+  await matnQatlami(sl, ovOut, true);
+  return r.buf;
 }
 
 // Mavzuga mos AI illyustratsiya (ma'lumot uchun) -> bg (2x, barqaror zoom uchun) + alohida STATIK matn qatlami.
@@ -1548,6 +1573,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
     const yuzBuf = await yuzTanla(env);
     let qopqoqAsos = null;
     let qopqoqSahna = null;
+    let qopqoqFoto = null;
     const segFiles = [];
     const subtitr = [];
     let t = 0;
@@ -1559,11 +1585,15 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       const bg = path.join(tmpDir, `bg${i}.jpg`);
       const ov = path.join(tmpDir, `ov${i}.png`);
       const sahnaNom = SAHNALAR[sl.sahna] ? sl.sahna : null;
+      let fotoBuf = null;
+      if (env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && (i === 0 || i === slaydlar.length - 1) && SAHNA_RASM[sl.sahna]) {
+        try { fotoBuf = await fotoSlayd(env, sl, bg, ov); if (!qopqoqFoto) qopqoqFoto = fotoBuf; } catch (e) { fotoBuf = null; }
+      }
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
       const kadr = Math.round(dur * 25);
       const aksent = ['#c4572b', '#0e6b5c'][i % 2];
-      if (sahnaNom) {
+      if (sahnaNom && !fotoBuf) {
         await matnQatlami(sl, ov, false);
         const fdir = path.join(tmpDir, `fr${i}`);
         const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir, Number.isFinite(sl.t0) ? sl.t0 : 0, Number.isFinite(sl.t1) ? sl.t1 : 1, ov);
@@ -1578,7 +1608,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
         ], { maxBuffer: 1024 * 1024 * 20 });
         fs.rmSync(fdir, { recursive: true, force: true });
       } else {
-        await animatsiyaAiRasm(env, sl, bg, ov);
+        if (!fotoBuf) await animatsiyaAiRasm(env, sl, bg, ov);
         if (i === 0) qopqoqAsos = fs.readFileSync(bg);
         const z = i % 2 === 0 ? `1+0.07*on/${kadr}` : `1.07-0.07*on/${kadr}`;
         await execFileAsync('ffmpeg', [
@@ -1622,7 +1652,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
     const sarlavha = meta.post_sarlavha || slaydlar[0].sarlavha || 'Visart Design';
     let qopqoqBuf = null;
     try {
-      if (qopqoqSahna) qopqoqBuf = await mavzuOblojka(qopqoqSahna[0], qopqoqSahna[1], sarlavha, meta.vurgu || slaydlar[0].vurgu || '').catch(() => null);
+      if (qopqoqSahna || qopqoqFoto) qopqoqBuf = await mavzuOblojka(qopqoqSahna ? qopqoqSahna[0] : slaydlar[0].sahna, qopqoqSahna ? qopqoqSahna[1] : '#c4572b', sarlavha, meta.vurgu || slaydlar[0].vurgu || '', qopqoqFoto).catch(() => null);
       if (!qopqoqBuf) qopqoqBuf = await aiOblojka(env, { sarlavha, aksent: meta.vurgu || '', yuz: yuzBuf }).catch(() => null);
       if (!qopqoqBuf) qopqoqBuf = await qopqoqYarat({ rasmBuf: qopqoqAsos, rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: meta.vurgu || '', raqam: '' });
     } catch (e) { qopqoqBuf = null; }
