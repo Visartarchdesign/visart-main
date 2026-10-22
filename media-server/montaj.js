@@ -22,7 +22,7 @@ import { qopqoqYarat } from './qopqoqlar.js';
 import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
 import { senariyTanla } from './senariylar.js';
 import { KREATIV_PROMPT } from './animatsiyaPrompt.js';
-import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, SAHNA_RASM, sahnaSvg } from './sahnalar.js';
+import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, SAHNA_RASM, SAHNA_SFX, sahnaSvg } from './sahnalar.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -1332,6 +1332,22 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
   await execFileAsync('ffmpeg', ['-y', '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', pcm, outPath]);
 }
 
+// Atrof-muhit effekti (shamol, suv...) -- music/sfx/<nom>*.mp3 bo'lsa shu, bo'lmasa sintez; diktor ovoziga past qatlam bo'lib qo'shiladi
+async function sfxQosh(nom, mp3, dur, tmpDir) {
+  if (!nom) return;
+  const sfxDir = path.join(path.dirname(new URL(import.meta.url).pathname), 'music', 'sfx');
+  let fayl = null;
+  try { const f = fs.readdirSync(sfxDir).filter((x) => x.toLowerCase().startsWith(nom) && /\.(mp3|wav|m4a)$/i.test(x)); if (f.length) fayl = path.join(sfxDir, f[Math.floor(Math.random() * f.length)]); } catch (e) { /* papka yo'q */ }
+  const sintez = { shamol: 'highpass=f=250,lowpass=f=1800,tremolo=f=0.35:d=0.7,aecho=0.6:0.5:60:0.3', suv: 'highpass=f=600,lowpass=f=6000,tremolo=f=7:d=0.4' }[nom];
+  if (!fayl && !sintez) return;
+  const out = mp3.replace(/\.mp3$/, '.fx.mp3');
+  const kirish = fayl ? ['-stream_loop', '-1', '-i', fayl] : ['-f', 'lavfi', '-i', `anoisesrc=color=pink:amplitude=0.8:d=${Math.ceil(dur) + 1}:r=44100,${sintez}`];
+  await execFileAsync('ffmpeg', ['-y', '-i', mp3, ...kirish,
+    '-filter_complex', `[1:a]volume=${fayl ? 0.35 : 1.6},afade=t=in:d=0.6,afade=t=out:st=${Math.max(0.5, dur - 0.8)}:d=0.8[s];[0:a][s]amix=inputs=2:duration=first:normalize=0[a]`,
+    '-map', '[a]', '-t', String(dur), '-ac', '2', '-ar', '44100', out]);
+  fs.renameSync(out, mp3);
+}
+
 async function slaydRasm(tur, sarlavha, matn, indeks, jami, outPath, vurgu = '', yuzBuf = null) {
   // Makon Vizual uslubi: och iliq fon, katta serif sarlavha + rangli vurg'u so'z, toza chiziq-chizma.
   const W = 720, H = 1280;
@@ -1591,6 +1607,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       }
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
+      await sfxQosh(SAHNA_SFX[sl.sahna], mp3, dur, tmpDir).catch(() => {});
       const kadr = Math.round(dur * 25);
       const aksent = ['#c4572b', '#0e6b5c'][i % 2];
       if (sahnaNom && !fotoBuf) {

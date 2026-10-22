@@ -449,3 +449,6 @@ export const SAHNA_RASM = {
   kichik_xona: 'a real small but well organized modern bedroom, light colors, smart furniture placement',
   rang_palitra: 'a real modern living room with a balanced color palette: neutral walls, grey sofa, one terracotta accent',
 };
+
+// Sahna fon ovoz effekti (atrof-muhit): nom -> music/sfx/<nom>*.mp3 bo'lsa shu, bo'lmasa ffmpeg sintezi
+export const SAHNA_SFX = { hovli_soya: 'shamol', ayvon_kesim: 'shamol', shamollatish: 'shamol' };
