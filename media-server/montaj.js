@@ -23,6 +23,7 @@ import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
 import { senariyTanla } from './senariylar.js';
 import { KREATIV_PROMPT } from './animatsiyaPrompt.js';
 import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, SAHNA_RASM, SAHNA_SFX, sahnaSvg } from './sahnalar.js';
+import { BUYRUQ_MATN } from './buyruqlar.js';
 import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar } from './izohlash.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
@@ -1312,7 +1313,7 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
     const dir = fs.mkdtempSync(path.join(tmpDir, 'tts-'));
-    const pr = { rate: process.env.TTS_TEZLIK || '-8%', pitch: process.env.TTS_PITCH || '-2Hz' };
+    const pr = { rate: process.env.TTS_TEZLIK || '+4%', pitch: process.env.TTS_PITCH || '-1Hz' };
     const r = await tts.toFile(dir, ovozMatni(matn), pr).catch(() => tts.toFile(dir, ovozMatni(matn)));
     fs.copyFileSync(r.audioFilePath, outPath);
     return;
@@ -1559,7 +1560,7 @@ async function animatsionSenariy(env, mavzu) {
       headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }, signal: AbortSignal.timeout(10000) });
     oxirgilar = ((await r.json()) || []).map((x) => x.sarlavha).filter(Boolean).join('; ');
   } catch (e) { /* ixtiyoriy */ }
-  const prompt = KREATIV_PROMPT +
+  const prompt = KREATIV_PROMPT + "\n\n" + BUYRUQ_MATN +
     "\n\nAVTOMATIK REJIM: savol bermang, to'liq mustaqil ishlang. Brend: Visart Design (Toshkent). Material (video/foto) yo'q -- animatsion, ovozli, foydali video kerak. Sizning kodingiz tayyor animatsion SAHNALAR kutubxonasidan foydalanadi (pastda); har slayd uchun bittasini tanlang. Jami ovoz 40-55 soniya, 7-9 slayd.\n" +
     (mavzu ? `Mavzu (admin bergan): ${mavzu}\n` : `Mavzuni o'zingiz tanlang, ustunlardan biri: ${USTUNLAR.join(', ')}. Yaqinda chiqqanlar (takrorlamang): ${oxirgilar || "yo'q"}.\n`) +
     "SAHNALAR (animatsion, har slayd uchun bittasini tanlang). MUHIM: mavzu SAHNALARDAN 2-4 tasi bilan to'liq tushuntiriladigan bo'lsin; ovoz AYNAN sahnada ko'rinayotgan narsani aytsin (sahna ichidagi yozuvlar -- oyna, divan, parda, karavot, quyosh nuri, hammom... -- ovozda tilga olinsin), shunda tomoshabin nima ko'rayotganini darrov tushunadi. Sahnadagi harakat ovoz davomida rivojlanadi (quyosh pastlaydi, parda ochiladi, mebel joylashadi), shuning uchun gap shu jarayonni izohlasin:\n" + SAHNA_MENYU + "\n" +
@@ -1573,7 +1574,7 @@ async function animatsionSenariy(env, mavzu) {
 async function ovozTahrir(env, slaydlar, sarlavhaSaqla = false) {
   try {
     const tuz = await geminiJsonSora(env.GEMINI_API_KEY, [{ text:
-      "Siz o'zbek tilining tajribali muharririsiz (Toshkent shevasiga yaqin, jonli so'zlashuv). Quyidagi video diktor matnlarini USTA DO'STIGA GAPIRGANDEK tabiiy, grammatik to'g'ri, jonli o'zbekchaga keltiring: kitobiy va tarjima uslubini olib tashlang (ushbu, mazkur, amalga oshirmoq, taqdim etmoq, mavjud, kabi), -moqda/-ayotgan o'rniga -yapti/-ayotgan jonli shakl, gap tartibi so'zlashuvdagidek (fe'l oxirda), 'bo'lishi mumkin' o'rniga 'bo'lishi ham mumkin'/'bo'lib qolishi mumkin' kabi tabiiy burilishlar, yordamchi so'zlar ('axir', 'ya'ni', 'mana', 'shunda') o'rinli ishlating, uzun gapni ikkiga bo'ling, kelishik/egalik qo'shimchalarini to'g'rilang, 'Siz'lab, qisqa gaplar, ma'noni va sahnada ko'rinadigan narsalarning nomlarini saqlang, so'z sonini oshirmang (har biri 6-12 so'z), raqamlar so'z bilan. " +
+      BUYRUQ_MATN + "Siz o'zbek tilining tajribali muharririsiz (Toshkent shevasiga yaqin, jonli so'zlashuv). Quyidagi video diktor matnlarini USTA DO'STIGA GAPIRGANDEK tabiiy, grammatik to'g'ri, jonli o'zbekchaga keltiring: kitobiy va tarjima uslubini olib tashlang (ushbu, mazkur, amalga oshirmoq, taqdim etmoq, mavjud, kabi), -moqda/-ayotgan o'rniga -yapti/-ayotgan jonli shakl, gap tartibi so'zlashuvdagidek (fe'l oxirda), 'bo'lishi mumkin' o'rniga 'bo'lishi ham mumkin'/'bo'lib qolishi mumkin' kabi tabiiy burilishlar, yordamchi so'zlar ('axir', 'ya'ni', 'mana', 'shunda') o'rinli ishlating, uzun gapni ikkiga bo'ling, kelishik/egalik qo'shimchalarini to'g'rilang, 'Siz'lab, qisqa gaplar, ma'noni va sahnada ko'rinadigan narsalarning nomlarini saqlang, so'z sonini oshirmang (har biri 6-12 so'z), raqamlar so'z bilan. Agar hech bir slaydda 'Vizart Dizayn' brendi tilga olinmagan bo'lsa, yechim slaydlaridan birining ovoziga tabiiy qilib 'Vizart Dizayn jamoasi buni mana bunday hal qiladi' ma'nosini qo'shing. " +
       "Faqat JSON massiv qaytaring: aynan " + slaydlar.length + " ta obyekt [{\"sarlavha\":\"...\",\"ovoz\":\"...\"}], tartib saqlansin. Kirish: " + JSON.stringify(slaydlar.map((x) => ({ sarlavha: x.sarlavha, ovoz: x.ovoz }))) }]);
     if (Array.isArray(tuz) && tuz.length === slaydlar.length) {
       return slaydlar.map((x, i) => ({ ...x, sarlavha: sarlavhaSaqla ? x.sarlavha : String((tuz[i] && tuz[i].sarlavha) || x.sarlavha).trim(), ovoz: String((tuz[i] && tuz[i].ovoz) || x.ovoz).trim() }));
