@@ -23,6 +23,10 @@ import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
 import { senariyTanla } from './senariylar.js';
 import { KREATIV_PROMPT } from './animatsiyaPrompt.js';
 import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, SAHNA_RASM, SAHNA_SFX, sahnaSvg } from './sahnalar.js';
+const TEMA_BG = process.env.TEMA === 'och' ? '#f2ece1' : '#111113';
+const DARK = TEMA_BG === '#111113';
+const YOZ = DARK ? '#f5f2ea' : '#16150f';
+const VURGU = DARK ? '#ff8a4c' : '#c4572b';
 import { BUYRUQ_MATN } from './buyruqlar.js';
 import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar } from './izohlash.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
@@ -710,7 +714,7 @@ function qatorBol(m, maks = 26) {
 async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
-  const fontSize = Math.round(width * (toza ? 0.04 : 0.052));
+  const fontSize = Math.round(width * (toza ? 0.046 : 0.052));
   const marginV = Math.round(height * (toza ? 0.145 : 0.11));
   const marginLR = Math.round(width * 0.055);
   const assQatorlar = segmentlar.map((s) =>
@@ -1483,14 +1487,14 @@ async function matnQatlami(sl, ovOut, ai = true) {
   const fs1 = sl.tur === 'hook' ? 70 : 58;
   const qat = qatorBol(xmlEscape(sl.sarlavha || ''), Math.floor(620 / (fs1 * 0.6))).split('\n');
   const vr = sl.vurgu ? xmlEscape(sl.vurgu).toLowerCase() : '';
-  const tx = qat.map((q, i) => `<text x="52" y="${340 + i * (fs1 + 14)}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
+  const tx = qat.map((q, i) => `<text x="52" y="${340 + i * (fs1 + 14)}" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? VURGU : YOZ}">${w} </tspan>`).join('')}</text>`).join('');
   const ov = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6" stop-opacity="0.96"/><stop offset="0.7" stop-color="#ecebe6" stop-opacity="0.6"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient>
+    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${TEMA_BG}" stop-opacity="0.96"/><stop offset="0.7" stop-color="${TEMA_BG}" stop-opacity="0.6"/><stop offset="1" stop-color="${TEMA_BG}" stop-opacity="0"/></linearGradient>
     <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></linearGradient></defs>
     <rect width="${W}" height="760" fill="url(#t)"/>
     <rect y="${H - 360}" width="${W}" height="360" fill="url(#b)"/>
     ${logoB64 ? `<image href="data:image/png;base64,${logoB64}" x="344" y="172" width="32" height="28"/>` : ''}
-    <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="#16150f" letter-spacing="3.5">VISART DESIGN</text>${tx}
+    <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="${YOZ}" letter-spacing="3.5">VISART DESIGN</text>${tx}
     <text x="${W - 40}" y="${H - 190}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">${ai ? 'AI ' : ''}ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
   </svg>`);
   await sharp(ov).resize(1080, 1920).png().toFile(ovOut);
@@ -1502,17 +1506,17 @@ async function mavzuOblojka(nom, aksent, sarlavha, vurgu, fotoBuf = null) {
   const fs1 = 80;
   const qat = qatorBol(xmlEscape(sarlavha || ''), Math.floor(640 / (fs1 * 0.58))).split('\n').slice(0, 4);
   const vr = vurgu ? xmlEscape(vurgu).toLowerCase() : '';
-  const tx = qat.map((q, i) => `<text x="360" y="${330 + i * (fs1 + 12)}" text-anchor="middle" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? '#c4572b' : '#16150f'}">${w} </tspan>`).join('')}</text>`).join('');
+  const tx = qat.map((q, i) => `<text x="360" y="${330 + i * (fs1 + 12)}" text-anchor="middle" xml:space="preserve" font-family="DejaVu Serif, Georgia, serif" font-size="${fs1}" font-weight="700">${q.split(' ').map((w) => `<tspan fill="${vr && w.toLowerCase().includes(vr) ? VURGU : YOZ}">${w} </tspan>`).join('')}</text>`).join('');
   const sc = fotoBuf ? await sharp(fotoBuf).resize(1080, 1080, { fit: 'cover' }).png().toBuffer() : await sharp(Buffer.from(sahnaSvg(nom, 0.95, aksent)), { density: 108 }).resize(1080, 1080).png().toBuffer();
   const ov = Buffer.from(`<svg width="720" height="1280" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecebe6"/><stop offset="0.85" stop-color="#ecebe6" stop-opacity="0.9"/><stop offset="1" stop-color="#ecebe6" stop-opacity="0"/></linearGradient></defs>
+    <defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${TEMA_BG}"/><stop offset="0.85" stop-color="${TEMA_BG}" stop-opacity="0.9"/><stop offset="1" stop-color="${TEMA_BG}" stop-opacity="0"/></linearGradient></defs>
     <rect width="720" height="640" fill="url(#t)"/>
     ${logoB64 ? `<image href="data:image/png;base64,${logoB64}" x="344" y="172" width="32" height="28"/>` : ''}
-    <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="#16150f" letter-spacing="3.5">VISART DESIGN</text>${tx}
+    <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="${YOZ}" letter-spacing="3.5">VISART DESIGN</text>${tx}
   </svg>`);
-  const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
+  const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: TEMA_BG } }).png().toBuffer();
   const ovp = await sharp(ov).resize(1080, 1920).png().toBuffer();
-  return sharp(baza).composite([{ input: sc, left: 0, top: 780 }, ...(fotoBuf ? [] : [{ input: await sharp({ create: { width: 1080, height: 240, channels: 3, background: SAHNA_BG } }).png().toBuffer(), left: 0, top: 1680 }]), { input: ovp, left: 0, top: 0 }]).jpeg({ quality: 92 }).toBuffer();
+  return sharp(baza).composite([{ input: sc, left: 0, top: 780 }, ...(fotoBuf ? [] : [{ input: await sharp({ create: { width: 1080, height: 240, channels: 3, background: TEMA_BG } }).png().toBuffer(), left: 0, top: 1680 }]), { input: ovp, left: 0, top: 0 }]).jpeg({ quality: 92 }).toBuffer();
 }
 
 // Haqiqiy ko'rinishdagi AI foto (faqat Cloudflare/Gemini foto; vektor zaxira yo'q) -> bg + matn qatlami
@@ -1544,7 +1548,7 @@ async function sahnaKadrlar(nom, aksent, dur, dir, t0 = 0, t1 = 1, ovPath = null
   const fps = 12.5;
   const n = Math.max(2, Math.round(dur * fps));
   fs.mkdirSync(dir, { recursive: true });
-  const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
+  const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: TEMA_BG } }).png().toBuffer();
   const ovBuf = ovPath ? fs.readFileSync(ovPath) : null;
   for (let k = 0; k < n; k++) {
     const sc = await sharp(Buffer.from(sahnaSvg(nom, t0 + (t1 - t0) * Math.min(1, k / (n - 1) / 0.9), aksent)), { density: 108 }).resize(880, 880).png().toBuffer();
@@ -1639,7 +1643,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
           await matnQatlami(sl, ov, false);
           const fdir = path.join(tmpDir, `fr${i}`);
           const fps = await fotoIzohKadrlar({ nom: sahnaNom, fotoBuf: izohKesh[sahnaNom].buf, joy: izohKesh[sahnaNom].joy, dur, dir: fdir,
-            t0: Number.isFinite(sl.t0) ? sl.t0 : 0, t1: Number.isFinite(sl.t1) ? sl.t1 : 1, aksent, ovBuf: fs.readFileSync(ov), SAHNA_BG });
+            t0: Number.isFinite(sl.t0) ? sl.t0 : 0, t1: Number.isFinite(sl.t1) ? sl.t1 : 1, aksent, ovBuf: fs.readFileSync(ov), SAHNA_BG: TEMA_BG });
           if (!qopqoqFoto) qopqoqFoto = izohKesh[sahnaNom].buf;
           if (i === 0) qopqoqAsos = await sharp(path.join(fdir, 'f0000.png')).jpeg({ quality: 90 }).toBuffer();
           await execFileAsync('ffmpeg', [
@@ -1683,7 +1687,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       {
         const sz = String(sl.ovoz).split(/\s+/).filter(Boolean);
         const bol = [];
-        for (let k = 0; k < sz.length; k += 5) bol.push(sz.slice(k, k + 5).join(' '));
+        for (let k = 0; k < sz.length; k += 2) bol.push(sz.slice(k, k + 2).join(' '));
         const jamiH = bol.reduce((q, x) => q + x.length, 0) || 1;
         let tt = t + 0.1;
         const mavjud = dur - 0.5;
@@ -1691,6 +1695,21 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       }
       t += dur;
     }
+    try {
+      const lg = logoYukla();
+      const ecSvg = Buffer.from(`<svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg"><rect width="1080" height="1920" fill="${TEMA_BG}"/>
+        ${lg ? `<image href="data:image/png;base64,${lg}" x="500" y="800" width="80" height="70"/>` : ''}
+        <text x="540" y="960" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="40" font-weight="700" fill="${YOZ}" letter-spacing="10">VISART DESIGN</text>
+        <rect x="490" y="995" width="100" height="4" rx="2" fill="${VURGU}"/>
+        <text x="540" y="1060" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="28" fill="${YOZ}" fill-opacity="0.75">Arxitektura · Interyer · Qurilish</text></svg>`);
+      const ecPng = path.join(tmpDir, 'endcard.png');
+      await sharp(ecSvg).png().toFile(ecPng);
+      const ecSeg = path.join(tmpDir, 'endcard.mp4');
+      await execFileAsync('ffmpeg', ['-y', '-loop', '1', '-framerate', '25', '-i', ecPng, '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo', '-t', '2.5',
+        '-vf', 'fade=t=in:d=0.4,format=yuv420p', '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=0:ref=1:bframes=0',
+        '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', ecSeg], { maxBuffer: 1024 * 1024 * 20 });
+      segFiles.push(ecSeg);
+    } catch (e) { console.error('endcard xato:', e && e.message); }
     const list = path.join(tmpDir, 'list.txt');
     fs.writeFileSync(list, segFiles.map((p) => `file '${p}'`).join('\n'));
     const birlashgan = path.join(tmpDir, 'birlashgan.mp4');
