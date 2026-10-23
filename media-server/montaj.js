@@ -23,6 +23,7 @@ import { yuzTanla, aiOblojka, yuzStudio } from './yuz.js';
 import { senariyTanla } from './senariylar.js';
 import { KREATIV_PROMPT } from './animatsiyaPrompt.js';
 import { SAHNALAR, SAHNA_MENYU, SAHNA_BG, SAHNA_RASM, SAHNA_SFX, sahnaSvg } from './sahnalar.js';
+import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar } from './izohlash.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -1603,6 +1604,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
     let qopqoqAsos = null;
     let qopqoqSahna = null;
     let qopqoqFoto = null;
+    const izohKesh = {};
     const segFiles = [];
     const subtitr = [];
     let t = 0;
@@ -1623,7 +1625,32 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       await sfxQosh(SAHNA_SFX[sl.sahna], mp3, dur, tmpDir, sl.fx).catch(() => {});
       const kadr = Math.round(dur * 25);
       const aksent = ['#c4572b', '#0e6b5c'][i % 2];
-      if (sahnaNom && !fotoBuf) {
+      let izohOk = false;
+      if (sahnaNom && !fotoBuf && SAHNA_FOTO[sahnaNom] && env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && env.GEMINI_API_KEY) {
+        try {
+          if (!izohKesh[sahnaNom]) {
+            const rr = await rasmYarat(env, `Photorealistic professional architectural photograph, ${SAHNA_FOTO[sahnaNom].prompt}. Natural light, 35mm lens, realistic materials, square composition. No text, no letters, no people.`, null, true);
+            if (!rr.buf) throw new Error('foto yo\'q');
+            izohKesh[sahnaNom] = { buf: rr.buf, joy: await obyektJoyi(env, rr.buf, SAHNA_FOTO[sahnaNom].obj, geminiJsonSora) };
+          }
+          await matnQatlami(sl, ov, false);
+          const fdir = path.join(tmpDir, `fr${i}`);
+          const fps = await fotoIzohKadrlar({ nom: sahnaNom, fotoBuf: izohKesh[sahnaNom].buf, joy: izohKesh[sahnaNom].joy, dur, dir: fdir,
+            t0: Number.isFinite(sl.t0) ? sl.t0 : 0, t1: Number.isFinite(sl.t1) ? sl.t1 : 1, aksent, ovBuf: fs.readFileSync(ov), SAHNA_BG });
+          if (!qopqoqFoto) qopqoqFoto = izohKesh[sahnaNom].buf;
+          if (i === 0) qopqoqAsos = await sharp(path.join(fdir, 'f0000.png')).jpeg({ quality: 90 }).toBuffer();
+          await execFileAsync('ffmpeg', [
+            '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.png'), '-i', mp3,
+            '-filter_complex', '[0:v]fps=25,format=yuv420p[v]',
+            '-map', '[v]', '-map', '1:a', '-af', 'apad,aresample=44100', '-t', String(dur),
+            '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=0:ref=1:bframes=0',
+            '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
+          ], { maxBuffer: 1024 * 1024 * 20 });
+          fs.rmSync(fdir, { recursive: true, force: true });
+          izohOk = true;
+        } catch (e) { console.error('izoh-foto xato:', e && e.message); izohKesh[sahnaNom] = null; }
+      }
+      if (izohOk) { /* tayyor */ } else if (sahnaNom && !fotoBuf) {
         await matnQatlami(sl, ov, false);
         const fdir = path.join(tmpDir, `fr${i}`);
         const fps = await sahnaKadrlar(sahnaNom, aksent, dur, fdir, Number.isFinite(sl.t0) ? sl.t0 : 0, Number.isFinite(sl.t1) ? sl.t1 : 1, ov);
