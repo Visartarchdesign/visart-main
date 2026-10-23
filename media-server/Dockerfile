@@ -7,6 +7,9 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-liberation fonts-dejavu-core cmake g++ git python3 make curl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
+COPY fonts/Poppins-Bold.ttf /usr/local/share/fonts/
+RUN fc-cache -f
+
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev

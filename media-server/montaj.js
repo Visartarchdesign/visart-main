@@ -27,6 +27,7 @@ const TEMA_BG = process.env.TEMA === 'och' ? '#f2ece1' : '#111113';
 const DARK = TEMA_BG === '#111113';
 const YOZ = DARK ? '#f5f2ea' : '#16150f';
 const VURGU = DARK ? '#ff8a4c' : '#c4572b';
+import { elchiOblojka } from './oblojkaElchi.js';
 import { BUYRUQ_MATN } from './buyruqlar.js';
 import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar } from './izohlash.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
@@ -1739,7 +1740,8 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
     const sarlavha = meta.post_sarlavha || slaydlar[0].sarlavha || 'Visart Design';
     let qopqoqBuf = null;
     try {
-      if (qopqoqSahna || qopqoqFoto) qopqoqBuf = await mavzuOblojka(qopqoqSahna ? qopqoqSahna[0] : slaydlar[0].sahna, qopqoqSahna ? qopqoqSahna[1] : '#c4572b', sarlavha, meta.vurgu || slaydlar[0].vurgu || '', qopqoqFoto).catch(() => null);
+      if (qopqoqFoto) qopqoqBuf = await elchiOblojka({ sarlavha, vurgu: meta.vurgu || slaydlar[0].vurgu || '', fotoBuf: qopqoqFoto, yuzBuf, logoB64: logoYukla() }).catch((e) => { console.error('elchi oblojka:', e && e.message); return null; });
+      if (!qopqoqBuf && (qopqoqSahna || qopqoqFoto)) qopqoqBuf = await mavzuOblojka(qopqoqSahna ? qopqoqSahna[0] : slaydlar[0].sahna, qopqoqSahna ? qopqoqSahna[1] : '#c4572b', sarlavha, meta.vurgu || slaydlar[0].vurgu || '', qopqoqFoto).catch(() => null);
       if (!qopqoqBuf) qopqoqBuf = await aiOblojka(env, { sarlavha, aksent: meta.vurgu || '', yuz: yuzBuf }).catch(() => null);
       if (!qopqoqBuf) qopqoqBuf = await qopqoqYarat({ rasmBuf: qopqoqAsos, rasmBuf2: null, aiFonBuf: null, kategoriya: 3, headline: sarlavha, accentSoz: meta.vurgu || '', raqam: '' });
     } catch (e) { qopqoqBuf = null; }
