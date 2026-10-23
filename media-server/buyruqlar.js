@@ -8,5 +8,6 @@ export const BUYRUQLAR = [
   "TUZILMA: muammo -> sabab -> yechim -> foyda; xato usul va to'g'ri usul QARSHI QO'YILSIN ('ko'pchilik shunday qiladi ... to'g'risi esa ...').",
   "QIYMAT: tomoshabin pul, vaqt yoki asabni qanday tejashini aytib bering (raqamsiz bo'lsa ham aniq: 'ikki marta ishlamaysiz', 'devor yopilgach topib bo'lmaydi').",
   "OXIR: oxirgi gap xulosa + bitta savol ('Sizning uyingizda qanday?') -- izoh yozishga undaydi.",
+  "JOYLASHUV: subtitr faqat pastki zonada (1620-1700 px) turadi; sarlavha va sahna ichidagi yozuvlar subtitr zonasiga TUSHMASIN; yozuvlar bir-birining ustiga chiqmasin. Subtitr shrifti: Poppins Bold.",
 ];
 export const BUYRUQ_MATN = 'DOIMIY BUYRUQLAR (har videoda bajariladi):\n' + BUYRUQLAR.map((x, i) => `${i + 1}) ${x}`).join('\n') + '\n';

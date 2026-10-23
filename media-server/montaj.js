@@ -715,7 +715,7 @@ async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
   const fontSize = Math.round(width * (toza ? 0.046 : 0.052));
-  const marginV = Math.round(height * (toza ? 0.145 : 0.11));
+  const marginV = Math.round(height * (toza ? 0.118 : 0.11));
   const marginLR = Math.round(width * 0.055);
   const assQatorlar = segmentlar.map((s) =>
     `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(qatorBol(s.matn))}`
@@ -723,14 +723,14 @@ async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   const assMatn =
     `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nScaledBorderAndShadow: yes\n\n` +
     `[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n` +
-    `Style: Default,Liberation Sans,${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H78000000,1,0,0,0,100,100,0,0,1,${toza ? '0,3' : '5,2'},2,${marginLR},${marginLR},${marginV},1\n\n` +
+    `Style: Default,${toza ? 'Poppins' : 'Liberation Sans'},${fontSize},&H00FFFFFF,&H000000FF,&H00000000,&H78000000,1,0,0,0,100,100,0,0,1,${toza ? '0,3' : '5,2'},2,${marginLR},${marginLR},${marginV},1\n\n` +
     `[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${assQatorlar}\n`;
   const assPath = outPath.replace(/\.mp4$/, '.ass');
   fs.writeFileSync(assPath, assMatn, 'utf8');
   try {
     await execFileAsync('ffmpeg', [
       '-y', '-i', videoPath,
-      '-vf', `ass=${assPath}`,
+      '-vf', `ass=${assPath}${toza ? ':fontsdir=' + path.join(path.dirname(new URL(import.meta.url).pathname), 'fonts') : ''}`,
       '-c:v', 'libx264', '-preset', 'superfast', '-crf', '26', '-pix_fmt', 'yuv420p',
       '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
       '-c:a', 'copy', '-movflags', '+faststart',
@@ -1495,7 +1495,7 @@ async function matnQatlami(sl, ovOut, ai = true) {
     <rect y="${H - 360}" width="${W}" height="360" fill="url(#b)"/>
     ${logoB64 ? `<image href="data:image/png;base64,${logoB64}" x="344" y="172" width="32" height="28"/>` : ''}
     <text x="360" y="222" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="12" font-weight="700" fill="${YOZ}" letter-spacing="3.5">VISART DESIGN</text>${tx}
-    <text x="${W - 40}" y="${H - 190}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">${ai ? 'AI ' : ''}ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
+    <text x="${W - 40}" y="${H - 70}" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="15" fill="#ffffff" fill-opacity="0.7" letter-spacing="2">${ai ? 'AI ' : ''}ILLYUSTRATSIYA · MA'LUMOT UCHUN</text>
   </svg>`);
   await sharp(ov).resize(1080, 1920).png().toFile(ovOut);
 }
