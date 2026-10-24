@@ -1330,6 +1330,24 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
       await new Promise((r) => setTimeout(r, 2000 * (u + 1)));
     }
   }
+  // 1b) Google Translate TTS (o'zbek, kalitsiz, zaxira) -- Edge to'silganda
+  try {
+    const gap = ovozMatni(matn).replace(/\s+/g, ' ').trim();
+    const bo = []; let c = '';
+    for (const w of gap.split(' ')) { if (c && (c + ' ' + w).length > 180) { bo.push(c); c = w; } else c = (c + ' ' + w).trim(); }
+    if (c) bo.push(c);
+    const qism = [];
+    for (let i = 0; i < bo.length; i++) {
+      const r = await fetch(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=uz&q=${encodeURIComponent(bo[i])}`, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://translate.google.com/' }, signal: AbortSignal.timeout(20000) });
+      if (!r.ok) throw new Error('Google TTS ' + r.status);
+      const f = path.join(tmpDir, `g${Date.now()}_${i}.mp3`);
+      fs.writeFileSync(f, Buffer.from(await r.arrayBuffer())); qism.push(f);
+    }
+    const lst = path.join(tmpDir, `gl${Date.now()}.txt`);
+    fs.writeFileSync(lst, qism.map((f) => `file '${f}'`).join('\n'));
+    await execFileAsync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', lst, '-af', 'atempo=1.08,aresample=44100', '-ac', '1', outPath]);
+    return;
+  } catch (e) { edgeXato.push('Google: ' + String((e && e.message) || e).slice(0, 60)); }
   // 2) Gemini TTS (zaxira)
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1338,7 +1356,7 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } },
     }),
   });
-  if (!res.ok) throw new Error(`TTS xato: Gemini ${res.status}; Edge: ${edgeXato.slice(-1)[0] || '?'}`);
+  if (!res.ok) throw new Error(`TTS xato: Gemini ${res.status}; Edge/Google: ${edgeXato.slice(-2).join(' | ') || '?'}`);
   const d = await res.json();
   const b64 = d.candidates[0].content.parts[0].inlineData.data;
   const pcm = path.join(tmpDir, 'v.pcm');
