@@ -29,7 +29,7 @@ const YOZ = DARK ? '#f5f2ea' : '#16150f';
 const VURGU = DARK ? '#ff8a4c' : '#c4572b';
 import { elchiOblojka } from './oblojkaElchi.js';
 import { BUYRUQ_MATN } from './buyruqlar.js';
-import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar } from './izohlash.js';
+import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar, slaydIzohCfg } from './izohlash.js';
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
@@ -1620,7 +1620,8 @@ async function animatsionSenariy(env, mavzu) {
     "TIL: jonli so'zlashuv o'zbekchasi, ustaga/mijozga tushuntirayotgandek iliq, 'Siz'lab. Tarjima uslubi, rasmiy va kitobiy so'zlar ('ushbu', 'mazkur', 'amalga oshirmoq', 'taqdim etmoq') yo'q. Qisqa gaplar, kelishik va egalik qo'shimchalari to'g'ri (-ning, -ni, -ga, -da, -dan, -i/-si). Oddiy so'zlar: remont, planirovka, kvadrat metr, chiroq, parda, divan, shkaf, oshxona, mehmonxona. Yaxshi: 'Uyingizdagi chiroq rangi xonani arzon ko'rsatib qo'yishi mumkin.' Yomon: 'Ushbu yoritish moslamasi interyerni arzon his ettiradi.' Ovozdagi raqamlar SO'Z bilan yoziladi (2700K -> 'ikki ming yetti yuz kelvin', 4x4 -> 'to'rtga to'rt').\n" + "PROFESSIONAL QOIDALAR: hook birinchi 1.5 soniyada qiziqtirsin (3 soniya ichida butun hook aytiladi, 8 so'zdan oshmasin); har slaydning 'ovoz'i BITTA qisqa gap (6-11 so'z, ~3 soniya) -- vizual har 2-3 soniyada almashadi; ortiqcha, to'ldiruvchi so'z yo'q; oxirgi gap bitta esda qoladigan xulosa yoki tabiiy savol bo'lsin (reklama yoki 'saqlang/yuboring' chaqirig'i MAJBURIY EMAS), hook bilan mazmunan bog'lansin. Emotsiya birinchi: odamga 'bu menga tegishli' degan his bering.\nStruktura: 1-slayd HOOK (0-3 soniya, savol yoki qiziqtiruvchi da'vo), 1-2 slayd MUAMMO VA SABAB (nima uchun shunday), 2-3 slayd YECHIM (arxitektura, interyer yoki qurilishda NIMA QILISH KERAK -- aniq, amaliy, umumiy qabul qilingan usullar), oxirgi slayd FOYDA-XULOSA (shu yechimdan odam nima yutadi: qulaylik, tejam, salqinlik, kenglik...). Faqat muammoni aytib tashlab ketish MAN ETILADI: video albatta 'qanday qursa/qilsa natija bo'ladi' bilan tugasin. Raqam va faktlarni to'qimang; umumiy tan olingan qoidalarni ayting. Jami ovoz 40-55 soniya (7-9 slayd).\n" +
     "MAVZUGA SODIQLIK (MAJBURIY): admin mavzu bergan bo'lsa, video AYNAN shu mavzu haqida bo'lsin, boshqa mavzuga o'tmang; hook va sarlavhada mavzu so'zi bo'lsin.\n" +
     "CHUQUR MAZMUN (MAJBURIY): 1) MUAMMO qanday sodir bo'ladi -- jarayonni bosqichma-bosqich, sabab-oqibat bilan ko'rsating (masalan: yozda tik quyosh -> devor qiziydi -> issiqlik ichkariga o'tadi -> xona qiziydi). 2) Har sabab uchun ANIQ detal: qaysi element (oyna, parda, devor, ayvon, izolyatsiya, chiroq, mebel), qayerda, qanday joylashadi. 3) YECHIM -- har biri alohida slaydda, aniq amal: nima qilinadi, qayerga, qanday parametr/yo'nalish bilan (faqat umumiy tan olingan qoidalar, to'qima raqam yo'q). 4) Har slaydning ovozi ekrandagi ko'rinish bilan mos: 'mana bu oyna', 'shu devor', 'bu yerda' kabi ko'rsatish so'zlari bilan. 5) Oxirida natija: odam nima yutadi. Umumiy gaplar ('muhim', 'e'tibor bering', 'chiroyli bo'ladi') TAQIQLANGAN -- har gap yangi aniq ma'lumot bersin. Slaydlar 7-9 ta, jami ovoz 40-55 soniya.\n" +
-    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|xulosa","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>","fx":"<ixtiyoriy: [{\"k\":\"eshik|qadam|qurilish|suv|shamol|qushlar|yomgir|oshxona|sahifa|klik|pol|bogh\",\"t\":soniya}] -- FAQAT ekrandagi harakatga HAQIQATAN mos tovush (eshik ochilsa eshik); ortiqcha effekt qo\'shmang>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
+    "PROFESSIONAL SENARIYCHI QOIDASI: siz 15 yillik amaliyotchi arxitektor-prorabsiz, mijozga obyektda turib tushuntiryapsiz. Har slaydda bitta aniq fikr: KIM/QAYER (xona, devor, oyna) -> NIMA BO'LADI -> NIMA UCHUN. Yaxshi: 'Yozda quyosh tik tushganda janub oynadan issiqlik to'g'ri xonaga kiradi.' Yomon: 'Quyosh nuri xonaga ta'sir qiladi.' Birinchi gap -- mijoz xatosi yoki og'riq nuqtasi ('Remontda eng qimmat xato -- ...'), ikkinchi -- sabab, keyin yechimlar (har biri: nima + qayerga + natija), oxirida natija. Bir xil qolipdagi gaplar ('Bu muhim', 'Buni unutmang') yo'q. Har slayd 'foto' maydoni haqiqiy, konkret joy tavsifi bo'lsin va 'belgilar' ovozda aytiladigan predmetlarning o'zi bo'lsin (ovozda 'mana bu oyna' desa -- belgida oyna). MUAMMO va YECHIM slaydlarining HAMMASIDA foto va belgilar MAJBURIY.\n" +
+    'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|xulosa","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","foto":"<INGLIZCHA: slaydda korsatiladigan HAQIQIY joy/sahna fotosi tavsifi, ANIQ: xona turi, oyna/mebel/material joylashuvi, yoruglik yonalishi; faqat bitta kadrda korinadigan narsalar>","belgilar":[{"ob":"<INGLIZCHA: foto ichidagi aniq predmet, masalan the large window on the left wall>","m":"<ekranda 1-3 sozli ozbekcha belgi>"}] (2-4 ta, ovozda aytilish tartibida),"oqim":[[0,1,"<1-2 soz: Quyosh nuri|Havo|Issiqlik>"]] (ixtiyoriy: belgilar indekslari orasida strelka -- jarayon yonalishi),"rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>","fx":"<ixtiyoriy: [{\"k\":\"eshik|qadam|qurilish|suv|shamol|qushlar|yomgir|oshxona|sahifa|klik|pol|bogh\",\"t\":soniya}] -- FAQAT ekrandagi harakatga HAQIQATAN mos tovush (eshik ochilsa eshik); ortiqcha effekt qo\'shmang>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
@@ -1693,7 +1694,32 @@ async function bajarAnimatsionIc({ env, adminChatId, mavzu, korsatma, ishId }) {
       const kadr = Math.round(dur * 25);
       const aksent = ['#c4572b', '#0e6b5c'][i % 2];
       let izohOk = false;
-      if (sahnaNom && !fotoBuf && SAHNA_FOTO[sahnaNom] && env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && env.GEMINI_API_KEY) {
+      const gCfg = !fotoBuf && sl.foto ? slaydIzohCfg(sl) : null;
+      if (gCfg && env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && env.GEMINI_API_KEY) {
+        try {
+          const kal = 'g:' + sl.foto;
+          if (!izohKesh[kal]) {
+            let rr = await rasmYarat(env, `Photorealistic professional architectural photograph, ${sl.foto}. Natural light, 35mm lens, sharp focus, realistic materials and textures, square composition, everything described is clearly visible. No text, no letters, no people.`, null, true);
+            if (!rr.buf) rr = await rasmYarat(env, `Photorealistic architectural photograph, ${sl.foto}. No text, no people.`, null, true);
+            if (!rr.buf) throw new Error("foto yo'q");
+            izohKesh[kal] = { buf: rr.buf, joy: await obyektJoyi(env, rr.buf, gCfg.obj, geminiJsonSora) };
+          }
+          await matnQatlami(sl, ov, false);
+          const fdir = path.join(tmpDir, `fr${i}`);
+          const fps = await fotoIzohKadrlar({ cfg: gCfg, fotoBuf: izohKesh[kal].buf, joy: izohKesh[kal].joy, dur, dir: fdir, t0: 0, t1: 1, aksent, ovBuf: fs.readFileSync(ov), SAHNA_BG: TEMA_BG, zk: 0.1 });
+          if (!qopqoqFoto) qopqoqFoto = izohKesh[kal].buf;
+          await execFileAsync('ffmpeg', [
+            '-y', '-framerate', String(fps), '-i', path.join(fdir, 'f%04d.jpg'), '-i', mp3,
+            '-filter_complex', '[0:v]fps=25,format=yuv420p[v]',
+            '-map', '[v]', '-map', '1:a', '-af', 'apad,aresample=44100', '-t', String(dur),
+            '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '2', '-x264-params', 'ref=1:bframes=0',
+            '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,
+          ], { maxBuffer: 1024 * 1024 * 20 });
+          fs.rmSync(fdir, { recursive: true, force: true });
+          izohOk = true;
+        } catch (e) { console.error('izoh-umumiy xato:', e && e.message); }
+      }
+      if (!izohOk && sahnaNom && !fotoBuf && SAHNA_FOTO[sahnaNom] && env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && env.GEMINI_API_KEY) {
         try {
           if (!izohKesh[sahnaNom]) {
             const rr = await rasmYarat(env, `Photorealistic professional architectural photograph, ${SAHNA_FOTO[sahnaNom].prompt}. Natural light, 35mm lens, realistic materials, square composition. No text, no letters, no people.`, null, true);
@@ -1734,10 +1760,10 @@ async function bajarAnimatsionIc({ env, adminChatId, mavzu, korsatma, ishId }) {
       } else {
         if (!fotoBuf) await animatsiyaAiRasm(env, sl, bg, ov);
         if (i === 0) qopqoqAsos = fs.readFileSync(bg);
-        const z = i % 2 === 0 ? `1+0.07*on/${kadr}` : `1.07-0.07*on/${kadr}`;
+        const ez = `(0.5-0.5*cos(PI*on/${kadr}))`; const z = i % 2 === 0 ? `1+0.07*${ez}` : `1.07-0.07*${ez}`;
         await execFileAsync('ffmpeg', [
           '-y', '-i', bg, '-loop', '1', '-framerate', '25', '-i', ov, '-i', mp3,
-          '-filter_complex', `[0:v]zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${kadr}:s=1080x1920:fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]`,
+          '-filter_complex', `[0:v]scale=3240:5760:flags=lanczos,zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${kadr}:s=1080x1920:fps=25[b];[b][1:v]overlay=format=auto,format=yuv420p[v]`,
           '-map', '[v]', '-map', '2:a', '-af', 'apad,aresample=44100', '-t', String(dur),
           '-c:v', 'libx264', '-preset', 'superfast', '-crf', '20', '-maxrate', '12M', '-bufsize', '24M', '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
           '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100', seg,

@@ -83,8 +83,8 @@ function izohSvg(S, cfg, joy, T, aksent, tr) {
     if (al <= 0.01) continue;
     if (st.k === 'belgi') {
       const j = pt(st.o); if (!j) continue;
-      const w = 28 + st.m.length * 15.5, x = Math.max(8, Math.min(S - w - 8, j[0] - w / 2)), y = Math.max(10, Math.min(S - 50, j[1] - 60));
-      g += `<g opacity="${al}"><circle cx="${j[0]}" cy="${j[1]}" r="9" fill="${aksent}" stroke="#fff" stroke-width="3"/><line x1="${j[0]}" y1="${j[1] - 9}" x2="${x + w / 2}" y2="${y + 38}" stroke="#fff" stroke-width="3"/><rect x="${x}" y="${y}" width="${w}" height="40" rx="20" fill="#16150f" fill-opacity="0.82"/><text x="${x + w / 2}" y="${y + 27}" text-anchor="middle" font-family="${FF}" font-size="23" font-weight="700" fill="#fff">${st.m}</text></g>`;
+      const w = 36 + st.m.length * 20, x = Math.max(8, Math.min(S - w - 8, j[0] - w / 2)), y = Math.max(10, Math.min(S - 64, j[1] - 80));
+      g += `<g opacity="${al}"><circle cx="${j[0]}" cy="${j[1]}" r="12" fill="${aksent}" stroke="#fff" stroke-width="3"/><line x1="${j[0]}" y1="${j[1] - 12}" x2="${x + w / 2}" y2="${y + 52}" stroke="#fff" stroke-width="3"/><rect x="${x}" y="${y}" width="${w}" height="54" rx="27" fill="#16150f" fill-opacity="0.82"/><text x="${x + w / 2}" y="${y + 37}" text-anchor="middle" font-family="${FF}" font-size="31" font-weight="700" fill="#fff">${st.m}</text></g>`;
     } else if (st.k === 'strelka') {
       const A = pt(st.f), B = pt(st.to); if (!A || !B) continue;
       const k = seg(T, st.a, st.a + (st.b - st.a) * 0.6);
@@ -94,30 +94,50 @@ function izohSvg(S, cfg, joy, T, aksent, tr) {
       const col = st.havo ? '#2f7fb0' : '#ffb21f';
       g += `<g opacity="${al}"><path d="${wave}" fill="none" stroke="#000" stroke-opacity="0.35" stroke-width="12" stroke-linecap="round"/><path d="${wave}" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round"/>`;
       if (k > 0.2) g += `<polygon points="${ex},${ey} ${ex - ah * Math.cos(ang - 0.45)},${ey - ah * Math.sin(ang - 0.45)} ${ex - ah * Math.cos(ang + 0.45)},${ey - ah * Math.sin(ang + 0.45)}" fill="${col}" stroke="#000" stroke-opacity="0.35" stroke-width="2"/>`;
-      if (st.m && k > 0.5) { const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2 - 24; const w = 28 + st.m.length * 15.5; g += `<rect x="${mx - w / 2}" y="${my - 24}" width="${w}" height="40" rx="20" fill="#16150f" fill-opacity="0.82"/><text x="${mx}" y="${my + 3}" text-anchor="middle" font-family="${FF}" font-size="23" font-weight="700" fill="#fff">${st.m}</text>`; }
+      if (st.m && k > 0.5) { const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2 - 24; const w = 36 + st.m.length * 20; g += `<rect x="${mx - w / 2}" y="${my - 30}" width="${w}" height="54" rx="27" fill="#16150f" fill-opacity="0.82"/><text x="${mx}" y="${my + 8}" text-anchor="middle" font-family="${FF}" font-size="31" font-weight="700" fill="#fff">${st.m}</text>`; }
       g += '</g>';
     }
   }
   return `<svg width="${S}" height="${S}" xmlns="http://www.w3.org/2000/svg">${g}</svg>`;
 }
 
-// Foto + animatsion izohlar -> kadrlar (12.5 fps). Tashqi qatlam (sarlavha/logo) ov bilan qo'shiladi.
-export async function fotoIzohKadrlar({ nom, fotoBuf, joy, dur, dir, t0, t1, aksent, ovBuf, SAHNA_BG }) {
-  const cfg = SAHNA_FOTO[nom];
-  const fps = 10, n = Math.max(2, Math.round(dur * fps)), S = 880, SRC = 1056;
+// Slayd belgilaridan (Gemini senariysi) izoh konfiguratsiyasi: belgilar [{ob,m}], oqim [[i,j,m]]
+export function slaydIzohCfg(sl) {
+  const bl = (Array.isArray(sl.belgilar) ? sl.belgilar : []).filter((x) => x && x.ob && x.m).slice(0, 4);
+  if (!bl.length) return null;
+  const obj = {}, steps = [];
+  const n = bl.length;
+  bl.forEach((x, i) => {
+    obj['o' + i] = String(x.ob);
+    const a = 0.06 + (0.72 * i) / n;
+    steps.push({ k: 'belgi', o: 'o' + i, m: String(x.m).slice(0, 22), a, b: 1 });
+  });
+  for (const q of (Array.isArray(sl.oqim) ? sl.oqim : []).slice(0, 2)) {
+    if (!Array.isArray(q) || !obj['o' + q[0]] || !obj['o' + q[1]]) continue;
+    const a = 0.06 + (0.72 * Math.max(q[0], q[1])) / n + 0.06;
+    steps.push({ k: 'strelka', f: 'o' + q[0], to: 'o' + q[1], m: q[2] ? String(q[2]).slice(0, 20) : '', a: Math.min(a, 0.8), b: 1, havo: /havo|shamol|oqim/i.test(String(q[2] || '')) });
+  }
+  return { obj, steps };
+}
+
+// Foto + animatsion izohlar -> kadrlar (25 fps, silliq zoom: 3x supersample, titroqsiz).
+export async function fotoIzohKadrlar({ nom, cfg: cfg0, fotoBuf, joy, dur, dir, t0, t1, aksent, ovBuf, SAHNA_BG, zk = 0.06 }) {
+  const cfg = cfg0 || SAHNA_FOTO[nom];
+  const fps = 25, n = Math.max(2, Math.round(dur * fps)), S = 880, SRC = 2640;
   fs.mkdirSync(dir, { recursive: true });
   const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
-  const src = await sharp(fotoBuf).resize(SRC, SRC, { fit: 'cover' }).toBuffer();
+  const src = await sharp(fotoBuf).resize(SRC, SRC, { fit: 'cover', kernel: 'lanczos3' }).toBuffer();
   const mask = Buffer.from(`<svg width="${S}" height="${S}"><rect width="${S}" height="${S}" rx="36" fill="#fff"/></svg>`);
-  for (let k = 0; k < n; k++) {
-    const q = Math.min(1, k / (n - 1) / 0.9);
+  const kadr = async (k) => {
+    const q = Math.min(1, k / (n - 1) / 0.92);
     const T = t0 + (t1 - t0) * q;
-    const zoom = 1 + 0.06 * T; // sahna davomida sekin yaqinlashadi
+    const zoom = 1 + zk * ease(clamp(k / (n - 1)));
     const cs = Math.round(SRC / zoom), off = Math.round((SRC - cs) / 2);
-    const tr = (nx, ny) => [(nx - 0.5) * zoom * S + S / 2, (ny - 0.5) * zoom * S + S / 2];
-    const rasm = await sharp(src).extract({ left: off, top: off, width: cs, height: cs }).resize(S, S).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+    const tr = (nx, ny) => [(nx - 0.5) * (SRC / cs) * S + S / 2, (ny - 0.5) * (SRC / cs) * S + S / 2];
+    const rasm = await sharp(src).extract({ left: off, top: off, width: cs, height: cs }).resize(S, S, { kernel: 'lanczos3' }).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
     const iz = await sharp(Buffer.from(izohSvg(S, cfg, joy, T, aksent, tr))).png().toBuffer();
-    await sharp(baza).composite([{ input: rasm, left: 100, top: 740 }, { input: iz, left: 100, top: 740 }, { input: ovBuf, left: 0, top: 0 }]).jpeg({ quality: 88 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.jpg`));
-  }
+    await sharp(baza).composite([{ input: rasm, left: 100, top: 740 }, { input: iz, left: 100, top: 740 }, { input: ovBuf, left: 0, top: 0 }]).jpeg({ quality: 90 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.jpg`));
+  };
+  for (let k = 0; k < n; k += 4) await Promise.all([0, 1, 2, 3].filter((d) => k + d < n).map((d) => kadr(k + d)));
   return fps;
 }
