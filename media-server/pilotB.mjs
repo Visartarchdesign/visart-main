@@ -11,28 +11,22 @@ const dir = process.argv[2], out = path.resolve(process.argv[3] || 'pilotB.mp4')
 const BOLIM = 'Moxir kvartirasi';
 // zona: rejadagi to'rtburchak (nisbiy). rasm: render raqami. sabab -- reja ustida; boshqa -- renderda (muqobil kamchiligi)
 const Q = [
-  { sar: 'mehmonxona', tag: 'devorsiz bitta bo\'shliq', zona: [0.386, 0.084, 0.775, 0.943], nom: 'Umumiy bo\'shliq', rasm: 2, yon: 1, belgi: 'Bitta bo\'shliq', joy: [0.5, 0.6],
-    sabab: "Bu yerda devor yo'q. Mehmonxona, ovqatlanish va oshxona bitta katta bo'shliq, shuning uchun derazadan kirgan yorug'lik hamma joyga yetadi.",
-    boshqa: "Agar shu yerga devor tortilsa, o'rtadagi xona qorong'i va tor bo'lib qoladi." },
+  { sar: 'umumiy bo\'shliq', tag: 'devorsiz, yorug\'', zona: [0.386, 0.084, 0.775, 0.943], nom: 'Bitta bo\'shliq', rasm: 2, yon: 1, belgi: 'Yorug\'lik hamma joyda', joy: [0.5, 0.6],
+    sabab: "Mana bu yerda devor yo'q. Mehmonxona, stol va oshxona bitta bo'shliqda, shuning uchun deraza yorug'ligi hamma burchakka yetib boradi.",
+    boshqa: "Shu yerga devor tortsak-chi? O'rtadagi xona qorong'i va tor bo'lib qoladi, kunduzi ham chiroq yoqishga to'g'ri keladi." },
   { sar: 'divan va stol', tag: 'orasida bo\'sh yo\'lak', zona: [0.457, 0.118, 0.718, 0.578], nom: 'Yo\'lak', rasm: 1, yon: -1, belgi: 'Bo\'sh yo\'lak', joy: [0.5, 0.65],
-    sabab: "Divan bilan stol orasida atayin bo'sh joy qoldirilgan. Stuldan turganda ham, o'tib ketganda ham hech kimga tegmaysiz.",
-    boshqa: "Divan stolga yaqin qo'yilsa, stuldan turish ham, o'tish ham qiyin bo'ladi." },
-  { sar: 'oshxona', tag: 'bir devor bo\'ylab', zona: [0.775, 0.084, 0.946, 0.533], nom: 'Oshxona', rasm: 3, yon: 1, belgi: 'Tekis fasad', joy: [0.5, 0.45],
-    sabab: "Oshxona bir devor bo'ylab joylashgan: kir yuvish mashinasi, plita, muzlatgich va moyka yonma-yon. Ish uchun uzoq yurish kerak emas.",
-    boshqa: "Texnika xonaning ikki chetiga tarqalsa, har qadamda ortiqcha yurasiz." },
+    sabab: "Divan bilan stol orasida atayin bo'sh joy qoldirdik. Stuldan turasiz, kimdir o'tadi, hech kim hech kimga tegmaydi.",
+    boshqa: "Divanni stolga yaqinlashtirsak, har safar o'rningizdan turish azobga aylanadi." },
+  { sar: 'oshxona', tag: 'hammasi qo\'l yetadigan joyda', zona: [0.775, 0.084, 0.946, 0.533], nom: 'Oshxona', rasm: 3, yon: 1, belgi: 'Tekis fasad', joy: [0.5, 0.45],
+    sabab: "Oshxona bitta devor bo'ylab: kir yuvish mashinasi, plita, muzlatgich va moyka yonma-yon. Bir joyda turib hammasiga qo'lingiz yetadi.",
+    boshqa: "Texnika xonaning turli chetlariga tarqalsa, har ovqatda xona bo'ylab yugurib yurasiz." },
   { sar: 'yotoqxona', tag: 'tinch burchak', zona: [0.015, 0.23, 0.37, 0.94], nom: 'Yotoqxona', rasm: 4, yon: -1, belgi: 'Yashirin yoritish', joy: [0.68, 0.57],
-    sabab: "Yotoqxona alohida va tinch. Karavot devorga suyangan, shkaf esa kirish yonida, shuning uchun kiyim olish uyquga xalaqit bermaydi.",
-    boshqa: "Karavot eshik oldiga qo'yilsa, kirgan har bir odam to'g'ri yotoqqa qaraydi." },
-  { sar: 'kiyinish burchagi', tag: 'deraza yonida', zona: [0.136, 0.084, 0.24, 0.325], nom: 'Trimo', rasm: 5, yon: 1, belgi: 'Tabiiy yorug\'lik', joy: [0.5, 0.45],
-    sabab: "Trimo derazaning yonida turibdi. Tabiiy yorug'lik yuzga to'g'ri tushadi, ko'zguga qarash qulay.",
-    boshqa: "Qorong'i burchakda ko'zgu yorug'lik yetishmasligidan soyali ko'rsatadi." },
-  { sar: 'sanuzel', tag: 'suv bir joyda', zona: [0.775, 0.556, 0.946, 0.92], nom: 'Sanuzel', rasm: 6, yon: -1, belgi: 'Dumaloq oyna', joy: [0.7, 0.35],
-    sabab: "Sanuzel oshxona bilan yonma-yon. Suv quvurlari bir devor yonida jamlangan, shuning uchun quvur uzun tortilmaydi.",
-    boshqa: "Sanuzel uzoqqa qo'yilsa, quvur uzayadi va ta'mirlash qimmatlashadi." },
+    sabab: "Yotoqxona alohida va tinch. Karavot devorga suyangan, shkaf esa kirish yonida, shuning uchun erta turganda hech kimni uyg'otmaysiz.",
+    boshqa: "Karavot eshik oldiga qo'yilsa, kirgan har bir odam to'g'ri yotoqqa qaraydi, tinchlik qolmaydi." },
 ];
 const jami = Q.length;
-const HOOK = "Bu kvartirada har bir mebel o'z joyida turibdi. Keling, nega aynan shunday ekanini ko'ramiz.";
-const OXIR = "Har bir joylashuvning sababi bor. Vizart Dizayn jamoasi sizning kvartirangizda ham shunday o'ylaydi.";
+const HOOK = "Bu kvartirada birorta mebel tasodifan turmagan. Hozir nega aynan shu yerda ekanini ko'rsataman.";
+const OXIR = "Har bir joyning o'z sababi bor. Vizart Dizayn jamoasi sizning uyingizni ham shunday o'ylab chiqadi.";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pilotB-'));
 const segs = [], sub = []; let t = 0, id = 0;
 const reja = path.join(dir, 'reja.png');
@@ -61,6 +55,6 @@ await ex('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'li
 const withSub = path.join(tmp, 'sub.mp4');
 await srtVideogaKuydir(joined, sub, withSub, true).catch((e) => console.log('subtitr xato', e.message));
 const base = fs.existsSync(withSub) ? withSub : joined;
-const mus = muzikaTanla('hashamatli');
+const mus = ['hashamatli', 'sokin', 'ilhomlantiruvchi', 'energetik'].map((k) => muzikaTanla(k)).find(Boolean);
 if (mus) await ffmpegMuzikaQosh(base, mus, out); else fs.copyFileSync(base, out);
 console.log('TAYYOR:', out);
