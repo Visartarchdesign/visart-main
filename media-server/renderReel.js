@@ -16,8 +16,16 @@ const SERIF = 'DejaVu Serif, Georgia, serif';
 export async function qadamSegment(q, tmp, out) {
   const W = 1080, H = 1920, IH = 1400, IT = 420, fps = 25, n = Math.max(2, Math.round(q.dur * fps));
   fs.mkdirSync(tmp, { recursive: true });
+  let parDir = null;
+  if (q.parallaks) {
+    const pd = path.join(tmp, 'par');
+    const scr = path.join(path.dirname(decodeURIComponent(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1')), 'parallax.py');
+    for (const py of ['python', 'python3', 'py']) {
+      try { await ex(py, [scr, q.img, pd, String(n), String(W), String(IH), String(q.yon || 1)], { maxBuffer: 1024 * 1024 * 20 }); parDir = pd; break; } catch (e) { if (py === 'py') console.error('parallaks xato:', String(e.message).slice(0, 200)); }
+    }
+  }
   const SRC_W = 3240, SRC_H = Math.round(SRC_W * IH / W);
-  const src = await sharp(q.img).resize(SRC_W, SRC_H, { fit: 'cover', kernel: 'lanczos3' }).toBuffer();
+  const src = parDir ? null : await sharp(q.img).resize(SRC_W, SRC_H, { fit: 'cover', kernel: 'lanczos3' }).toBuffer();
   const dots = Array.from({ length: q.jami }, (_, i) => `<circle cx="${W / 2 + (i - (q.jami - 1) / 2) * 34}" cy="1862" r="${i + 1 === q.n ? 9 : 6}" fill="${i + 1 === q.n ? GOLD : '#6b5a3e'}"/>`).join('');
   const fade = Buffer.from(`<svg width="${W}" height="${IH}"><defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.08" stop-color="#fff"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect width="${W}" height="${IH}" fill="url(#a)"/></svg>`);
   const baza = await sharp({ create: { width: W, height: H, channels: 3, background: BG } }).png().toBuffer();
@@ -26,7 +34,9 @@ export async function qadamSegment(q, tmp, out) {
     const zoom = 1 + 0.09 * ease(p);
     const cw = Math.round(SRC_W / zoom), ch = Math.round(SRC_H / zoom);
     const left = Math.round((SRC_W - cw) / 2), top = Math.round((SRC_H - ch) / 2);
-    const rasm = await sharp(src).extract({ left, top, width: cw, height: ch }).resize(W, IH, { kernel: 'lanczos3' }).composite([{ input: fade, blend: 'dest-in' }]).png().toBuffer();
+    const rasm = parDir
+      ? await sharp(path.join(parDir, `p${String(k).padStart(4, '0')}.jpg`)).composite([{ input: fade, blend: 'dest-in' }]).png().toBuffer()
+      : await sharp(src).extract({ left, top, width: cw, height: ch }).resize(W, IH, { kernel: 'lanczos3' }).composite([{ input: fade, blend: 'dest-in' }]).png().toBuffer();
     const a = ease(clamp(p / 0.12));
     const sub = ease(clamp((p - 0.15) / 0.15));
     let belgi = '';
