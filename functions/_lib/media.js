@@ -18,12 +18,23 @@ export async function mediaUygot(env, ms = 50000) {
   return false;
 }
 
+// Asosiy server (kompyuter, tunnel) javob bermasa -- zaxira (Render) ishlatiladi
+export async function mediaBaza(env) {
+  if (!env.MEDIA_SERVER_URL_ZAXIRA || env.MEDIA_SERVER_URL_ZAXIRA === env.MEDIA_SERVER_URL) return env.MEDIA_SERVER_URL;
+  try {
+    const r = await fetch(`${env.MEDIA_SERVER_URL}/health`, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) return env.MEDIA_SERVER_URL;
+  } catch (e) { /* asosiy o'chiq */ }
+  return env.MEDIA_SERVER_URL_ZAXIRA;
+}
+
 export async function mediaChaqir(env, yol, body, adminChatId) {
   if (!env.MEDIA_SERVER_URL || !env.MEDIA_SECRET) return { ok: false, sabab: 'MEDIA_SERVER_URL/MEDIA_SECRET sozlanmagan' };
   let sabab = '';
+  const baza = await mediaBaza(env);
   for (let urinish = 0; urinish < 2; urinish++) {
     try {
-      const r = await fetch(`${env.MEDIA_SERVER_URL}${yol}`, {
+      const r = await fetch(`${baza}${yol}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Media-Secret': env.MEDIA_SECRET },
         body: JSON.stringify({ ...body, _env: { SUPABASE_URL: env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY, MIJOZ_BOT_TOKEN: env.MIJOZ_BOT_TOKEN, GEMINI_API_KEY: env.GEMINI_API_KEY } }), signal: AbortSignal.timeout(urinish ? 40000 : 15000),
       });
