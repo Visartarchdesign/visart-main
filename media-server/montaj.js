@@ -10,6 +10,7 @@
 // (Google Cloud OAuth, "In production" holatida olingan muddatsiz token).
 
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import os from 'os';
 import { execFile } from 'child_process';
@@ -506,7 +507,7 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
 // qaytaradi, chaqiruvchi tomon jim musiqasiz davom etadi (xato bermaydi).
 export function muzikaTanla(kayfiyat) {
   try {
-    const papka = path.join(path.dirname(new URL(import.meta.url).pathname), 'music', kayfiyat || 'sokin');
+    const papka = path.join(path.dirname(fileURLToPath(import.meta.url)), 'music', kayfiyat || 'sokin');
     const fayllar = fs.readdirSync(papka).filter((f) => /\.(mp3|m4a|aac|wav)$/i.test(f));
     if (!fayllar.length) return null;
     return path.join(papka, fayllar[Math.floor(Math.random() * fayllar.length)]);
@@ -712,6 +713,7 @@ function qatorBol(m, maks = 26) {
   return q.join('\n');
 }
 
+const ffFiltYol = (p) => String(p).replace(/\\/g, '/').replace(/^([A-Za-z]):/, '$1\\:');
 export async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
@@ -731,7 +733,7 @@ export async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = fa
   try {
     await execFileAsync('ffmpeg', [
       '-y', '-i', videoPath,
-      '-vf', `ass=${assPath}${toza ? ':fontsdir=' + path.join(path.dirname(new URL(import.meta.url).pathname), 'fonts') : ''}`,
+      '-vf', `ass='${ffFiltYol(assPath)}'${toza ? ":fontsdir='" + ffFiltYol(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fonts')) + "'" : ''}`,
       '-c:v', 'libx264', '-preset', 'superfast', '-crf', '26', '-pix_fmt', 'yuv420p',
       '-threads', '1', '-x264-params', 'threads=1:lookahead_threads=1:rc-lookahead=5:ref=1:bframes=0',
       '-c:a', 'copy', '-movflags', '+faststart',
@@ -1389,7 +1391,7 @@ export async function ovozYarat(env, matn, outPath, tmpDir) {
 
 // Atrof-muhit effekti (shamol, suv...) -- music/sfx/<nom>*.mp3 bo'lsa shu, bo'lmasa sintez; diktor ovoziga past qatlam bo'lib qo'shiladi
 async function sfxQosh(nom, mp3, dur, tmpDir, fx = []) {
-  const sfxDir = path.join(path.dirname(new URL(import.meta.url).pathname), 'music', 'sfx');
+  const sfxDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'music', 'sfx');
   const topish = (k) => { try { const f = fs.readdirSync(sfxDir).filter((x) => x.toLowerCase().startsWith(k) && /\.(mp3|wav|m4a)$/i.test(x)); return f.length ? path.join(sfxDir, f[Math.floor(Math.random() * f.length)]) : null; } catch (e) { return null; } };
   const sintez = { shamol: 'highpass=f=250,lowpass=f=1800,tremolo=f=0.35:d=0.7,aecho=0.6:0.5:60:0.3', suv: 'highpass=f=600,lowpass=f=6000,tremolo=f=7:d=0.4' }[nom];
   const fayl = nom ? topish(nom) : null;
@@ -1526,7 +1528,7 @@ async function rasmYarat(env, prompt, mavzu, faqatFoto = false) {
 
 let _logoB64 = null;
 function logoYukla() {
-  if (_logoB64 === null) { try { _logoB64 = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'logo-mark.png')).toString('base64'); } catch (e) { _logoB64 = ''; } }
+  if (_logoB64 === null) { try { _logoB64 = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'logo-mark.png')).toString('base64'); } catch (e) { _logoB64 = ''; } }
   return _logoB64;
 }
 
