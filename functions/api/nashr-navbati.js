@@ -317,7 +317,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
         } else {
           await tgSend(env.MIJOZ_BOT_TOKEN, p.adminChatId, `🔁 Animatsiya hali tayyor emas (server o'chib qolgan bo'lishi mumkin). Qayta boshlayman (${u + 1}/3).`).catch(() => {});
           await mediaChaqir(env, '/animatsion', { adminChatId: p.adminChatId, mavzu: p.mavzu || undefined, korsatma: p.korsatma || undefined, ishId: q.id }, p.adminChatId);
-          await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 9 * 60e3).toISOString(), payload: { ...p, urinish: u + 1 } }) });
+          await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 22 * 60e3).toISOString(), payload: { ...p, urinish: u + 1 } }) });
           natijalar.push({ id: q.id, holat: 'qayta' });
           continue;
         }

@@ -104,7 +104,7 @@ function izohSvg(S, cfg, joy, T, aksent, tr) {
 // Foto + animatsion izohlar -> kadrlar (12.5 fps). Tashqi qatlam (sarlavha/logo) ov bilan qo'shiladi.
 export async function fotoIzohKadrlar({ nom, fotoBuf, joy, dur, dir, t0, t1, aksent, ovBuf, SAHNA_BG }) {
   const cfg = SAHNA_FOTO[nom];
-  const fps = 12.5, n = Math.max(2, Math.round(dur * fps)), S = 880, SRC = 1056;
+  const fps = 10, n = Math.max(2, Math.round(dur * fps)), S = 880, SRC = 1056;
   fs.mkdirSync(dir, { recursive: true });
   const baza = await sharp({ create: { width: 1080, height: 1920, channels: 3, background: SAHNA_BG } }).png().toBuffer();
   const src = await sharp(fotoBuf).resize(SRC, SRC, { fit: 'cover' }).toBuffer();
@@ -117,7 +117,7 @@ export async function fotoIzohKadrlar({ nom, fotoBuf, joy, dur, dir, t0, t1, aks
     const tr = (nx, ny) => [(nx - 0.5) * zoom * S + S / 2, (ny - 0.5) * zoom * S + S / 2];
     const rasm = await sharp(src).extract({ left: off, top: off, width: cs, height: cs }).resize(S, S).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
     const iz = await sharp(Buffer.from(izohSvg(S, cfg, joy, T, aksent, tr))).png().toBuffer();
-    await sharp(baza).composite([{ input: rasm, left: 100, top: 740 }, { input: iz, left: 100, top: 740 }, { input: ovBuf, left: 0, top: 0 }]).png({ compressionLevel: 1 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.png`));
+    await sharp(baza).composite([{ input: rasm, left: 100, top: 740 }, { input: iz, left: 100, top: 740 }, { input: ovBuf, left: 0, top: 0 }]).jpeg({ quality: 88 }).toFile(path.join(dir, `f${String(k).padStart(4, '0')}.jpg`));
   }
   return fps;
 }
