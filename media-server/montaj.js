@@ -504,7 +504,7 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
 // media-server/music/<kayfiyat>/*.mp3 papkasidan TASODIFIY bitta trekni
 // tanlaydi. Papka bo'sh/mavjud bo'lmasa (hali to'ldirilmagan) -- null
 // qaytaradi, chaqiruvchi tomon jim musiqasiz davom etadi (xato bermaydi).
-function muzikaTanla(kayfiyat) {
+export function muzikaTanla(kayfiyat) {
   try {
     const papka = path.join(path.dirname(new URL(import.meta.url).pathname), 'music', kayfiyat || 'sokin');
     const fayllar = fs.readdirSync(papka).filter((f) => /\.(mp3|m4a|aac|wav)$/i.test(f));
@@ -528,7 +528,7 @@ async function ffmpegAudioBormi(videoPath) {
 // fon sifatida miks qilinadi va videoning uzunligiga moslab kesiladi
 // (`-shortest`). Trek video uzunligidan qisqa bo'lsa, loop qilinadi. Asl
 // videoda umuman audio trek bo'lmasa (jim kadr), faqat muzika qo'yiladi.
-async function ffmpegMuzikaQosh(videoPath, musicPath, outPath) {
+export async function ffmpegMuzikaQosh(videoPath, musicPath, outPath) {
   const audioBor = await ffmpegAudioBormi(videoPath);
   const filterComplex = audioBor
     // [0:a] -- video asl ovozi 22% darajada (butunlay o'chirilmaydi -- ambient
@@ -712,7 +712,7 @@ function qatorBol(m, maks = 26) {
   return q.join('\n');
 }
 
-async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
+export async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
   const fontSize = Math.round(width * (toza ? 0.046 : 0.052));
@@ -1301,7 +1301,7 @@ function ovozMatni(m) {
     .replace(/([.!?])\s+/g, '$1 ... ').replace(/\?\s*\.\.\./g, '? ...').trim();
 }
 
-async function ovozYarat(env, matn, outPath, tmpDir) {
+export async function ovozYarat(env, matn, outPath, tmpDir) {
   // 0) Muallifning o'z ovozi (ElevenLabs klon) -- kalit va ovoz ID qo'yilgan bo'lsa
   if (env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID) {
     try {
