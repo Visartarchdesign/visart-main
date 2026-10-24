@@ -22,7 +22,7 @@ export async function onRequestPost({ request, env }) {
     const url = `${WSS}?Ocp-Apim-Subscription-Key=${TOKEN}&Sec-MS-GEC=${await gec()}&Sec-MS-GEC-Version=1-143.0.3650.96&ConnectionId=${hex(16)}`;
     const resp = await fetch(url, { headers: { Upgrade: 'websocket', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0', Origin: 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold' } });
     const ws = resp.webSocket;
-    if (!ws) return new Response(`ws yo'q: HTTP ${resp.status}`, { status: 502 });
+    if (!ws) return new Response(`ws yo'q: HTTP ${resp.status}`, { status: 424 });
     ws.accept();
     const qismlar = [];
     const tugadi = new Promise((resolve, reject) => {
@@ -43,9 +43,9 @@ export async function onRequestPost({ request, env }) {
     await tugadi;
     try { ws.close(); } catch (e) { /* */ }
     const n = qismlar.reduce((q, x) => q + x.length, 0);
-    if (!n) return new Response('audio yo\'q', { status: 502 });
+    if (!n) return new Response('audio yo\'q', { status: 424 });
     const out = new Uint8Array(n); let o = 0;
     for (const q of qismlar) { out.set(q, o); o += q.length; }
     return new Response(out, { headers: { 'Content-Type': 'audio/mpeg' } });
-  } catch (e) { return new Response('xato: ' + String((e && e.message) || e).slice(0, 150), { status: 502 }); }
+  } catch (e) { return new Response('xato: ' + String((e && e.message) || e).slice(0, 150), { status: 424 }); }
 }

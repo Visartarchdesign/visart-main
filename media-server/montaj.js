@@ -1321,7 +1321,7 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
         const r = await fetch(process.env.TTS_PROKSI_URL || 'https://visartdesign.uz/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-media-secret': process.env.MEDIA_SECRET },
           body: JSON.stringify({ matn: ovozMatni(matn), voice: process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', rate: process.env.TTS_TEZLIK || '+4%', pitch: process.env.TTS_PITCH || '-1Hz' }), signal: AbortSignal.timeout(50000) });
-        if (!r.ok) throw new Error(`proksi ${r.status} ${(await r.text().catch(() => '')).slice(0, 80)}`);
+        if (!r.ok) throw new Error(`proksi ${r.status} ${(await r.text().catch(() => '')).slice(0, 200)}`);
         const ab = Buffer.from(await r.arrayBuffer());
         if (ab.length < 1000) throw new Error('proksi bo\'sh audio');
         fs.writeFileSync(outPath, ab);
@@ -1362,7 +1362,7 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
     fs.writeFileSync(lst, qism.map((f) => `file '${f}'`).join('\n'));
     await execFileAsync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', lst, '-af', 'atempo=1.08,aresample=44100', '-ac', '1', outPath]);
     return;
-  } catch (e) { edgeXato.push('Google: ' + String((e && e.message) || e).slice(0, 60)); }
+  } catch (e) { edgeXato.push('Google: ' + String((e && e.message) || e).slice(0, 60)); console.error('Google TTS xato:', edgeXato[edgeXato.length - 1]); }
   // 2) Gemini TTS (zaxira)
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
