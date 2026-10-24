@@ -47,8 +47,6 @@ export async function qadamSegment(q, tmp, out) {
       belgi = `<g opacity="${b}" transform="translate(0,${(1 - b) * 14})"><rect x="${bx - w / 2}" y="${by - 24}" width="${w}" height="48" rx="12" fill="#d9b365"/><text x="${bx}" y="${by + 8}" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="24" font-weight="700" fill="#2a1d08" letter-spacing="1.5">${esc(q.belgi.toUpperCase())}</text></g>`;
     }
     const ust = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-      <text x="48" y="60" font-family="Liberation Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="${GOLD}" letter-spacing="3.5">${esc((q.bolim || '').toUpperCase())}</text>
-      <text x="${W - 48}" y="60" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="${GOLD}" letter-spacing="3.5">VISART DESIGN</text>
       <g opacity="${a}" transform="translate(0,${(1 - a) * -16})">
         <circle cx="${W / 2}" cy="170" r="36" fill="${GOLD}"/><text x="${W / 2}" y="184" text-anchor="middle" font-family="${SERIF}" font-size="40" font-weight="700" fill="#2a1d08">${q.n}</text>
         <text x="${W / 2}" y="300" text-anchor="middle" font-family="${SERIF}" font-size="92" font-weight="700" fill="${GOLD}">${esc(q.sarlavha)}</text></g>

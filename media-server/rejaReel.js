@@ -44,8 +44,6 @@ export async function rejaSegment(q, tmp, out) {
     }
     const a = ease(clamp(p / 0.12)), sub = ease(clamp((p - 0.15) / 0.15));
     const ust = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
-      <text x="48" y="60" font-family="Liberation Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="${GOLD}" letter-spacing="3.5">${esc((q.bolim || '').toUpperCase())}</text>
-      <text x="${W - 48}" y="60" text-anchor="end" font-family="Liberation Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="${GOLD}" letter-spacing="3.5">REJA · VISART DESIGN</text>
       <g opacity="${a}" transform="translate(0,${(1 - a) * -16})"><circle cx="${W / 2}" cy="170" r="36" fill="${GOLD}"/><text x="${W / 2}" y="184" text-anchor="middle" font-family="${SERIF}" font-size="40" font-weight="700" fill="#2a1d08">${q.n}</text>
       <text x="${W / 2}" y="300" text-anchor="middle" font-family="${SERIF}" font-size="92" font-weight="700" fill="${GOLD}">${esc(q.sarlavha)}</text></g>
       <text x="${W / 2}" y="372" opacity="${sub}" text-anchor="middle" font-family="${SERIF}" font-style="italic" font-size="40" fill="${CREAM}">${esc(q.tag)}</text>
