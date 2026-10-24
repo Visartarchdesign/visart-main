@@ -1676,6 +1676,7 @@ export async function bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId
       if (env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && (i === 0 || i === slaydlar.length - 1) && SAHNA_RASM[sl.sahna]) {
         try { fotoBuf = await fotoSlayd(env, sl, bg, ov); if (!qopqoqFoto) qopqoqFoto = fotoBuf; } catch (e) { fotoBuf = null; }
       }
+      console.log(`[anim] slayd ${i + 1}/${slaydlar.length} ${sl.sahna} boshlandi`);
       await ovozYarat(env, sl.ovoz, mp3, tmpDir);
       const dur = (await tgSoniya(mp3)) + 0.5;
       await sfxQosh(SAHNA_SFX[sl.sahna], mp3, dur, tmpDir, sl.fx).catch(() => {});

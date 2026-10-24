@@ -41,7 +41,7 @@ function ish(nom, req, fn) {
   if (chatId) oxirgiAdmin = chatId;
   const kerak = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY'].filter((k) => !env[k]);
   if (kerak.length) return xatoYubor(env, chatId, nom, new Error('env yetishmaydi: ' + kerak.join(', ')));
-  const t = setTimeout(() => xatoYubor(env, chatId, nom, new Error("8 daqiqadan beri tugamadi (osilib qolgan bo'lishi mumkin)")), 480000);
+  const t = setTimeout(() => xatoYubor(env, chatId, nom, new Error("16 daqiqadan beri tugamadi (osilib qolgan bo'lishi mumkin)")), 960000);
   Promise.resolve().then(() => fn(env)).catch((e) => xatoYubor(env, chatId, nom, e)).finally(() => clearTimeout(t));
 }
 
