@@ -1312,17 +1312,24 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
       if (r.ok) { fs.writeFileSync(outPath, Buffer.from(await r.arrayBuffer())); return; }
     } catch (e) { /* bepul ovozga o'tamiz */ }
   }
-  // 1) Microsoft Edge neyron ovozi (o'zbek, erkak: Sardor)
-  try {
-    const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
-    const tts = new MsEdgeTTS();
-    await tts.setMetadata(process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const dir = fs.mkdtempSync(path.join(tmpDir, 'tts-'));
-    const pr = { rate: process.env.TTS_TEZLIK || '+4%', pitch: process.env.TTS_PITCH || '-1Hz' };
-    const r = await tts.toFile(dir, ovozMatni(matn), pr).catch(() => tts.toFile(dir, ovozMatni(matn)));
-    fs.copyFileSync(r.audioFilePath, outPath);
-    return;
-  } catch (e) { /* Gemini TTS'ga o'tamiz */ }
+  // 1) Microsoft Edge neyron ovozi (o'zbek, erkak: Sardor) -- har urinishda yangi ulanish, kutish bilan
+  const edgeXato = [];
+  for (let u = 0; u < 4; u++) {
+    try {
+      const { MsEdgeTTS, OUTPUT_FORMAT } = await import('msedge-tts');
+      const tts = new MsEdgeTTS();
+      await tts.setMetadata(process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+      const dir = fs.mkdtempSync(path.join(tmpDir, 'tts-'));
+      const pr = u < 2 ? { rate: process.env.TTS_TEZLIK || '+4%', pitch: process.env.TTS_PITCH || '-1Hz' } : undefined;
+      const r = await tts.toFile(dir, ovozMatni(matn), pr);
+      fs.copyFileSync(r.audioFilePath, outPath);
+      return;
+    } catch (e) {
+      const m = String((e && e.message) || e).slice(0, 120);
+      edgeXato.push(m); console.error('Edge TTS xato:', m);
+      await new Promise((r) => setTimeout(r, 2000 * (u + 1)));
+    }
+  }
   // 2) Gemini TTS (zaxira)
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1331,7 +1338,7 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
       generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Charon' } } } },
     }),
   });
-  if (!res.ok) throw new Error(`TTS xato: ${res.status}`);
+  if (!res.ok) throw new Error(`TTS xato: Gemini ${res.status}; Edge: ${edgeXato.slice(-1)[0] || '?'}`);
   const d = await res.json();
   const b64 = d.candidates[0].content.parts[0].inlineData.data;
   const pcm = path.join(tmpDir, 'v.pcm');
