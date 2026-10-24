@@ -14,12 +14,12 @@ const SERIF = 'DejaVu Serif, Georgia, serif';
 
 // qadam: {img, n, jami, sarlavha, tagsarlavha, belgi, belgiJoy:[x,y](0..1), ovoz mp3 yoki null, dur}
 export async function qadamSegment(q, tmp, out) {
-  const W = 1080, H = 1920, IH = 1180, IT = 440, fps = 25, n = Math.max(2, Math.round(q.dur * fps));
+  const W = 1080, H = 1920, IH = 1400, IT = 420, fps = 25, n = Math.max(2, Math.round(q.dur * fps));
   fs.mkdirSync(tmp, { recursive: true });
   const SRC_W = 3240, SRC_H = Math.round(SRC_W * IH / W);
   const src = await sharp(q.img).resize(SRC_W, SRC_H, { fit: 'cover', kernel: 'lanczos3' }).toBuffer();
-  const dots = Array.from({ length: q.jami }, (_, i) => `<circle cx="${W / 2 + (i - (q.jami - 1) / 2) * 34}" cy="1830" r="${i + 1 === q.n ? 9 : 6}" fill="${i + 1 === q.n ? GOLD : '#6b5a3e'}"/>`).join('');
-  const fade = Buffer.from(`<svg width="${W}" height="${IH}"><defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.14" stop-color="#fff"/><stop offset="0.88" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="${W}" height="${IH}" fill="url(#a)"/></svg>`);
+  const dots = Array.from({ length: q.jami }, (_, i) => `<circle cx="${W / 2 + (i - (q.jami - 1) / 2) * 34}" cy="1862" r="${i + 1 === q.n ? 9 : 6}" fill="${i + 1 === q.n ? GOLD : '#6b5a3e'}"/>`).join('');
+  const fade = Buffer.from(`<svg width="${W}" height="${IH}"><defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.08" stop-color="#fff"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect width="${W}" height="${IH}" fill="url(#a)"/></svg>`);
   const baza = await sharp({ create: { width: W, height: H, channels: 3, background: BG } }).png().toBuffer();
   const kadr = async (k) => {
     const p = k / (n - 1);
