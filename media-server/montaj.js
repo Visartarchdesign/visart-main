@@ -1314,6 +1314,14 @@ async function ovozYarat(env, matn, outPath, tmpDir) {
   }
   // 1) Microsoft Edge neyron ovozi (o'zbek, erkak: Sardor) -- har urinishda yangi ulanish, kutish bilan
   const edgeXato = [];
+  // 1-0) Python edge-tts (Microsoft protokolining eng yangi versiyasi bilan)
+  try {
+    const tf = path.join(tmpDir, `t${Date.now()}.txt`);
+    fs.writeFileSync(tf, ovozMatni(matn), 'utf8');
+    await execFileAsync('edge-tts', ['-f', tf, '-v', process.env.TTS_OVOZ || 'uz-UZ-SardorNeural', `--rate=${process.env.TTS_TEZLIK || '+4%'}`, `--pitch=${process.env.TTS_PITCH || '-1Hz'}`, '--write-media', outPath], { timeout: 60000, maxBuffer: 1024 * 1024 * 5 });
+    if (fs.existsSync(outPath) && fs.statSync(outPath).size > 1000) return;
+    throw new Error('edge-tts bo\'sh fayl');
+  } catch (e) { console.error('edge-tts(py) xato:', String((e && (e.stderr || e.message)) || e).slice(0, 200)); }
   // 1-a) Cloudflare proksi orqali (Render IP'si to'silgan bo'lsa ham ishlaydi)
   if (process.env.MEDIA_SECRET) {
     for (let u = 0; u < 2; u++) {

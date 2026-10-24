@@ -4,8 +4,10 @@ FROM node:20-slim
 # (nodejs-whisper paketi orqali, manbadan) qurish uchun kerak -- subtitr
 # generatsiyasi shunga tayanadi.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-liberation fonts-dejavu-core cmake g++ git python3 make curl ca-certificates \
+  && apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-liberation fonts-dejavu-core cmake g++ git python3 make curl ca-certificates python3-pip \
   && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir --break-system-packages edge-tts
 
 COPY fonts/Poppins-Bold.ttf /usr/local/share/fonts/
 RUN fc-cache -f
