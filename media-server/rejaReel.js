@@ -2,9 +2,13 @@
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 const ex = promisify(execFile);
+let LOGO_B64 = '';
+try { LOGO_B64 = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'logo-mark.png')).toString('base64'); } catch (e) { /* logo ixtiyoriy */ }
+const LOGO = LOGO_B64 ? `<image href="data:image/png;base64,${LOGO_B64}" x="${1080 / 2 - 38}" y="34" width="76" height="66"/>` : '';
 const BG = '#0c0a08', GOLD = '#e6c07b', CREAM = '#f3ead9';
 const clamp = (x) => Math.max(0, Math.min(1, x));
 const ease = (x) => x * x * (3 - 2 * x);
@@ -39,11 +43,12 @@ export async function rejaSegment(q, tmp, out) {
       const x0 = (px0 + Z[0] * PW - left) * s, x1 = (px0 + Z[2] * PW - left) * s, y0 = (py0 + Z[1] * PH - top) * s, y1 = (py0 + Z[3] * PH - top) * s;
       const a = ease(clamp((p - 0.3) / 0.2)), pulse = 0.5 + 0.5 * Math.sin(p * 18);
       const w = 44 + (q.zonaNom || '').length * 17;
-      hl = `<g opacity="${a}"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="14" fill="${GOLD}" fill-opacity="${0.10 + 0.06 * pulse}" stroke="${GOLD}" stroke-width="5"/>
+      hl = `<g opacity="${a}"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="14" fill="${GOLD}" fill-opacity="${0.04 + 0.03 * pulse}" stroke="${GOLD}" stroke-width="5"/>
         <rect x="${x0}" y="${Math.max(6, y0 - 64)}" width="${w}" height="50" rx="12" fill="#d9b365"/><text x="${x0 + w / 2}" y="${Math.max(6, y0 - 64) + 34}" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#2a1d08" letter-spacing="1.5">${esc((q.zonaNom || '').toUpperCase())}</text></g>`;
     }
     const a = ease(clamp(p / 0.12)), sub = ease(clamp((p - 0.15) / 0.15));
     const ust = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      ${LOGO}
       <g opacity="${a}" transform="translate(0,${(1 - a) * -16})"><circle cx="${W / 2}" cy="170" r="36" fill="${GOLD}"/><text x="${W / 2}" y="184" text-anchor="middle" font-family="${SERIF}" font-size="40" font-weight="700" fill="#2a1d08">${q.n}</text>
       <text x="${W / 2}" y="300" text-anchor="middle" font-family="${SERIF}" font-size="92" font-weight="700" fill="${GOLD}">${esc(q.sarlavha)}</text></g>
       <text x="${W / 2}" y="372" opacity="${sub}" text-anchor="middle" font-family="${SERIF}" font-style="italic" font-size="40" fill="${CREAM}">${esc(q.tag)}</text>

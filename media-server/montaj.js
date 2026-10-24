@@ -1297,12 +1297,35 @@ async function tgSoniya(file) {
 }
 
 // Diktor uchun matn: tinish belgilari orqali jonli pauzalar (kitobiy bir tekis o'qishni yumshatadi)
-function ovozMatni(m) {
-  return String(m || '').replace(/\s+/g, ' ')
-    .replace(/\s*:\s*/g, ', ').replace(/\s*[—–-]\s+/g, ', ')
-    .replace(/([.!?])\s+/g, '$1 ... ').replace(/\?\s*\.\.\./g, '? ...').trim();
+export function lotinKirill(t) {
+  const U = String(t).replace(/[ʻʼ‘’`´]/g, "'");
+  const mp = [["yo'", 'йў'], ["Yo'", 'Йў'], ['ye', 'е'], ['Ye', 'Е'], ["O'", 'Ў'], ["o'", 'ў'], ["G'", 'Ғ'], ["g'", 'ғ'], ['Sh', 'Ш'], ['sh', 'ш'], ['Ch', 'Ч'], ['ch', 'ч'], ['Yo', 'Ё'], ['yo', 'ё'], ['Yu', 'Ю'], ['yu', 'ю'], ['Ya', 'Я'], ['ya', 'я'], ['Ng', 'Нг'], ['ng', 'нг'], ["'", 'ъ']];
+  const one = { a: 'а', b: 'б', d: 'д', e: 'е', f: 'ф', g: 'г', h: 'ҳ', i: 'и', j: 'ж', k: 'к', l: 'л', m: 'м', n: 'н', o: 'о', p: 'п', q: 'қ', r: 'р', s: 'с', t: 'т', u: 'у', v: 'в', x: 'х', y: 'й', z: 'з' };
+  let out = '';
+  for (let i = 0; i < U.length;) {
+    let ok = false;
+    for (const [a, b] of mp) if (U.startsWith(a, i)) { out += b; i += a.length; ok = true; break; }
+    if (ok) continue;
+    const c = U[i], lc = c.toLowerCase();
+    if (lc === 'e' && (i === 0 || !/[a-zA-Z']/.test(U[i - 1]))) out += c === c.toLowerCase() ? 'э' : 'Э';
+    else if (one[lc]) out += c === lc ? one[lc] : one[lc].toUpperCase();
+    else out += c;
+    i++;
+  }
+  return out;
 }
 
+function ovozMatni(m) {
+  let t = String(m || '').replace(/\s+/g, ' ')
+    .replace(/\s*:\s*/g, ', ').replace(/\s*[—–-]\s+/g, ', ')
+    .replace(/([.!?])\s+/g, '$1 ... ').replace(/\?\s*\.\.\./g, '? ...').trim();
+  const y = process.env.TTS_YOZUV;
+  if (y === 'kirill') t = lotinKirill(t);
+  else if (y === 'lotin2') t = t.replace(/([oOgG])['‘’`ʼ]/g, '$1\u02BB').replace(/'/g, '\u02BC');
+  return t;
+}
+
+export const ovozMatniOl = ovozMatni;
 export async function ovozYarat(env, matn, outPath, tmpDir) {
   // 0) Muallifning o'z ovozi (ElevenLabs klon) -- kalit va ovoz ID qo'yilgan bo'lsa
   if (env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID) {

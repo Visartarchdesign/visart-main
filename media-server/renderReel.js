@@ -2,9 +2,13 @@
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 const ex = promisify(execFile);
+let LOGO_B64 = '';
+try { LOGO_B64 = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'logo-mark.png')).toString('base64'); } catch (e) { /* logo ixtiyoriy */ }
+const LOGO = LOGO_B64 ? `<image href="data:image/png;base64,${LOGO_B64}" x="${1080 / 2 - 38}" y="34" width="76" height="66"/>` : '';
 
 const BG = '#0c0a08', GOLD = '#e6c07b', CREAM = '#f3ead9';
 const clamp = (x) => Math.max(0, Math.min(1, x));
@@ -47,6 +51,7 @@ export async function qadamSegment(q, tmp, out) {
       belgi = `<g opacity="${b}" transform="translate(0,${(1 - b) * 14})"><rect x="${bx - w / 2}" y="${by - 24}" width="${w}" height="48" rx="12" fill="#d9b365"/><text x="${bx}" y="${by + 8}" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="24" font-weight="700" fill="#2a1d08" letter-spacing="1.5">${esc(q.belgi.toUpperCase())}</text></g>`;
     }
     const ust = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+      ${LOGO}
       <g opacity="${a}" transform="translate(0,${(1 - a) * -16})">
         <circle cx="${W / 2}" cy="170" r="36" fill="${GOLD}"/><text x="${W / 2}" y="184" text-anchor="middle" font-family="${SERIF}" font-size="40" font-weight="700" fill="#2a1d08">${q.n}</text>
         <text x="${W / 2}" y="300" text-anchor="middle" font-family="${SERIF}" font-size="92" font-weight="700" fill="${GOLD}">${esc(q.sarlavha)}</text></g>
