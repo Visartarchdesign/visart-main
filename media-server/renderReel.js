@@ -20,8 +20,8 @@ export async function qadamSegment(q, tmp, out) {
   if (q.parallaks) {
     const pd = path.join(tmp, 'par');
     const scr = path.join(path.dirname(decodeURIComponent(new URL(import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1')), 'parallax.py');
-    for (const py of ['python', 'python3', 'py']) {
-      try { await ex(py, [scr, q.img, pd, String(n), String(W), String(IH), String(q.yon || 1)], { maxBuffer: 1024 * 1024 * 20 }); parDir = pd; break; } catch (e) { if (py === 'py') console.error('parallaks xato:', String(e.message).slice(0, 200)); }
+    for (const py of [process.env.PARALLAX_PY, 'python', 'python3', 'py'].filter(Boolean)) {
+      try { await ex(py, [scr, q.img, pd, String(n), String(W), String(IH), String(q.yon || 1)], { maxBuffer: 1024 * 1024 * 20 }); parDir = pd; break; } catch (e) { if (py === 'py' || !py) console.error('parallaks xato:', String(e.message).slice(0, 200)); }
     }
   }
   const SRC_W = 3240, SRC_H = Math.round(SRC_W * IH / W);
