@@ -1621,6 +1621,7 @@ async function animatsionSenariy(env, mavzu) {
     "MAVZUGA SODIQLIK (MAJBURIY): admin mavzu bergan bo'lsa, video AYNAN shu mavzu haqida bo'lsin, boshqa mavzuga o'tmang; hook va sarlavhada mavzu so'zi bo'lsin.\n" +
     "CHUQUR MAZMUN (MAJBURIY): 1) MUAMMO qanday sodir bo'ladi -- jarayonni bosqichma-bosqich, sabab-oqibat bilan ko'rsating (masalan: yozda tik quyosh -> devor qiziydi -> issiqlik ichkariga o'tadi -> xona qiziydi). 2) Har sabab uchun ANIQ detal: qaysi element (oyna, parda, devor, ayvon, izolyatsiya, chiroq, mebel), qayerda, qanday joylashadi. 3) YECHIM -- har biri alohida slaydda, aniq amal: nima qilinadi, qayerga, qanday parametr/yo'nalish bilan (faqat umumiy tan olingan qoidalar, to'qima raqam yo'q). 4) Har slaydning ovozi ekrandagi ko'rinish bilan mos: 'mana bu oyna', 'shu devor', 'bu yerda' kabi ko'rsatish so'zlari bilan. 5) Oxirida natija: odam nima yutadi. Umumiy gaplar ('muhim', 'e'tibor bering', 'chiroyli bo'ladi') TAQIQLANGAN -- har gap yangi aniq ma'lumot bersin. Slaydlar 7-9 ta, jami ovoz 40-55 soniya.\n" +
     "PROFESSIONAL SENARIYCHI QOIDASI: siz 15 yillik amaliyotchi arxitektor-prorabsiz, mijozga obyektda turib tushuntiryapsiz. Har slaydda bitta aniq fikr: KIM/QAYER (xona, devor, oyna) -> NIMA BO'LADI -> NIMA UCHUN. Yaxshi: 'Yozda quyosh tik tushganda janub oynadan issiqlik to'g'ri xonaga kiradi.' Yomon: 'Quyosh nuri xonaga ta'sir qiladi.' Birinchi gap -- mijoz xatosi yoki og'riq nuqtasi ('Remontda eng qimmat xato -- ...'), ikkinchi -- sabab, keyin yechimlar (har biri: nima + qayerga + natija), oxirida natija. Bir xil qolipdagi gaplar ('Bu muhim', 'Buni unutmang') yo'q. Har slayd 'foto' maydoni haqiqiy, konkret joy tavsifi bo'lsin va 'belgilar' ovozda aytiladigan predmetlarning o'zi bo'lsin (ovozda 'mana bu oyna' desa -- belgida oyna). MUAMMO va YECHIM slaydlarining HAMMASIDA foto va belgilar MAJBURIY.\n" +
+    "FOTO QOIDASI: har slaydning 'foto'si BOSHQA-BOSHQA kadr bo'lsin (boshqa xona/burchak/yaqin plan), hech qachon bir xil emas. Faqat haqiqiy, jonli 3D vizualizatsiya: haqiqiy uy, quyosh nuri, daraxtlar, mebel; chizma, sxema, izometrik, 2D yo'q.\n" +
     'JAVOB FAQAT JSON massiv: slaydlar [{"tur":"hook|mazmun|xulosa","sarlavha":"<ekranda 2-5 so\'z>","vurgu":"<sarlavhadagi 1 ta rangli ajratiladigan so\'z>","sahna":"<yuqoridagi SAHNALAR ro\'yxatidan ENG MOS nom, faqat nomning o\'zi>","foto":"<INGLIZCHA: slaydda korsatiladigan HAQIQIY joy/sahna fotosi tavsifi, ANIQ: xona turi, oyna/mebel/material joylashuvi, yoruglik yonalishi; faqat bitta kadrda korinadigan narsalar>","belgilar":[{"ob":"<INGLIZCHA: foto ichidagi aniq predmet, masalan the large window on the left wall>","m":"<ekranda 1-3 sozli ozbekcha belgi>"}] (2-4 ta, ovozda aytilish tartibida),"oqim":[[0,1,"<1-2 soz: Quyosh nuri|Havo|Issiqlik>"]] (ixtiyoriy: belgilar indekslari orasida strelka -- jarayon yonalishi),"rasm":"<INGLIZCHA (zaxira): shu slaydga mos illyustratsiya tavsifi, masalan isometric cutaway room with low winter sun angle>","matn":"<ekranda 0-8 so\'z yoki bo\'sh>","ovoz":"<diktor aytadigan 1-2 qisqa gap>","fx":"<ixtiyoriy: [{\"k\":\"eshik|qadam|qurilish|suv|shamol|qushlar|yomgir|oshxona|sahifa|klik|pol|bogh\",\"t\":soniya}] -- FAQAT ekrandagi harakatga HAQIQATAN mos tovush (eshik ochilsa eshik); ortiqcha effekt qo\'shmang>"}], oxirgi element: {"tur":"meta","post_sarlavha":"<3-6 so\'z>","vurgu":"<sarlavhadagi 1 ta so\'z>","tavsif":"<Instagram izohi: hook + 2 gap + savol>","hashtaglar":"<6-8 hashtag>"}';
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
@@ -1658,7 +1659,7 @@ async function bajarAnimatsionIc({ env, adminChatId, mavzu, korsatma, ishId }) {
         headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }, signal: AbortSignal.timeout(10000) });
       oxirgi = ((await rr.json()) || []).map((x) => x && x.payload && x.payload.sarlavha);
     } catch (e) { /* ixtiyoriy */ }
-    const bank = (korsatma || mavzu) ? null : senariyTanla(oxirgi, [mavzu].filter(Boolean).join(' '));
+    const bank = null; // faqat AI senariy + haqiqiy foto
     const raw = bank
       ? [...bank.slaydlar, { tur: 'meta', post_sarlavha: bank.post_sarlavha, vurgu: bank.vurgu, tavsif: bank.tavsif, hashtaglar: bank.hashtaglar }]
       : await animatsionSenariy(env, [mavzu, korsatma ? `ADMIN TUZATISH KO'RSATMASI (albatta bajaring, avvalgi variant yoqmadi): ${korsatma}` : ''].filter(Boolean).join('. '));
@@ -1694,15 +1695,16 @@ async function bajarAnimatsionIc({ env, adminChatId, mavzu, korsatma, ishId }) {
       const kadr = Math.round(dur * 25);
       const aksent = ['#c4572b', '#0e6b5c'][i % 2];
       let izohOk = false;
-      const gCfg = !fotoBuf && sl.foto ? slaydIzohCfg(sl) : null;
+      if (!sl.foto) sl.foto = (SAHNA_RASM[sl.sahna] || sl.rasm || sl.sarlavha || 'modern interior');
+      const gCfg = !fotoBuf ? (slaydIzohCfg(sl) || { obj: {}, steps: [] }) : null;
       if (gCfg && env.CF_ACCOUNT_ID && env.CF_AI_TOKEN && env.GEMINI_API_KEY) {
         try {
           const kal = 'g:' + sl.foto;
           if (!izohKesh[kal]) {
-            let rr = await rasmYarat(env, `Photorealistic professional architectural photograph, ${sl.foto}. Natural light, 35mm lens, sharp focus, realistic materials and textures, square composition, everything described is clearly visible. No text, no letters, no people.`, null, true);
+            let rr = await rasmYarat(env, `Ultra realistic 3D architectural visualization photo, Corona render quality, ${sl.foto}. Real house, real sunlight and shadows, real trees and plants, natural materials, 35mm lens, sharp focus, square composition, everything described is clearly visible. No text, no letters, no people.`, null, true);
             if (!rr.buf) rr = await rasmYarat(env, `Photorealistic architectural photograph, ${sl.foto}. No text, no people.`, null, true);
             if (!rr.buf) throw new Error("foto yo'q");
-            izohKesh[kal] = { buf: rr.buf, joy: await obyektJoyi(env, rr.buf, gCfg.obj, geminiJsonSora) };
+            izohKesh[kal] = { buf: rr.buf, joy: Object.keys(gCfg.obj).length ? await obyektJoyi(env, rr.buf, gCfg.obj, geminiJsonSora).catch(() => ({})) : {} };
           }
           await matnQatlami(sl, ov, false);
           const fdir = path.join(tmpDir, `fr${i}`);
