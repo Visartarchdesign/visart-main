@@ -163,6 +163,7 @@ function render(){nav();const kab=tab==='kab';let f=$('#kf');
  $('#m').style.display=kab?'none':'block';
  if(kab){$('#kb').style.display='block';return}$('#kb').style.display='none';
  $('#m').innerHTML=tab==='narx'?renderNarx():tab==='xiz'?renderXiz():tab==='loy'?renderLoy():renderAlo()}
+(function(){let sp='';try{sp=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||new URLSearchParams(location.search).get('tab')||''}catch(e){}const M={kabinet:'kab',xizmat:'xiz',xizmatlar:'xiz',loyiha:'loy',loyihalar:'loy',aloqa:'alo',narx:'narx'};if(M[sp])tab=M[sp]})();
 render();
 fetch('/api/content').then(r=>r.json()).then(d=>{if(d&&d.ok){D=d;render()}}).catch(()=>{});
 </script>
