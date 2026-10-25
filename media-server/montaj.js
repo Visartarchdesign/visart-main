@@ -1327,18 +1327,18 @@ function ovozMatni(m) {
 
 export const ovozMatniOl = ovozMatni;
 function elMatn(t, env) {
-  const y = env.EL_YOZUV || '';
-  if (y === 'kirill') return lotinKirill(t);
-  if (y === 'lotin2') return String(t).replace(/([oOgG])['‘’`ʼ]/g, '$1\u02BB').replace(/'/g, '\u02BC');
-  return t;
+  const y = env.EL_YOZUV === undefined ? 'kirill' : env.EL_YOZUV;
+  const f = (x) => y === 'kirill' ? lotinKirill(x) : y === 'lotin2' ? String(x).replace(/([oOgG])['‘’`ʼ]/g, '$1\u02BB').replace(/'/g, '\u02BC') : x;
+  return String(t).split(/(\[[^\]]*\])/).map((p) => (p.startsWith('[') ? p : f(p))).join('');
 }
-export async function ovozYarat(env, matn, outPath, tmpDir) {
+export async function ovozYarat(env, matnTeg, outPath, tmpDir) {
+  const matn = String(matnTeg || '').replace(/\[[^\]]*\]\s*/g, '').trim(); // [teg]lar faqat ElevenLabs v3 uchun
   // 0) Muallifning o'z ovozi (ElevenLabs klon) -- kalit va ovoz ID qo'yilgan bo'lsa
   if (env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID) {
     try {
       const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${env.ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: elMatn(matn, env), model_id: env.ELEVENLABS_MODEL || 'eleven_v3', language_code: env.EL_TIL === 'yoq' ? undefined : (env.EL_TIL || 'uz'), voice_settings: { stability: Number(env.EL_STABILITY || 0.5), similarity_boost: 0.85 } }),
+        body: JSON.stringify({ text: elMatn(matnTeg, env), model_id: env.ELEVENLABS_MODEL || 'eleven_v3', language_code: env.EL_TIL === 'yoq' ? undefined : (env.EL_TIL || 'uz'), voice_settings: { stability: Number(env.EL_STABILITY || 0.5), similarity_boost: 0.85 } }),
         signal: AbortSignal.timeout(45000) });
       if (r.ok) { fs.writeFileSync(outPath, Buffer.from(await r.arrayBuffer())); return; }
       console.error('ElevenLabs xato:', r.status, (await r.text().catch(() => '')).slice(0, 200));
