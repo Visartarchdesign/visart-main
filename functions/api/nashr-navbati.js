@@ -335,6 +335,17 @@ export async function onRequestGet({ request, env, waitUntil }) {
       });
       natijalar.push({ id: q.id, holat: 'bajarildi' });
     } catch (e) {
+      // media-server vaqtincha o'chiq bo'lsa (502/timeout) video nashri yo'qolmasin: 10 daqiqadan keyin qayta, 6 martagacha
+      const urinish = Number((q.payload && q.payload.urinish) || 0);
+      if (q.turi === 'video_ig_tg' && urinish < 6) {
+        await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
+          method: 'PATCH',
+          prefer: 'return=minimal',
+          body: JSON.stringify({ holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 10 * 60e3).toISOString(), payload: { ...q.payload, urinish: urinish + 1 }, xato_matni: String((e && e.message) || e).slice(0, 300) }),
+        }).catch(() => {});
+        natijalar.push({ id: q.id, holat: 'qayta', urinish: urinish + 1 });
+        continue;
+      }
       await xatoYoz(env, `nashr-navbati:${q.turi}`, e);
       await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
         method: 'PATCH',
