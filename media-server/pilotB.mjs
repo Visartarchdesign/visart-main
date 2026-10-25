@@ -52,13 +52,13 @@ async function qosh(matn, build, teg = '') {
   for (const x of bol) { const d = (x.length / jam) * (dur - 0.45); sub.push({ bosh: tt, tugash: tt + d, matn: x }); tt += d; }
   t += dur; console.log('segment', id, 'tayyor');
 }
-await qosh(HOOK, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: null, n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'kvartira rejasi tahlili', mp3, dur }, fd, seg), '[curious, intriguing]');
+await qosh(HOOK, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: null, n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'kvartira rejasi tahlili', mp3, dur }, fd, seg), '[confident, energetic, fast-paced, intriguing]');
 for (let i = 0; i < Q.length; i++) {
   const q = Q[i];
-  await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[calm, confident]');
-  await qosh(q.boshqa, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(q.rasm), n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.kam, belgi: q.belgi, belgiJoy: q.joy, parallaks: true, yon: q.yon, mp3, dur }, fd, seg), '[serious, concerned]');
+  await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[confident, energetic, clear]');
+  await qosh(q.boshqa, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(q.rasm), n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.kam, belgi: q.belgi, belgiJoy: q.joy, parallaks: true, yon: q.yon, mp3, dur }, fd, seg), '[serious, firm, confident]');
 }
-await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Vizart Dizayn', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident]');
+await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Vizart Dizayn', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]');
 fs.writeFileSync(path.join(tmp, 'list.txt'), segs.map((s) => `file '${s.replace(/\\/g, '/')}'`).join('\n'));
 const joined = path.join(tmp, 'joined.mp4');
 await ex('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-c', 'copy', joined]);

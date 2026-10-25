@@ -2,13 +2,13 @@
 import fs from 'fs';
 import { ovozYarat } from './montaj.js';
 for (const l of fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8').split(/\r?\n/) : []) { const m = l.match(/^([A-Z_]+)=(.*)$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
-const G = "Mana bu yerda devor yo'q. Mehmonxona, stol va oshxona bitta bo'shliqda, shuning uchun deraza yorug'ligi hamma burchakka yetib boradi.";
+const T = "Mana bu yerda devor yo'q. Mehmonxona, stol va oshxona bitta bo'shliqda, shuning uchun deraza yorug'ligi hamma burchakka yetib boradi.";
+const G = '[confident, energetic, speaking quickly and clearly] ' + T;
 const V = [
-  ['1_oddiy_uz_kod', { EL_YOZUV: '', EL_STABILITY: '0.5' }],
-  ['2_oddiy_barqaror', { EL_YOZUV: '', EL_STABILITY: '1.0' }],
-  ['3_kirill', { EL_YOZUV: 'kirill', EL_STABILITY: '0.5' }],
-  ['4_kirill_barqaror', { EL_YOZUV: 'kirill', EL_STABILITY: '1.0' }],
-  ['5_lotin_maxsus', { EL_YOZUV: 'lotin2', EL_STABILITY: '1.0' }],
+  ['1_kirill_ifodali', { EL_YOZUV: 'kirill', EL_STABILITY: '0', EL_TEZLIK: '1.12' }],
+  ['2_kirill_o_rta', { EL_YOZUV: 'kirill', EL_STABILITY: '0.5', EL_TEZLIK: '1.12' }],
+  ['3_lotin_ifodali', { EL_YOZUV: 'lotin2', EL_STABILITY: '0', EL_TEZLIK: '1.12' }],
+  ['4_lotin_o_rta', { EL_YOZUV: 'lotin2', EL_STABILITY: '0.5', EL_TEZLIK: '1.12' }],
 ];
 for (const [nom, o] of V) {
   Object.assign(process.env, o);
