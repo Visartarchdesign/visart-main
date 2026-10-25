@@ -34,6 +34,7 @@ import { SAHNA_FOTO, obyektJoyi, fotoIzohKadrlar, slaydIzohCfg } from './izohlas
 import { storyKartalarYarat, storyVariantYarat } from './storyKartalar.js';
 
 const execFileAsync = promisify(execFile);
+const MONTAJ_MAXPX = Number(process.env.MONTAJ_MAXPX) || 1920; // PC: to'liq 1080x1920; Render'da MONTAJ_MAXPX=1280
 // "Flash Lite" tekin tarifda ancha yuqori kunlik limitga ega (500/kun,
 // oddiy "Flash"da bor-yo'g'i 20/kun) -- 24/7 avtomatik pipeline uchun shart.
 // Bir nechtasi ZANJIR sifatida ro'yxatlangan: birinchisi kunlik limitga
@@ -477,7 +478,7 @@ async function ffmpegKesibBirlashtir(inputPath, segmentlar, outputPath, tmpDir) 
       // (xotira va chiqish hajmini nazorat qilish uchun) -- aks holda
       // asl o'lcham saqlanadi.
       // yengil rang tuzatish: iliq, biroz kontrastli, tiniq (yuz/teri chiroyli ko'rinsin)
-      '-vf', "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,eq=contrast=1.06:saturation=1.08:brightness=0.02:gamma=0.98,unsharp=3:3:0.4",
+      '-vf', `scale='min(${MONTAJ_MAXPX},iw)':'min(${MONTAJ_MAXPX},ih)':force_original_aspect_ratio=decrease:force_divisible_by=2,eq=contrast=1.06:saturation=1.08:brightness=0.02:gamma=0.98,unsharp=3:3:0.4`,
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
       // Manba (telefon) odatda bt709 rangda -- buni aniq ko'rsatmasak, ba'zi
       // pleyerlarda video xira/qorong'i ko'rinadi.
@@ -1008,14 +1009,28 @@ async function tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha
 
 }
 
-async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich }) {
+async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich, fayl }) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'montaj-'));
   const inputPath = path.join(tmpDir, 'input.mp4');
   const outputPath = path.join(tmpDir, 'output.mp4');
   try {
-    await bosqich('video yuklab olinmoqda...');
-    const filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, aslFileId);
-    await tgDownloadToFile(env.MIJOZ_BOT_TOKEN, filePath, inputPath);
+    if (fayl) {
+      await bosqich(`kompyuter papkasidan olindi: ${path.basename(fayl)}`);
+      fs.copyFileSync(fayl, inputPath);
+    } else {
+      await bosqich('video yuklab olinmoqda...');
+      let filePath;
+      try { filePath = await tgGetFilePath(env.MIJOZ_BOT_TOKEN, aslFileId); }
+      catch (e) {
+        if (/too big/i.test(String((e && e.message) || e))) {
+          await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
+            "📦 Video 20 MB dan katta -- Telegram bot uni yuklab ololmaydi.\nFaylni kompyuterdagi Documents\\Visart_AI_Studio\\xom_video papkasiga tashlang -- montaj avtomatik boshlanadi.");
+          return true;
+        }
+        throw e;
+      }
+      await tgDownloadToFile(env.MIJOZ_BOT_TOKEN, filePath, inputPath);
+    }
 
     await bosqich("Gemini'ga yuklanmoqda...");
     const mimeType = 'video/mp4';
@@ -1164,7 +1179,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
 // tugagandan keyin adminga xato xabari yuboriladi. (Butun process'ni
 // o'ldiradigan OOM kabi xatolar bundan mustasno -- ular xotira sozlamalari
 // bilan oldindan oldi olingan.)
-export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma }) {
+export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma, fayl }) {
   const MAX_URINISH = 3;
   let oxirgiXato;
   for (let urinish = 1; urinish <= MAX_URINISH; urinish++) {
@@ -1173,7 +1188,7 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
         `⏳ ${matn}${urinish > 1 ? ` (${urinish}-urinish)` : ''}`);
     };
     try {
-      const tugadi = await bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich });
+      const tugadi = await bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, taklifId, korsatma, bosqich, fayl });
       if (tugadi) return;
     } catch (e) {
       oxirgiXato = e;

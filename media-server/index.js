@@ -17,10 +17,12 @@ app.use(express.json({ limit: '20mb' }));
 
 // Render'da SUPABASE_*/MIJOZ_BOT_TOKEN/GEMINI_API_KEY sozlanmagan bo'lsa ham ishlashi uchun, Cloudflare bot
 // ularni (MEDIA_SECRET bilan himoyalangan HTTPS so'rovda) uzatadi. Cloudflare qiymatlari ustun (Render'dagi eski/almashtirilgan token 401 bermasligi uchun).
+import { keshYoz, xomKuzatuvchi } from './xomKuzatuvchi.js';
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
   const out = { ...process.env };
   for (const k of ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY', 'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ACCOUNT_ID', 'FACEBOOK_PAGE_ID', 'TELEGRAM_CHANNEL_ID']) if (x[k]) out[k] = x[k];
+  keshYoz(out, req.body && req.body.adminChatId);
   return out;
 }
 
@@ -167,3 +169,4 @@ app.get('/montaj-test', (req, res) => {
 
 const port = process.env.PORT || 10000;
 app.listen(port, () => console.log(`Visart media-server ${port}-portda ishga tushdi`));
+if (process.platform === 'win32' || process.env.XOM_KUZAT) xomKuzatuvchi();
