@@ -54,7 +54,7 @@ export async function senariyYoz(env, dir, nom = '') {
   let S = await geminiObj(env, [{
     text: `Siz arxitektura/interyer dizayn Reels senaristisiz. Auditoriya: kvartira/uy egalari va dizayn sevuvchilar. Quyida rejadan olingan FAKTLAR va renderlar (tartib raqami 1..${renders.length}).\nFAKTLAR: ${JSON.stringify(faktlar)}\n` +
       `Vazifa: 3 ta eng qiziqarli va FOYDALI dizayn qarorini tanlang. Har biri uchun odamga o'zi uyida qo'llay oladigan umumiy ergonomika qoidasini (aniq raqam bilan, odatda qabul qilingan me'yor) ayting va shu qaror bu rejada qanday ishlaganini FAKTLARdagi o'lchamga bog'lang. Renderni faqat shu xona/qaror ROSTDAN ko'rinsa tanlang (rasmga qarang). Faqat JSON obyekt:\n` +
-      `{"hook":"<=10 so'z, aniq savol (masalan: Dush necha santimetr bo'lsa qulay?). '3 ta sir' kabi umumiy va'dalar TAQIQ","oblojka":"<=6 so'z, videoning HAQIQIY mazmuniga mos UMUMIY mavzu va foyda (masalan: Qulay uy uchun 3 ta o'lcham qoidasi). Mijoz ismi, loyiha nomi, 'kvartirasi' kabi nomlar TAQIQ","hero":<eng chiroyli render>,"oxir":"<=14 so'z, Direct'ga yozishga chaqiruv","zonalar":[{"sar":"2-3 so'z","tag":"3-5 so'z","xona":"FAKTLARdagi xona nomi","nom":"1-2 so'z","rasm":<render raqami>,"belgi":"2-3 so'z render yorlig'i","joy":[x,y],"kam":"3-5 so'z","muammo":"<=24 so'z: me'yor (raqam) + buzilsa oqibat","yechim":"<=22 so'z, 'Visart Design' bilan boshlanadi: shu rejada aniq nima qilgani (FAKTLARdagi o'lcham)","sfx":"pol|oshxona|eshik|shamol|suv|null"}]}\n` +
+      `{"hook":"<=10 so'z, aniq savol (masalan: Dush necha santimetr bo'lsa qulay?). '3 ta sir' kabi umumiy va'dalar TAQIQ","oblojka":"<=6 so'z, videoning HAQIQIY mazmuniga mos UMUMIY mavzu va foyda (masalan: Qulay uy uchun 3 ta o'lcham qoidasi). Mijoz ismi, loyiha nomi, 'kvartirasi' kabi nomlar TAQIQ","hero":<eng chiroyli render>,"oxir":"<=30 so'z: Tabriklayman, Visart Design bilan uyni to'g'ri loyihaladingiz; sizga ham shunday loyiha kerak bo'lsa Direct'ga REJA deb yozing","zonalar":[{"sar":"2-3 so'z","tag":"3-5 so'z","xona":"FAKTLARdagi xona nomi","nom":"1-2 so'z","rasm":<render raqami>,"belgi":"2-3 so'z render yorlig'i","joy":[x,y],"kam":"3-5 so'z","muammo":"<=18 so'z: me'yor (raqam) + buzilsa oqibat","yechim":"<=16 so'z, 'Visart Design' bilan boshlanadi: shu rejada aniq nima qilgani (FAKTLARdagi o'lcham)","yangi":"<=14 so'z, 'Lekin' bilan boshlanadi: shu yechimning yon kamchiligi","yechim2":"<=16 so'z, 'Visart Design' bilan boshlanadi: yon kamchilikni qanday hal qilgani","sfx":"pol|oshxona|eshik|shamol|suv|null"}]}\n` +
       `QONUN (majburiy):\n- ${QONUN.join('\n- ')}`,
   }, ...renderB], 0.4);
   const tuz = async (A) => {
@@ -70,7 +70,7 @@ export async function senariyYoz(env, dir, nom = '') {
   S = await tuz(S);
   S.zonalar = (S.zonalar || []).slice(0, 3).map((z, i) => {
     const b = boxOf(z.xona) || z.box || [100, 100, 900, 900];
-    return { ...z, sabab: z.muammo || z.sabab, boshqa: z.yechim || z.boshqa, box: b, zona: [b[1] / 1000, b[0] / 1000, b[3] / 1000, b[2] / 1000], yon: i % 2 ? -1 : 1 };
+    return { ...z, sabab: z.muammo || z.sabab, boshqa: z.yechim ? [z.yechim, z.yangi, z.yechim2].filter(Boolean).join(' ') : z.boshqa, box: b, zona: [b[1] / 1000, b[0] / 1000, b[3] / 1000, b[2] / 1000], yon: i % 2 ? -1 : 1 };
   });
   S.faktlar = faktlar;
   fs.writeFileSync(kesh, JSON.stringify(S, null, 2));
