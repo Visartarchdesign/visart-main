@@ -547,6 +547,14 @@ export async function ffmpegMuzikaQosh(videoPath, musicPath, outPath) {
   ], { maxBuffer: 1024 * 1024 * 20 });
 }
 
+export async function ffmpegMuzikaDuck(videoPath, musicPath, outPath, { daraja = 0.32 } = {}) {
+  // Muzika: past/yuqori chastota kesiladi (ovoz diapazoni bo'sh qoladi), nutq paytida kuchli pasayadi.
+  const dur = parseFloat((await execFileAsync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', videoPath])).stdout) || 30;
+  const fc = `[0:a]asplit=2[v1][v2];[1:a]highpass=f=90,lowpass=f=9000,equalizer=f=2500:t=q:w=1:g=-4,volume=${daraja},afade=t=in:d=2,afade=t=out:st=${Math.max(1, dur - 3).toFixed(2)}:d=3[m];[m][v2]sidechaincompress=threshold=0.015:ratio=12:attack=15:release=700:makeup=1[d];[v1][d]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=9[a]`;
+  await execFileAsync('ffmpeg', ['-y', '-i', videoPath, '-stream_loop', '-1', '-i', musicPath, '-filter_complex', fc,
+    '-map', '0:v', '-map', '[a]', '-t', dur.toFixed(2), '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k', '-ar', '44100', '-movflags', '+faststart', outPath], { maxBuffer: 1024 * 1024 * 20 });
+}
+
 // SRT vaqt belgisini ("00:00:01,500") soniyaga aylantiradi.
 function srtVaqtSoniyaga(t) {
   const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[,.](\d{3})/);

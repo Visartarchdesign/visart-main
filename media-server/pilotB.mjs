@@ -4,7 +4,7 @@ import fs from 'fs'; import os from 'os'; import path from 'path';
 import { execFile } from 'child_process'; import { promisify } from 'util';
 import { qadamSegment } from './renderReel.js';
 import { rejaSegment } from './rejaReel.js';
-import { ovozTahrir, ovozYarat, srtVideogaKuydir, muzikaTanla, ffmpegMuzikaQosh } from './montaj.js';
+import { ovozTahrir, ovozYarat, srtVideogaKuydir, muzikaTanla, ffmpegMuzikaDuck } from './montaj.js';
 const ex = promisify(execFile);
 for (const l of fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8').split(/\r?\n/) : []) { const m = l.match(/^([A-Z_]+)=(.*)$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
 const dir = process.argv[2], out = path.resolve(process.argv[3] || 'pilotB.mp4');
@@ -30,7 +30,7 @@ const Q = [
 ];
 const jami = Q.length;
 let HOOK = "Bu kvartirada birorta mebel tasodifan turmagan. Hozir nega aynan shu yerda ekanini ko'rsataman.";
-let OXIR = "Har bir joyning o'z sababi bor. Vizart Dizayn jamoasi sizning uyingizni ham shunday o'ylab chiqadi.";
+let OXIR = "Har bir joyning o'z sababi bor. Visart Design jamoasi sizning uyingizni ham shunday o'ylab chiqadi.";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pilotB-'));
 const segs = [], sub = []; let t = 0, id = 0;
 const reja = path.join(dir, 'reja.png');
@@ -58,13 +58,13 @@ for (let i = 0; i < Q.length; i++) {
   await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[confident, energetic, clear]');
   await qosh(q.boshqa, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(q.rasm), n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.kam, belgi: q.belgi, belgiJoy: q.joy, parallaks: true, yon: q.yon, mp3, dur }, fd, seg), '[serious, firm, confident]');
 }
-await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Vizart Dizayn', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]');
+await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Visart Design', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]');
 fs.writeFileSync(path.join(tmp, 'list.txt'), segs.map((s) => `file '${s.replace(/\\/g, '/')}'`).join('\n'));
 const joined = path.join(tmp, 'joined.mp4');
 await ex('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-c', 'copy', joined]);
 const withSub = path.join(tmp, 'sub.mp4');
 await srtVideogaKuydir(joined, sub, withSub, true).catch((e) => console.log('subtitr xato', e.message));
 const base = fs.existsSync(withSub) ? withSub : joined;
-const mus = ['hashamatli', 'sokin', 'ilhomlantiruvchi', 'energetik'].map((k) => muzikaTanla(k)).find(Boolean);
-if (mus) await ffmpegMuzikaQosh(base, mus, out); else fs.copyFileSync(base, out);
+const mus = ['hashamatli', 'sokin'].map((k) => muzikaTanla(k)).find(Boolean);
+if (mus) await ffmpegMuzikaDuck(base, mus, out); else fs.copyFileSync(base, out);
 console.log('TAYYOR:', out);
