@@ -28,7 +28,7 @@ async function geminiObj(env, parts, temperature = 0.3) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature } }),
     });
-    if (!res.ok) { xato = new Error(`Gemini ${m} ${res.status}`); continue; }
+    if (!res.ok) { xato = new Error(`Gemini ${m} ${res.status}`); console.log('Gemini xato:', m, res.status); continue; }
     const d = await res.json();
     const text = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join('');
     const mt = text.match(/\{[\s\S]*\}/);
@@ -52,7 +52,7 @@ export async function senariyYoz(env, dir, nom = '') {
   const S = await geminiObj(env, [{
     text: `Siz arxitektura/interyer dizayn Reels senaristisiz. Auditoriya: kvartira/uy egalari va dizayn sevuvchilar. Quyida rejadan olingan FAKTLAR va renderlar (tartib raqami 1..${renders.length}).\nFAKTLAR: ${JSON.stringify(faktlar)}\n` +
       `Vazifa: 3 ta eng qiziqarli va FOYDALI dizayn qarorini tanlang. Har biri uchun odamga o'zi uyida qo'llay oladigan umumiy ergonomika qoidasini (aniq raqam bilan, odatda qabul qilingan me'yor) ayting va shu qaror bu rejada qanday ishlaganini FAKTLARdagi o'lchamga bog'lang. Renderni faqat shu xona/qaror ROSTDAN ko'rinsa tanlang (rasmga qarang). Faqat JSON obyekt:\n` +
-      `{"hook":"<=12 so'z, foyda yoki ziddiyat bilan savol","oblojka":"<=6 so'z, UMUMIY mavzu va foyda (masalan: Kichik kvartirada joyni qanday tejash mumkin). Mijoz ismi, loyiha nomi, 'kvartirasi' kabi nomlar TAQIQ","hero":<eng chiroyli render>,"oxir":"<=14 so'z, Direct'ga yozishga chaqiruv","zonalar":[{"sar":"2-3 so'z","tag":"3-5 so'z","xona":"FAKTLARdagi xona nomi","nom":"1-2 so'z","rasm":<render raqami>,"belgi":"2-3 so'z render yorlig'i","joy":[x,y],"kam":"3-5 so'z","qoida":"umumiy qoida raqam bilan","sabab":"2 qisqa gap, <=24 so'z: qoida + shu rejadagi o'lcham","boshqa":"1 gap <=16 so'z: boshqacha qilinsa nima xato","sfx":"pol|oshxona|eshik|shamol|suv|null"}]}\n` +
+      `{"hook":"<=10 so'z, aniq savol (masalan: Dush necha santimetr bo'lsa qulay?). '3 ta sir' kabi umumiy va'dalar TAQIQ","oblojka":"<=6 so'z, videoning HAQIQIY mazmuniga mos UMUMIY mavzu va foyda (masalan: Qulay uy uchun 3 ta o'lcham qoidasi). Mijoz ismi, loyiha nomi, 'kvartirasi' kabi nomlar TAQIQ","hero":<eng chiroyli render>,"oxir":"<=14 so'z, Direct'ga yozishga chaqiruv","zonalar":[{"sar":"2-3 so'z","tag":"3-5 so'z","xona":"FAKTLARdagi xona nomi","nom":"1-2 so'z","rasm":<render raqami>,"belgi":"2-3 so'z render yorlig'i","joy":[x,y],"kam":"3-5 so'z","qoida":"umumiy qoida raqam bilan","sabab":"2 qisqa gap, <=24 so'z: qoida + shu rejadagi o'lcham","boshqa":"1 gap <=16 so'z: boshqacha qilinsa nima xato","sfx":"pol|oshxona|eshik|shamol|suv|null"}]}\n` +
       `Qoidalar: oddiy og'zaki o'zbek (lotin), qisqa gaplar, FAKTLARda yo'q o'lchamni yozmang, mijoz/loyiha nomini tilga olmang.`,
   }, ...renderB], 0.4);
   const boxOf = (xn) => { const x = (faktlar.xonalar || []).find((r) => String(r.nom).toLowerCase() === String(xn).toLowerCase()) || (faktlar.xonalar || []).find((r) => String(r.nom).toLowerCase().includes(String(xn).toLowerCase().split(' ')[0])); return x && x.box; };
