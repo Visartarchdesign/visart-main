@@ -2386,6 +2386,17 @@ export async function onRequestPost({ request, env }) {
       await tgSendMessageKb(env, chatId, `Mijozlar guruhlariga (${n} ta) yuboriladigan xabar:\n\n${ILOVA_YANGILIK.replace(/<\/?b>/g, '')}\n\nYuboraymi?`, { inline_keyboard: [[{ text: `✅ ${n} ta guruhga yuborish`, callback_data: 'yg:ok' }, { text: '❌ Bekor', callback_data: 'yg:no' }]] });
       return json({ ok: true });
     }
+    if (msg.text === '/tuzat_tugma' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
+      const kun = new Date(Date.now() - 2 * 86400e3).toISOString().slice(0, 10);
+      const rows = await sbFetch(env, `kunlik_xabar_jurnali?guruh=eq.obyekt&sana=gte.${kun}&select=telegram_chat_id,telegram_message_id&limit=300`).catch(() => []);
+      let ok = 0, xato = 0;
+      for (const r of rows || []) {
+        const x = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: r.telegram_chat_id, message_id: r.telegram_message_id, reply_markup: { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://t.me/visart_design_bot/ilova?startapp=kabinet' }]] } }), signal: AbortSignal.timeout(10000) }).then((q) => q.json()).catch(() => null);
+        if (x && (x.ok || /not modified/i.test(x.description || ''))) ok++; else xato++;
+      }
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Mijoz guruhlaridagi so'nggi 3 kunlik xabarlar: tugma yangilandi ${ok}, o'tkazib yuborildi ${xato}.`);
+      return json({ ok: true });
+    }
     if (msg.text === '/ilova' && msg.chat.type === 'private') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "📱 Visart ilovasi — login va parolingiz bilan kiring:", { inline_keyboard: [[{ text: '📱 Ilovani ochish', web_app: { url: ILOVA_URL } }]] });
       return json({ ok: true });
