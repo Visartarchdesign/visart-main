@@ -1833,7 +1833,7 @@ async function handleGuruhMaster(env, cq, data) {
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: Number(guruhId) }]),
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `✅ Tayyor: guruh «${nom}» obyektiga ${rol === 'm' ? 'MIJOZLAR' : 'USTALAR'} guruhi sifatida ulandi.`);
-    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm' ? TANISH_MIJOZ : TANISH_USTA);
+    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm' ? TANISH_MIJOZ : TANISH_USTA, rol === 'm' ? { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: ILOVA_URL }]] } : undefined);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `⚠️ Bog'lashda xato: ${String((e && e.message) || e).slice(0, 200)}`);
   }

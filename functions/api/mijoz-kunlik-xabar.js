@@ -30,11 +30,12 @@ function json(data, status = 200) {
   });
 }
 
-async function tgSend(token, chatId, text) {
+const ILOVA_KB = { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://app.visartdesign.uz/' }]] };
+async function tgSend(token, chatId, text, kb) {
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) }),
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) return null;
@@ -234,7 +235,7 @@ async function handle({ request, env }) {
     const jr = await sbFetch(env, `kunlik_xabar_jurnali?sana=eq.${sana}&guruh=eq.${guruh}&obyekt_id=eq.${encodeURIComponent(kalit)}&select=*`).catch(() => null);
     const j = jr && jr[0];
     if (j) {
-      const t = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageText`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: j.telegram_chat_id, message_id: j.telegram_message_id, text: matn, parse_mode: 'HTML' }), signal: AbortSignal.timeout(10000) }).catch(() => null);
+      const t = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageText`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: j.telegram_chat_id, message_id: j.telegram_message_id, text: matn, parse_mode: 'HTML', ...(guruh === 'obyekt' ? { reply_markup: ILOVA_KB } : {}) }), signal: AbortSignal.timeout(10000) }).catch(() => null);
       const jd = t ? await t.json().catch(() => null) : null;
       if (t && (t.ok || (jd && /not modified/i.test(jd.description || '')))) {
         await belgilaYuborildi(env, kutilayotgan, sana);
@@ -243,7 +244,7 @@ async function handle({ request, env }) {
       // xabar o'chirilgan/tahrirlab bo'lmadi -- pastda yangisi yuboriladi
     }
     for (const c of nomzodChatlar.filter(Boolean)) {
-      const r = await tgSend(env.MIJOZ_BOT_TOKEN, c, matn);
+      const r = await tgSend(env.MIJOZ_BOT_TOKEN, c, matn, guruh === 'obyekt' ? ILOVA_KB : undefined);
       if (r) {
         await belgilaYuborildi(env, kutilayotgan, sana);
         await jurnalgaYoz(env, { sana, guruh, obyektKaliti: kalit, chatId: c, messageId: r.message_id });

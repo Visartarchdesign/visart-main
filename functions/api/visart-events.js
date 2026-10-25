@@ -60,11 +60,12 @@ function json(data, status = 200) {
   });
 }
 
-async function tgSend(token, chatId, text) {
+const ILOVA_KB = { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://app.visartdesign.uz/' }]] };
+async function tgSend(token, chatId, text, kb) {
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) }),
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) return null;
@@ -72,11 +73,11 @@ async function tgSend(token, chatId, text) {
   return data && data.ok ? data.result : null;
 }
 
-async function tgEdit(token, chatId, messageId, text) {
+async function tgEdit(token, chatId, messageId, text, kb) {
   const res = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML', ...(kb ? { reply_markup: kb } : {}) }),
     signal: AbortSignal.timeout(10000),
   });
   return res.ok;
@@ -246,7 +247,7 @@ async function tuzatishniQollash(env, { tuzatish_hodisa_id, matn, summa, umumiy_
   const mijozUchun = hodisa.guruh !== 'moliya';
   const sarlavha = hodisa.guruh === 'moliya' ? '📊 Kunlik moliya hisoboti' : '📊 Kunlik hisobot';
   const yangiMatn = digestMatni(sarlavha, jurnal.sana, kunHodisalari || [], mijozUchun);
-  const tahrirlandi = await tgEdit(env.MIJOZ_BOT_TOKEN, jurnal.telegram_chat_id, jurnal.telegram_message_id, yangiMatn);
+  const tahrirlandi = await tgEdit(env.MIJOZ_BOT_TOKEN, jurnal.telegram_chat_id, jurnal.telegram_message_id, yangiMatn, hodisa.guruh === 'obyekt' ? ILOVA_KB : undefined);
 
   return json({ ok: tahrirlandi, tahrir: tahrirlandi ? 'xabar_tahrirlandi' : 'tahrir_xato' });
 }
@@ -276,7 +277,7 @@ async function ochirishniQollash(env, { ochirish_hodisa_id }) {
   const yangiMatn = qolgan && qolgan.length
     ? digestMatni(sarlavha, jurnal.sana, qolgan, hodisa.guruh !== 'moliya')
     : `${sarlavha} — ${jurnal.sana}\n\nBu kun uchun yozuvlar bekor qilindi.`;
-  const ok = await tgEdit(env.MIJOZ_BOT_TOKEN, jurnal.telegram_chat_id, jurnal.telegram_message_id, yangiMatn);
+  const ok = await tgEdit(env.MIJOZ_BOT_TOKEN, jurnal.telegram_chat_id, jurnal.telegram_message_id, yangiMatn, hodisa.guruh === 'obyekt' ? ILOVA_KB : undefined);
   return json({ ok, ochirildi: ok ? 'xabar_tahrirlandi' : 'tahrir_xato' });
 }
 
@@ -334,7 +335,7 @@ export async function onRequestPost({ request, env }) {
       if (!obyekt_id) return json({ ok: false, error: 'obyekt_id_required' }, 400);
       const chatId = await findGuruhChatId(env, obyekt_id);
       if (!chatId) return json({ ok: false, error: 'guruh_topilmadi' }, 404);
-      const natija = await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `${prefiks}${matn}`);
+      const natija = await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `${prefiks}${matn}`, ILOVA_KB);
       return json({ ok: !!natija });
     }
 
