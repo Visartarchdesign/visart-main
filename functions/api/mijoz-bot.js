@@ -2359,6 +2359,11 @@ export async function onRequestPost({ request, env }) {
       else await guruhgaXabarVaHisobot(env, String(o.id), o.nom, MUZLATISH_MATN(o.nom), '⏸ Muzlatish (qo\'lda)');
       return json({ ok: true });
     }
+    if (msg.text === '/panel' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📱 Admin ilova:', { inline_keyboard: [[{ text: '📱 Admin ilovani ochish', web_app: { url: 'https://visartdesign.uz/admin-ilova/' } }]] });
+      fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setChatMenuButton`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, menu_button: { type: 'web_app', text: '📱 Admin', web_app: { url: 'https://visartdesign.uz/admin-ilova/' } } }) }).catch(() => {});
+      return json({ ok: true });
+    }
     if (msg.text === '/ilova' && msg.chat.type === 'private') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "📱 Visart ilovasi — login va parolingiz bilan kiring:", { inline_keyboard: [[{ text: '📱 Ilovani ochish', web_app: { url: ILOVA_URL } }]] });
       return json({ ok: true });
@@ -2381,7 +2386,7 @@ export async function onRequestPost({ request, env }) {
       await obyektKorsat(env, H, chatId, await getProfil(env, H, chatId)); // yashirin yo'l: menyuda tugma yo'q, mijozga guruhdan havola beriladi
       return json({ ok: true });
     }
-    if ((msg.text === '/start' || msg.text === '/menu') && msg.chat.type === 'private') {
+    if ((msg.text === '/start' || msg.text === '/menu') && msg.chat.type === 'private' && !isAdmin(env, msg.from && msg.from.id)) {
       fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setChatMenuButton`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, menu_button: { type: 'web_app', text: '📱 Ilova', web_app: { url: ILOVA_URL } } }) }).catch(() => {});
     }
     if (msg.text === '/start' || msg.text === '/menu' || msg.text === '/start guruh' || msg.text === '/start reklama') {

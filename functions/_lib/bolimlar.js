@@ -64,6 +64,7 @@ export async function bolimBosh(env, chatId) {
     + `⚙️ Media-server: ${h.media ? '🟢 ishlayapti' : "🔴 javob bermayapti (nazorat o'zi tiklaydi)"}`;
   const b = BOLIMLAR;
   await tg(env, chatId, t, { inline_keyboard: [
+    [{ text: '📱 Admin ilova', web_app: { url: 'https://visartdesign.uz/admin-ilova/' } }],
     [{ text: b.kontent.nom, callback_data: 'bl:kontent' }], [{ text: b.target.nom, callback_data: 'bl:target' }],
     [{ text: b.mijoz.nom, callback_data: 'bl:mijoz' }], [{ text: b.ishlab.nom, callback_data: 'bl:ishlab' }],
     [{ text: b.tizim.nom, callback_data: 'bl:tizim' }],
