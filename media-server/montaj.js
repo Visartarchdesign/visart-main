@@ -1428,12 +1428,12 @@ export async function ovozYarat(env, matnTeg, outPath, tmpDir) {
 }
 
 // Atrof-muhit effekti (shamol, suv...) -- music/sfx/<nom>*.mp3 bo'lsa shu, bo'lmasa sintez; diktor ovoziga past qatlam bo'lib qo'shiladi
-async function sfxQosh(nom, mp3, dur, tmpDir, fx = []) {
+export async function sfxQosh(nom, mp3, dur, tmpDir, fx = []) {
   const sfxDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'music', 'sfx');
   const topish = (k) => { try { const f = fs.readdirSync(sfxDir).filter((x) => x.toLowerCase().startsWith(k) && /\.(mp3|wav|m4a)$/i.test(x)); return f.length ? path.join(sfxDir, f[Math.floor(Math.random() * f.length)]) : null; } catch (e) { return null; } };
   const sintez = { shamol: 'highpass=f=250,lowpass=f=1800,tremolo=f=0.35:d=0.7,aecho=0.6:0.5:60:0.3', suv: 'highpass=f=600,lowpass=f=6000,tremolo=f=7:d=0.4' }[nom];
   const fayl = nom ? topish(nom) : null;
-  const bir = (Array.isArray(fx) ? fx : []).map((x) => ({ f: topish(String(x.k || '')), t: Math.max(0, Number(x.t) || 0) })).filter((x) => x.f && x.t < dur - 0.3);
+  const bir = (Array.isArray(fx) ? fx : []).map((x) => ({ f: topish(String(x.k || '')), t: Math.max(0, Number(x.t) || 0), v: Number(x.v) || 0.6 })).filter((x) => x.f && x.t < dur - 0.3);
   if (!nom || (!fayl && !sintez)) { if (!bir.length) return; }
   const out = mp3.replace(/\.mp3$/, '.fx.mp3');
   const args = ['-y', '-i', mp3];
@@ -1447,7 +1447,7 @@ async function sfxQosh(nom, mp3, dur, tmpDir, fx = []) {
   }
   for (const x of bir) {
     args.push('-i', x.f);
-    fl.push(`[${idx}:a]volume=0.6,adelay=${Math.round(x.t * 1000)}|${Math.round(x.t * 1000)}[s${idx}]`);
+    fl.push(`[${idx}:a]volume=${x.v || 0.6},adelay=${Math.round(x.t * 1000)}|${Math.round(x.t * 1000)}[s${idx}]`);
     tarkib.push(`[s${idx}]`); idx++;
   }
   fl.push(`${tarkib.join('')}amix=inputs=${tarkib.length}:duration=first:normalize=0[a]`);

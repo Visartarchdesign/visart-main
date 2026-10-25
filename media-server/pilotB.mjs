@@ -4,7 +4,7 @@ import fs from 'fs'; import os from 'os'; import path from 'path';
 import { execFile } from 'child_process'; import { promisify } from 'util';
 import { qadamSegment } from './renderReel.js';
 import { rejaSegment } from './rejaReel.js';
-import { ovozTahrir, ovozYarat, srtVideogaKuydir, muzikaTanla, ffmpegMuzikaDuck } from './montaj.js';
+import { ovozTahrir, ovozYarat, srtVideogaKuydir, muzikaTanla, ffmpegMuzikaDuck, sfxQosh } from './montaj.js';
 const ex = promisify(execFile);
 for (const l of fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8').split(/\r?\n/) : []) { const m = l.match(/^([A-Z_]+)=(.*)$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
 const dir = process.argv[2], out = path.resolve(process.argv[3] || 'pilotB.mp4');
@@ -41,8 +41,11 @@ const reja = path.join(dir, 'reja.png');
   fs.writeFileSync(out.replace(/\.mp4$/, '_matn.txt'), [HOOK, ...Q.flatMap((q) => [q.sabab, q.boshqa]), OXIR].join('\n'));
 }
 const imgs = (i) => path.join(dir, `${i}.jpg`);
-async function qosh(matn, build, teg = '') {
+const W = (t = 0, v = 0.3) => ({ k: 'whoosh__short', t, v });
+const SFX_BOSHQA = [null, { fx: [{ k: 'pol__', t: 2.2, v: 0.3 }] }, { nom: 'oshxona__refrigerator', fx: [{ k: 'oshxona__stove', t: 1.0, v: 0.3 }] }, { fx: [{ k: 'eshik__creaky-door-open', t: 1.3, v: 0.4 }] }];
+async function qosh(matn, build, teg = '', sfx = null) {
   const mp3 = path.join(tmp, `v${id}.mp3`); await ovozYarat(process.env, (teg ? `${teg} ` : '') + matn, mp3, tmp);
+  if (sfx) await sfxQosh(sfx.nom || '', mp3, parseFloat((await ex('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp3])).stdout), tmp, sfx.fx || []).catch((e) => console.log('sfx xato', e.message));
   const { stdout } = await ex('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp3]);
   const dur = parseFloat(stdout) + 0.45, seg = path.join(tmp, `s${id}.mp4`);
   await build(mp3, dur, seg, path.join(tmp, `f${id}`)); id++;
@@ -52,13 +55,13 @@ async function qosh(matn, build, teg = '') {
   for (const x of bol) { const d = (x.length / jam) * (dur - 0.45); sub.push({ bosh: tt, tugash: tt + d, matn: x }); tt += d; }
   t += dur; console.log('segment', id, 'tayyor');
 }
-await qosh(HOOK, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: null, n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'kvartira rejasi tahlili', mp3, dur }, fd, seg), '[confident, energetic, fast-paced, intriguing]');
+await qosh(HOOK, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: null, n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'kvartira rejasi tahlili', mp3, dur }, fd, seg), '[confident, energetic, fast-paced, intriguing]', { fx: [W(0, 0.35), { k: 'qurilish__tape', t: 0.4, v: 0.35 }] });
 for (let i = 0; i < Q.length; i++) {
   const q = Q[i];
-  await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[confident, energetic, clear]');
-  await qosh(q.boshqa, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(q.rasm), n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.kam, belgi: q.belgi, belgiJoy: q.joy, parallaks: true, yon: q.yon, mp3, dur }, fd, seg), '[serious, firm, confident]');
+  await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[confident, energetic, clear]', { fx: [W(), { k: 'klik__select', t: 0.7, v: 0.35 }] });
+  await qosh(q.boshqa, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(q.rasm), n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.kam, belgi: q.belgi, belgiJoy: q.joy, parallaks: true, yon: q.yon, mp3, dur }, fd, seg), '[serious, firm, confident]', { ...(SFX_BOSHQA[i] || {}), fx: [W(), ...((SFX_BOSHQA[i] || {}).fx || [])] });
 }
-await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Visart Design', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]');
+await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Visart Design', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]', { nom: 'qushlar__morning', fx: [W(0, 0.35)] });
 fs.writeFileSync(path.join(tmp, 'list.txt'), segs.map((s) => `file '${s.replace(/\\/g, '/')}'`).join('\n'));
 const joined = path.join(tmp, 'joined.mp4');
 await ex('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-c', 'copy', joined]);
