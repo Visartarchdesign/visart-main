@@ -60,7 +60,7 @@ function json(data, status = 200) {
   });
 }
 
-const ILOVA_KB = { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://app.visartdesign.uz/' }]] };
+const ILOVA_KB = { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://visartdesign.uz/ilova/' }]] };
 async function tgSend(token, chatId, text, kb) {
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',

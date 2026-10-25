@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="robots" content="noindex">
+<title>Visart Design</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#151412;--card:#201e1b;--line:#33302b;--tx:#f4efe6;--mut:#a39d93;--gold:#A9895A;--gold-l:#C4A876;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,Segoe UI,Roboto,sans-serif}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px}
+header b{font-size:18px;letter-spacing:.5px}header b span{color:var(--gold-l)}
+.lg{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:4px 10px;font-size:12px}
+main{padding:8px 16px}
+h2{font-size:20px;margin:6px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+label{display:block;color:var(--mut);font-size:12.5px;margin:10px 0 5px}
+input,select,textarea{width:100%;background:#17150f;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:12px;font-size:16px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+.btn{display:block;width:100%;text-align:center;background:var(--gold);color:#151412;font-weight:700;border:0;border-radius:12px;padding:13px;font-size:15px;margin-top:14px;text-decoration:none}
+.btn.line{background:none;border:1px solid var(--gold);color:var(--gold-l)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}.seg button{flex:1;min-width:30%;background:#17150f;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:10px 6px;font-size:13.5px}
+.seg button.on{border-color:var(--gold);background:#2a2419;color:var(--gold-l)}
+.chk{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}.chk input{width:20px;height:20px;flex:none}
+.res{font-size:26px;font-weight:800;color:var(--gold-l);margin:4px 0}.mut{color:var(--mut);font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pj{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}.pj img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#222}.pj div{padding:8px 10px;font-size:13px}
+.pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px}.pills button{flex:none;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:20px;padding:6px 14px;font-size:13px}.pills button.on{border-color:var(--gold);color:var(--gold-l)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#1a1815f2;backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{flex:1;background:none;border:0;color:var(--mut);font-size:10.5px;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:2px}nav button i{font-style:normal;font-size:20px}nav button.on{color:var(--gold-l)}
+.modal{position:fixed;inset:0;background:#000d;z-index:20;overflow:auto;padding:16px;display:none}.modal.show{display:block}.modal img{width:100%;border-radius:10px;margin-bottom:10px;display:block}.x{position:sticky;top:0;float:right;background:#000a;color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:20px;z-index:2}
+.ok{color:#7fd48a}.err{color:#ff8b8b}.hid{display:none}
+</style>
+</head>
+<body>
+<header><b>VISART <span>DESIGN</span></b><button class="lg" id="lg">RU</button></header>
+<main id="m"></main>
+<nav id="nav"></nav>
+<div class="modal" id="md"></div>
+<script>
+const tg=window.Telegram&&Telegram.WebApp;if(tg){tg.ready();tg.expand();try{tg.setHeaderColor('#151412');tg.setBackgroundColor('#151412')}catch(e){}}
+let L=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.language_code==='ru')?'ru':'uz';
+try{const s=localStorage.getItem('vl');if(s)L=s}catch(e){}
+const T={uz:{narx:'Narx',xiz:'Xizmatlar',loy:'Loyihalar',alo:'Aloqa',kab:'Kabinet',
+ tarif:'Taxminiy narx hisoblash',arch:'Arxitektura',int:'Interyer',tk:'Pod klyuch',sotix:'Yer maydoni (sotix)',bino:'Bino turi',res:'Turar joy',non:'Noturar bino',qav:'Qavatlar',uslub:'Uslub',pak:'Paket',m2:'Maydon (m²)',qosh:"Qo'shimcha xizmatlar",hisob:'Hisoblash',som:"so'm",taxm:"Taxminiy narx. Aniq hisob-kitob uchun ariza qoldiring.",ariza:'Ariza qoldirish',katta:"Bu hajmda narx alohida hisoblanadi — ariza qoldiring.",kiradi:'Kiradi',
+ ism:'Ismingiz',tel:'Telefon',xizm:'Xizmat',izoh:'Loyiha haqida',yubor:'Yuborish',rahmat:"✅ Ariza qabul qilindi. Menejer tez orada bog'lanadi.",xato:"Xatolik. Ism va telefonni tekshiring.",
+ kabT:'Mening obyektim',kabD:"Loyihangiz bosqichi, chizmalar va to'lov holati. Login va parol bilan kiring.",kabB:'Kabinetga kirish',batafsil:'Batafsil',hammasi:'Hammasi',call:"Qo'ng'iroq",oraliq:'oraliq',kv:'kv.m'},
+ru:{narx:'Цена',xiz:'Услуги',loy:'Проекты',alo:'Связь',kab:'Кабинет',
+ tarif:'Расчёт примерной стоимости',arch:'Архитектура',int:'Интерьер',tk:'Под ключ',sotix:'Участок (сот.)',bino:'Тип здания',res:'Жилой дом',non:'Нежилое здание',qav:'Этажность',uslub:'Стиль',pak:'Пакет',m2:'Площадь (м²)',qosh:'Доп. услуги',hisob:'Рассчитать',som:'сум',taxm:'Примерная цена. Для точного расчёта оставьте заявку.',ariza:'Оставить заявку',katta:'Для такого объёма цена считается отдельно — оставьте заявку.',kiradi:'Входит',
+ ism:'Ваше имя',tel:'Телефон',xizm:'Услуга',izoh:'О проекте',yubor:'Отправить',rahmat:'✅ Заявка принята. Менеджер скоро свяжется.',xato:'Ошибка. Проверьте имя и телефон.',
+ kabT:'Мой объект',kabD:'Этап проекта, чертежи и оплата. Войдите по логину и паролю.',kabB:'Войти в кабинет',batafsil:'Подробнее',hammasi:'Все',call:'Позвонить',oraliq:'диапазон',kv:'м²'}};
+const t=k=>(T[L]||T.uz)[k];
+const SV=[['interior','interyer-dizayn','dizajn-interera','🛋','Interyer dizayn','Дизайн интерьера','Planirovka, 3D vizualizatsiya, ishchi chizmalar','Планировка, 3D, рабочие чертежи'],
+['arch','arxitektura-loyihalash','arhitekturnoe-proektirovanie','🏛','Arxitektura loyihalash','Архитектурное проектирование','Uy, kottej va binolar loyihasi','Проекты домов, коттеджей, зданий'],
+['docs','loyiha-hujjatlari','proektnaya-dokumentaciya','📑','Loyiha hujjatlari va ruxsatnoma','Проектная документация и разрешение','Ruxsatnoma uchun to‘liq hujjatlar','Документы для разрешения'],
+['turnkey','pod-klyuch','remont-pod-klyuch','🔨','Pod klyuch: ta’mir va qurilish','Ремонт и строительство под ключ','Loyihadan topshirishgacha','От проекта до сдачи'],
+['drawings','ishchi-chizmalar','rabochie-chertezhi','📐','Ishchi chizmalar','Рабочие чертежи','Ustalar uchun aniq chizmalar','Точные чертежи для мастеров']];
+let D=null,tab='narx',calc='arch',S={sotix:6,non:false,fl:null,st:null,m2:80,pk:null,add:{},res:null},cat='all';
+const nm=(o)=>o?(o[L]||o.uz||''):'';const fmt=n=>Math.round(n).toLocaleString('ru-RU').replace(/,/g,' ');
+const $=s=>document.querySelector(s);
+const TABS=[['narx','💰'],['xiz','🛠'],['loy','🖼'],['alo','📞'],['kab','🔐']];
+function nav(){$('#nav').innerHTML=TABS.map(([k,i])=>`<button class="${tab===k?'on':''}" onclick="go('${k}')"><i>${i}</i>${t(k==='narx'?'narx':k==='xiz'?'xiz':k==='loy'?'loy':k==='alo'?'alo':'kab')}</button>`).join('');$('#lg').textContent=L==='uz'?'RU':'UZ'}
+function go(k){tab=k;S.res=null;render();window.scrollTo(0,0)}
+$('#lg').onclick=()=>{L=L==='uz'?'ru':'uz';try{localStorage.setItem('vl',L)}catch(e){}render()};
+function seg(opts,cur,fn){return `<div class="seg">${opts.map(([v,l])=>`<button class="${String(cur)===String(v)?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`}
+function pickCalc(v){calc=v;S.res=null;render()}function setS(k,v){S[k]=v;S.res=null;render()}
+function togg(i){S.add[i]=!S.add[i];S.res=null}
+function num(k,v){S[k]=parseFloat(v)||0;S.res=null}
+function renderNarx(){
+ const p=D&&D.pricing;if(!p||!p.architecture)return `<div class="card">${t('katta')}</div>${arizaBtn()}`;
+ const st=p.styles||[];if(!S.st&&st.length)S.st=st[0].id;const fl=(p.architecture.floors||[]);if(S.fl===null&&fl.length)S.fl=fl[0].id;
+ const pk=(p.interior&&p.interior.packages)||[];if(!S.pk&&pk.length)S.pk=pk[0].id;
+ const BUN=['workDrawings','3d','landscape'];const ad=((p.architecture.addons)||[]).filter(a=>!BUN.includes(a.id));
+ let h=`<h2>${t('tarif')}</h2>`+seg([['arch',t('arch')],['int',t('int')],['tk',t('tk')]],calc,'pickCalc');
+ h+='<div class="card" style="margin-top:12px">';
+ if(calc==='arch'){
+  h+=`<label>${t('sotix')}</label><input type="number" inputmode="decimal" value="${S.sotix}" oninput="num('sotix',this.value)">`;
+  h+=`<label>${t('bino')}</label>`+seg([['0',t('res')],['1',t('non')]],S.non?1:0,'setNon');
+  h+=`<label>${t('qav')}</label>`+seg(fl.map(f=>[f.id,nm(f)]),S.fl,'setFl');
+  h+=`<label>${t('uslub')}</label>`+seg(st.map(x=>[x.id,nm(x)]),S.st,'setSt');
+  if(ad.length)h+=`<label>${t('qosh')}</label>`+ad.map((a,i)=>`<div class="chk"><input type="checkbox" ${S.add[i]?'checked':''} onchange="togg(${i})"><span style="flex:1">${nm(a)}</span><span class="mut">+${fmt(a.flat)}</span></div>`).join('');
+ }else if(calc==='int'){
+  h+=`<label>${t('m2')}</label><input type="number" inputmode="decimal" value="${S.m2}" oninput="num('m2',this.value)">`;
+  h+=`<label>${t('pak')}</label>`+seg(pk.map(x=>[x.id,nm(x)]),S.pk,'setPk');
+ }else{
+  h+=`<label>${t('m2')}</label><input type="number" inputmode="decimal" value="${S.m2}" oninput="num('m2',this.value)">`;
+  h+=`<label>${t('uslub')}</label>`+seg(st.map(x=>[x.id,nm(x)]),S.st,'setSt');
+ }
+ h+=`<button class="btn" onclick="hisobla()">${t('hisob')}</button></div>`;
+ if(S.res)h+=`<div class="card">${S.res}</div>`;
+ return h;
+}
+function setNon(v){S.non=v==='1';S.res=null;render()}function setFl(v){setS('fl',v)}function setSt(v){setS('st',v)}function setPk(v){setS('pk',v)}
+function arizaBtn(){return `<button class="btn line" onclick="go('alo')">${t('ariza')}</button>`}
+function hisobla(){
+ const p=D.pricing,st=(p.styles||[]).find(x=>x.id===S.st)||{mult:1};let out='';const som=t('som');
+ if(calc==='arch'){
+  const fl=(p.architecture.floors||[]).find(f=>String(f.id)===String(S.fl))||{mult:1};
+  const BUN=['workDrawings','3d','landscape'];const ad=(p.architecture.addons||[]).filter(a=>!BUN.includes(a.id));
+  if(S.sotix<=0){return}
+  let j=p.architecture.ratePerSotix*S.sotix*st.mult*fl.mult;if(S.non)j+=6000000;ad.forEach((a,i)=>{if(S.add[i])j+=a.flat});
+  const tl=p.timelines&&p.timelines.architecture?nm(p.timelines.architecture):'';
+  out=`<div class="mut">${t('arch')} · ${S.sotix} ${L==='ru'?'сот.':'sotix'}</div><div class="res">~ ${fmt(j)} ${som}</div>${tl?`<div class="mut">⏱ ${tl}</div>`:''}<p class="mut">${t('taxm')}</p>${arizaBtn()}`;
+ }else if(calc==='int'){
+  const pk=(p.interior.packages||[]).find(x=>x.id===S.pk);if(!pk||S.m2<=0)return;
+  const f=(pk.includes||[]).map(x=>`• ${nm(p.interior.features&&p.interior.features[x])||x}`).join('<br>');
+  out=`<div class="mut">${t('int')} · ${nm(pk)} · ${S.m2} ${t('kv')}</div><div class="res">~ ${fmt(pk.rate*S.m2)} ${som}</div><div class="mut">${fmt(pk.rate)}/${t('kv')}</div><p class="mut"><b>${t('kiradi')}:</b><br>${f}</p><p class="mut">${t('taxm')}</p>${arizaBtn()}`;
+ }else{
+  const tk=p.turnkey;if(!tk||S.m2<=0)return;const m2=S.m2;
+  const tier=tk.areaTiers.find(x=>m2<=x.maxArea)||tk.areaTiers[tk.areaTiers.length-1];
+  const mg=tk.managementTiers.find(x=>m2<=x.maxArea)||tk.managementTiers[tk.managementTiers.length-1];
+  let mn=0,mx=0,rows=[];for(const c of tk.components){const q=tier[c.id];if(!q)continue;mn+=q.min*st.mult*m2;mx+=q.max*st.mult*m2;rows.push(`• ${nm(c)}: $${Math.round(q.min*st.mult)}–${Math.round(q.max*st.mult)}/${t('kv')}`)}
+  mn*=1+mg.pct;mx*=1+mg.pct;const k=p.usdRate||12700;
+  out=`<div class="mut">${t('tk')} · ${m2} ${t('kv')}</div><div class="res">$${fmt(mn)} – $${fmt(mx)}</div><div class="mut">≈ ${fmt(mn*k)} – ${fmt(mx*k)} ${som}</div><p class="mut">${rows.join('<br>')}<br>+${Math.round(mg.pct*100)}%</p><p class="mut">${t('taxm')}</p>${arizaBtn()}`;
+ }
+ S.res=out;render();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50);
+}
+function renderXiz(){return `<h2>${t('xiz')}</h2>`+SV.map(s=>`<a class="card" style="display:block;color:inherit;text-decoration:none" href="${L==='ru'?'/ru/uslugi/'+s[2]:'/xizmatlar/'+s[1]}"><div style="font-size:26px">${s[3]}</div><b>${L==='ru'?s[5]:s[4]}</b><div class="mut">${L==='ru'?s[7]:s[6]}</div><div style="color:var(--gold-l);font-size:13px;margin-top:6px">${t('batafsil')} →</div></a>`).join('')+arizaBtn()}
+function renderLoy(){
+ const ps=(D&&D.projects)||[];const cats=['all',...new Set(ps.map(p=>p.cat).filter(Boolean))];
+ const list=ps.filter(p=>cat==='all'||p.cat===cat);
+ return `<h2>${t('loy')}</h2><div class="pills">${cats.map(c=>`<button class="${cat===c?'on':''}" onclick="cat='${c}';render()">${c==='all'?t('hammasi'):c}</button>`).join('')}</div><div class="grid">${list.map(p=>`<div class="pj" onclick="openPj(${p.id})"><img loading="lazy" src="${p.thumb||p.hero||''}" alt=""><div>${nm(p.title)}</div></div>`).join('')}</div>`}
+function openPj(id){const p=D.projects.find(x=>x.id===id);if(!p)return;const imgs=[p.hero,...(p.gallery||[])].filter(Boolean);
+ $('#md').innerHTML=`<button class="x" onclick="closePj()">✕</button><h2>${nm(p.title)}</h2><div class="mut" style="margin-bottom:10px">${[nm(p.type),p.area?p.area+' '+t('kv'):'',nm(p.location)].filter(Boolean).join(' · ')}</div><p class="mut">${nm(p.desc)}</p>${imgs.map(u=>`<img loading="lazy" src="${u}" alt="">`).join('')}<button class="btn" onclick="closePj();go('alo')">${t('ariza')}</button>`;$('#md').classList.add('show');if(tg)tg.BackButton.show()}
+function closePj(){$('#md').classList.remove('show');if(tg)tg.BackButton.hide()}
+if(tg)tg.BackButton.onClick(closePj);
+function renderAlo(){const s=(D&&D.settings)||{};const ph=(s.phone||'').replace(/[^\d+]/g,'');
+ const h=v=>{v=String(v||'').trim();return v?(/^https?:/i.test(v)?v:null):null};
+ const ig=s.instagram?(h(s.instagram)||'https://instagram.com/'+s.instagram.replace(/^@/,'')):null;const tgl=s.telegram?(h(s.telegram)||'https://t.me/'+s.telegram.replace(/^@/,'')):null;
+ const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;
+ return `<h2>${t('alo')}</h2><div class="card"><label>${t('ism')}</label><input id="fn" value="${u?((u.first_name||'')+' '+(u.last_name||'')).trim():''}"><label>${t('tel')}</label><input id="fp" type="tel" inputmode="tel" placeholder="+998"><label>${t('xizm')}</label><select id="fs">${SV.map(x=>`<option>${L==='ru'?x[5]:x[4]}</option>`).join('')}</select><label>${t('izoh')}</label><textarea id="fm" rows="3"></textarea><button class="btn" onclick="yubor()">${t('yubor')}</button><div id="fr" style="margin-top:10px"></div></div>
+ ${ph?`<a class="btn line" href="tel:${ph}">📞 ${s.phone}</a>`:''}${tgl?`<a class="btn line" href="${tgl}">✈️ Telegram</a>`:''}${ig?`<a class="btn line" href="${ig}">📷 Instagram</a>`:''}${s.address&&nm(s.address)?`<p class="mut" style="margin-top:14px">📍 ${nm(s.address)}</p>`:''}`}
+async function yubor(){const r=$('#fr');r.className='';r.textContent='…';
+ try{const x=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#fn').value,phone:$('#fp').value,service:$('#fs').value+' (Telegram ilova)',message:$('#fm').value,lang:L})});const j=await x.json();
+ if(j.ok){r.className='ok';r.textContent=t('rahmat')}else{r.className='err';r.textContent=t('xato')}}catch(e){r.className='err';r.textContent=t('xato')}}
+function renderKab(){return `<h2>${t('kabT')}</h2><div class="card"><div style="font-size:34px">🔐</div><p class="mut">${t('kabD')}</p><a class="btn" href="https://app.visartdesign.uz/">${t('kabB')}</a></div>`}
+function render(){nav();$('#m').innerHTML=tab==='narx'?renderNarx():tab==='xiz'?renderXiz():tab==='loy'?renderLoy():tab==='alo'?renderAlo():renderKab()}
+render();
+fetch('/api/content').then(r=>r.json()).then(d=>{if(d&&d.ok){D=d;render()}}).catch(()=>{});
+</script>
+</body>
+</html>

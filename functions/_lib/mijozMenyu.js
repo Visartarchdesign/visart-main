@@ -133,7 +133,7 @@ async function saytMalumot() {
 const havola = (v, baza) => { v = String(v || '').trim(); if (!v) return null; return /^https?:\/\//i.test(v) ? v : baza + v.replace(/^@/, ''); };
 
 // ── MENYU ──
-export const ILOVA_URL = 'https://app.visartdesign.uz/';
+export const ILOVA_URL = 'https://visartdesign.uz/ilova/';
 function menyuKb(til, obyektBor) {
   const rows = [
     [{ text: t(til, 'b_narx'), callback_data: 'menu:narx' }, { text: t(til, 'b_xiz'), callback_data: 'menu:xiz' }],
