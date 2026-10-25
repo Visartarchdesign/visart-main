@@ -725,11 +725,19 @@ const ffFiltYol = (p) => String(p).replace(/\\/g, '/').replace(/^([A-Za-z]):/, '
 export async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = false) {
   if (!segmentlar || !segmentlar.length) return false;
   const { width, height } = await ffmpegOlchamOl(videoPath);
-  const fontSize = Math.round(width * (toza ? 0.046 : 0.052));
+  const fontSize = Math.round(width * (toza ? 0.075 : 0.052));
   const marginV = Math.round(height * (toza ? 0.118 : 0.11));
   const marginLR = Math.round(width * 0.055);
-  const assQatorlar = segmentlar.map((s) =>
-    `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(qatorBol(s.matn))}`
+  const assQatorlar = (toza
+    ? segmentlar.flatMap((s) => {
+      const so = s.matn.split(/\s+/).filter(Boolean), jam = so.reduce((a, w) => a + w.length + 1, 0); let t0 = s.bosh;
+      return so.map((w, k) => {
+        const d = ((w.length + 1) / jam) * (s.tugash - s.bosh), t1 = k === so.length - 1 ? s.tugash : t0 + d;
+        const satr = so.map((x, j) => (j === k ? `{\\c&H37AFD4&}${assEscape(x)}{\\c&HFFFFFF&}` : assEscape(x))).join(' ');
+        const r = `Dialogue: 0,${soniyaAssVaqtga(t0)},${soniyaAssVaqtga(t1)},Default,,0,0,0,,${satr}`; t0 = t1; return r;
+      });
+    })
+    : segmentlar.map((s) => `Dialogue: 0,${soniyaAssVaqtga(s.bosh)},${soniyaAssVaqtga(s.tugash)},Default,,0,0,0,,${assEscape(qatorBol(s.matn))}`)
   ).join('\n');
   const assMatn =
     `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nScaledBorderAndShadow: yes\n\n` +

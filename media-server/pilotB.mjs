@@ -13,24 +13,25 @@ const BOLIM = 'Moxir kvartirasi';
 const Q = [
   { sar: 'umumiy bo\'shliq', tag: 'devorsiz, yorug\'', zona: [0.386, 0.084, 0.775, 0.943], nom: 'Bitta bo\'shliq', rasm: 2, yon: 1, belgi: 'Yorug\'lik hamma joyda', joy: [0.5, 0.6],
     kam: "devor tortilsa — qorong'i",
-    sabab: "Mana bu yerda devor yo'q. Mehmonxona, stol va oshxona bitta bo'shliqda, shuning uchun deraza yorug'ligi hamma burchakka yetib boradi.",
-    boshqa: "Shu yerga devor tortsak-chi? O'rtadagi xona qorong'i va tor bo'lib qoladi, kunduzi ham chiroq yoqishga to'g'ri keladi." },
+    sabab: "Bu yerda devor yo'q. Mehmonxona, stol va oshxona bitta bo'shliqda, shuning uchun yorug'lik hamma burchakka yetadi.",
+    boshqa: "Devor tortsak, o'rtadagi xona qorong'i bo'lib, kunduzi ham chiroq yoqasiz." },
   { sar: 'divan va stol', tag: 'orasida bo\'sh yo\'lak', zona: [0.457, 0.118, 0.718, 0.578], nom: 'Yo\'lak', rasm: 1, yon: -1, belgi: 'Bo\'sh yo\'lak', joy: [0.5, 0.65],
     kam: "yaqin qo'yilsa — tor",
-    sabab: "Divan bilan stol orasida atayin bo'sh joy qoldirdik. Stuldan turasiz, kimdir o'tadi, hech kim hech kimga tegmaydi.",
-    boshqa: "Divanni stolga yaqinlashtirsak, har safar o'rningizdan turish azobga aylanadi." },
+    sabab: "Divan bilan stol orasida atayin bo'sh yo'lak qoldirdik, hech kim hech kimga tegmaydi.",
+    boshqa: "Yaqinlashtirsak, har safar o'rningizdan turish azobga aylanadi." },
   { sar: 'oshxona', tag: 'hammasi qo\'l yetadigan joyda', zona: [0.775, 0.084, 0.946, 0.533], nom: 'Oshxona', rasm: 3, yon: 1, belgi: 'Tekis fasad', joy: [0.5, 0.45],
     kam: "tarqoq texnika — ortiqcha yurish",
-    sabab: "Oshxona bitta devor bo'ylab: kir yuvish mashinasi, plita, muzlatgich va moyka yonma-yon. Bir joyda turib hammasiga qo'lingiz yetadi.",
-    boshqa: "Texnika xonaning turli chetlariga tarqalsa, har ovqatda xona bo'ylab yugurib yurasiz." },
+    sabab: "Oshxona bitta devor bo'ylab, hammasi qo'l yetadigan joyda.",
+    boshqa: "Texnika tarqoq bo'lsa, har ovqatda xona bo'ylab yugurasiz." },
   { sar: 'yotoqxona', tag: 'tinch burchak', zona: [0.015, 0.23, 0.37, 0.94], nom: 'Yotoqxona', rasm: 4, yon: -1, belgi: 'Yashirin yoritish', joy: [0.68, 0.57],
     kam: "eshik oldida — tinchlik yo'q",
-    sabab: "Yotoqxona alohida va tinch. Karavot devorga suyangan, shkaf esa kirish yonida, shuning uchun erta turganda hech kimni uyg'otmaysiz.",
-    boshqa: "Karavot eshik oldiga qo'yilsa, kirgan har bir odam to'g'ri yotoqqa qaraydi, tinchlik qolmaydi." },
+    sabab: "x",
+    boshqa: "x" },
 ];
+Q.length = 3;
 const jami = Q.length;
-let HOOK = "Bu kvartirada birorta mebel tasodifan turmagan. Hozir nega aynan shu yerda ekanini ko'rsataman.";
-let OXIR = "Har bir joyning o'z sababi bor. Visart Design jamoasi sizning uyingizni ham shunday o'ylab chiqadi.";
+let HOOK = "Bu kvartirada hech bir mebel tasodifan turmagan. Mana nega.";
+let OXIR = "Sizning uyingizni ham shunday o'ylab loyihalaymiz. Visart Design, Direct'ga yozing.";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pilotB-'));
 const segs = [], sub = []; let t = 0, id = 0;
 const reja = path.join(dir, 'reja.png');
@@ -55,13 +56,13 @@ async function qosh(matn, build, teg = '', sfx = null) {
   for (const x of bol) { const d = (x.length / jam) * (dur - 0.45); sub.push({ bosh: tt, tugash: tt + d, matn: x }); tt += d; }
   t += dur; console.log('segment', id, 'tayyor');
 }
-await qosh(HOOK, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: null, n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'kvartira rejasi tahlili', mp3, dur }, fd, seg), '[confident, energetic, fast-paced, intriguing]', { fx: [W(0, 0.35), { k: 'qurilish__tape', t: 0.4, v: 0.35 }] });
+await qosh(HOOK, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(4), n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'har bir mebelning sababi bor', parallaks: true, yon: -1, mp3, dur }, fd, seg), '[confident, energetic, fast-paced, intriguing]', { fx: [W(0, 0.35), { k: 'qurilish__tape', t: 0.4, v: 0.35 }] });
 for (let i = 0; i < Q.length; i++) {
   const q = Q[i];
   await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[confident, energetic, clear]', { fx: [W(), { k: 'klik__select', t: 0.7, v: 0.35 }] });
   await qosh(q.boshqa, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(q.rasm), n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.kam, belgi: q.belgi, belgiJoy: q.joy, parallaks: true, yon: q.yon, mp3, dur }, fd, seg), '[serious, firm, confident]', { ...(SFX_BOSHQA[i] || {}), fx: [W(), ...((SFX_BOSHQA[i] || {}).fx || [])] });
 }
-await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(2), n: jami, jami, bolim: '', sarlavha: 'Visart Design', tag: 'har qadam o\'ylangan', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]', { nom: 'qushlar__morning', fx: [W(0, 0.35)] });
+await qosh(OXIR, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(4), n: jami, jami, bolim: '', sarlavha: 'Visart Design', tag: 'loyiha uchun Direct\'ga yozing', parallaks: true, yon: 1, mp3, dur }, fd, seg), '[warm, confident, upbeat]', { nom: 'qushlar__morning', fx: [W(0, 0.35)] });
 fs.writeFileSync(path.join(tmp, 'list.txt'), segs.map((s) => `file '${s.replace(/\\/g, '/')}'`).join('\n'));
 const joined = path.join(tmp, 'joined.mp4');
 await ex('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-c', 'copy', joined]);

@@ -22,7 +22,7 @@ export async function rejaSegment(q, tmp, out) {
   fs.mkdirSync(tmp, { recursive: true });
   const meta = await sharp(q.plan).metadata();
   const PW = Math.round(CW * 0.94), PH = Math.round(PW * meta.height / meta.width);
-  const pl = await sharp(q.plan).resize(PW, PH, { kernel: 'lanczos3' }).toBuffer();
+  const pl = await sharp(q.plan).resize(PW, PH, { kernel: 'lanczos3' }).linear(1.9, 0).toBuffer();
   const px0 = Math.round((CW - PW) / 2), py0 = Math.round((CH - PH) / 2);
   const canvas = await sharp({ create: { width: CW, height: CH, channels: 3, background: BG } }).composite([{ input: pl, left: px0, top: py0, blend: 'lighten' }]).png().toBuffer();
   const baza = await sharp({ create: { width: W, height: H, channels: 3, background: BG } }).png().toBuffer();
