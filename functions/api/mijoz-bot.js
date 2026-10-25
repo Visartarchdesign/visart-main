@@ -49,6 +49,7 @@
 import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
+import { targetMenyu, targetCb } from '../_lib/target.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat } from '../_lib/mijozMenyu.js';
@@ -2004,6 +2005,7 @@ export async function onRequestPost({ request, env }) {
         if (mm > 0) { await removeKb(env, cid, cq.message.message_id); await finishDialog(env, cid, dlg, mm, data === 'dk:1'); }
         return json({ ok: true });
       }
+      if (data.startsWith('tg:') && isAdmin(env, cq.from && cq.from.id)) { await targetCb(env, cq).catch((e) => xatoYoz(env, 'target-cb', e)); return json({ ok: true }); }
       if (data.startsWith('ap:')) { await adminPanelCb(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('menu:')) { await handleMenu(env, H, cq, data); return json({ ok: true }); }
       if (data.startsWith('nx')) { await handleNarx(env, H, cq, data); return json({ ok: true }); }
@@ -2324,6 +2326,10 @@ export async function onRequestPost({ request, env }) {
       else await guruhgaXabarVaHisobot(env, String(o.id), o.nom, MUZLATISH_MATN(o.nom), '⏸ Muzlatish (qo\'lda)');
       return json({ ok: true });
     }
+    if (msg.text === '/target' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
+      await targetMenyu(env, chatId).catch((e) => xatoYoz(env, 'target-menyu', e));
+      return json({ ok: true });
+    }
     if (msg.text === '/id') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Sizning chat ID: <code>${chatId}</code>`);
       return json({ ok: true });
@@ -2337,8 +2343,8 @@ export async function onRequestPost({ request, env }) {
       await obyektKorsat(env, H, chatId, await getProfil(env, H, chatId)); // yashirin yo'l: menyuda tugma yo'q, mijozga guruhdan havola beriladi
       return json({ ok: true });
     }
-    if (msg.text === '/start' || msg.text === '/menu' || msg.text === '/start guruh') {
-      await menyuKorsat(env, H, chatId, msg.text === '/start');
+    if (msg.text === '/start' || msg.text === '/menu' || msg.text === '/start guruh' || msg.text === '/start reklama') {
+      await menyuKorsat(env, H, chatId, msg.text === '/start' || msg.text === '/start reklama');
       return json({ ok: true });
     }
 

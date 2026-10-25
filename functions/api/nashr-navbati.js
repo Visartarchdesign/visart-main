@@ -3,6 +3,7 @@ import { navbatniYubor } from '../_lib/outbox.js';
 import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
+import { targetNazorat } from '../_lib/target.js';
 import { mediaUygot, mediaChaqir, animatsiyaBuyurtma, tgSend } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
@@ -356,6 +357,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   }
 
   await tizimNazorati(env);
+  await targetNazorat(env).catch((e) => xatoYoz(env, 'target-nazorat', e));
   // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
   // Fonda (cron javobini kechiktirmaydi -- cron-job.org 30 soniyada uzadi va keyingi qadamlar kesilib qoladi)
   const fonda = (p) => { const q = p.catch(() => {}); if (waitUntil) waitUntil(q); };
