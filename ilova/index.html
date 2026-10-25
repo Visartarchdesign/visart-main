@@ -69,6 +69,8 @@ const SV=[['interior','interyer-dizayn','dizajn-interera','interior','Interyer d
 ['drawings','ishchi-chizmalar','rabochie-chertezhi','drawings','Ishchi chizmalar','Рабочие чертежи','Ustalar uchun aniq chizmalar','Точные чертежи для мастеров']];
 const CT={interior:{uz:'Interyer',ru:'Интерьер'},architecture:{uz:'Arxitektura',ru:'Архитектура'},drawings:{uz:'Chizmalar',ru:'Чертежи'},exterior:{uz:'Eksterier',ru:'Экстерьер'}};const ctn=c=>(CT[c]&&CT[c][L])||c;
 let D=null,tab='narx',calc='arch',S={sotix:6,non:false,fl:null,st:null,m2:80,pk:null,add:{},res:null},cat='all';
+const U=u=>!u?'':/^(https?:)?\/\//.test(u)||u[0]==='/'||u.startsWith('data:')?u:'/'+u;
+const imgFix=(el)=>{const a=(el.dataset.alt||'').split('|').filter(Boolean);const n=a.shift();el.dataset.alt=a.join('|');if(n)el.src=n;else el.style.visibility='hidden'};
 const nm=(o)=>o?(o[L]||o.uz||''):'';const fmt=n=>Math.round(n).toLocaleString('ru-RU').replace(/,/g,' ');
 const $=s=>document.querySelector(s);
 const TABS=[['narx','narx'],['xiz','xiz'],['loy','loy'],['alo','alo'],['kab','kab']];
@@ -132,9 +134,9 @@ function renderXiz(){return `<h2>${t('xiz')}</h2>`+SV.map(s=>`<a class="card" st
 function renderLoy(){
  const ps=(D&&D.projects)||[];const cats=['all',...new Set(ps.map(p=>p.cat).filter(Boolean))];
  const list=ps.filter(p=>cat==='all'||p.cat===cat);
- return `<h2>${t('loy')}</h2><div class="pills">${cats.map(c=>`<button class="${cat===c?'on':''}" onclick="cat='${c}';render()">${c==='all'?t('hammasi'):ctn(c)}</button>`).join('')}</div><div class="grid">${list.map(p=>`<div class="pj" onclick="openPj(${p.id})"><img loading="lazy" src="${p.thumb||p.hero||''}" alt=""><div>${nm(p.title)}</div></div>`).join('')}</div>`}
+ return `<h2>${t('loy')}</h2><div class="pills">${cats.map(c=>`<button class="${cat===c?'on':''}" onclick="cat='${c}';render()">${c==='all'?t('hammasi'):ctn(c)}</button>`).join('')}</div><div class="grid">${list.map(p=>`<div class="pj" onclick="openPj(${p.id})"><img loading="lazy" src="${U(p.thumb||p.hero)}" data-alt="${[p.hero,...(p.gallery||[])].map(U).join('|')}" onerror="imgFix(this)" alt=""><div>${nm(p.title)}</div></div>`).join('')}</div>`}
 function openPj(id){const p=D.projects.find(x=>x.id===id);if(!p)return;const imgs=[p.hero,...(p.gallery||[])].filter(Boolean);
- $('#md').innerHTML=`<button class="x" onclick="closePj()">${ic('x')}</button><h2>${nm(p.title)}</h2><div class="mut" style="margin-bottom:10px">${[nm(p.type),p.area?p.area+' '+t('kv'):'',nm(p.location)].filter(Boolean).join(' · ')}</div><p class="mut">${nm(p.desc)}</p>${imgs.map(u=>`<img loading="lazy" src="${u}" alt="">`).join('')}<button class="btn" onclick="closePj();go('alo')">${t('ariza')}</button>`;$('#md').classList.add('show');if(tg)tg.BackButton.show()}
+ $('#md').innerHTML=`<button class="x" onclick="closePj()">${ic('x')}</button><h2>${nm(p.title)}</h2><div class="mut" style="margin-bottom:10px">${[nm(p.type),p.area?p.area+' '+t('kv'):'',nm(p.location)].filter(Boolean).join(' · ')}</div><p class="mut">${nm(p.desc)}</p>${imgs.map(u=>`<img loading="lazy" src="${U(u)}" onerror="this.style.display='none'" alt="">`).join('')}<button class="btn" onclick="closePj();go('alo')">${t('ariza')}</button>`;$('#md').classList.add('show');if(tg)tg.BackButton.show()}
 function closePj(){$('#md').classList.remove('show');if(tg)tg.BackButton.hide()}
 if(tg)tg.BackButton.onClick(closePj);
 function renderAlo(){const s=(D&&D.settings)||{};const ph=(s.phone||'').replace(/[^\d+]/g,'');
