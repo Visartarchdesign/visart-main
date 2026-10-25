@@ -2008,6 +2008,17 @@ export async function onRequestPost({ request, env }) {
         return json({ ok: true });
       }
       if (data.startsWith('bl:') && isAdmin(env, cq.from && cq.from.id)) { await bolimCb(env, cq, () => adminPanel(env, chatId)).catch((e) => xatoYoz(env, 'bolim-cb', e)); return json({ ok: true }); }
+      if (data.startsWith('mg:') && isAdmin(env, cq.from && cq.from.id)) {
+        const [, amal, mid] = data.split(':');
+        const cid = cq.message.chat.id;
+        await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callback_query_id: cq.id }) }).catch(() => {});
+        await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageText`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: cid, message_id: cq.message.message_id, text: amal === 'm' ? "🎬 Montajga yuborildi. Tayyor bo'lgach botda tasdiq so'rayman." : '🗄 Omborda qoldi.' }) }).catch(() => {});
+        if (amal === 'm') {
+          const adminChat = cq.from.id;
+          await mediaChaqir(env, '/tg-yukla', { chatId: cid, messageId: Number(mid), adminChatId: adminChat }, adminChat).catch(() => {});
+        }
+        return json({ ok: true });
+      }
       if (data.startsWith('tg:') && isAdmin(env, cq.from && cq.from.id)) { await targetCb(env, cq).catch((e) => xatoYoz(env, 'target-cb', e)); return json({ ok: true }); }
       if (data.startsWith('ap:')) { await adminPanelCb(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('menu:')) { await handleMenu(env, H, cq, data); return json({ ok: true }); }
@@ -2207,8 +2218,16 @@ export async function onRequestPost({ request, env }) {
       const vf = msg.video || (msg.document && /^video\//.test(msg.document.mime_type || '') ? msg.document : null);
       const mediaGuruh = env.MEDIA_GROUP_CHAT_ID && String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID);
       const adminShaxsiy = msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id);
-      if (vf && Number(vf.file_size) > 19 * 1048576 && (mediaGuruh || adminShaxsiy)) {
-        const adminChat = adminShaxsiy ? chatId : (menejerlar(env)[0] || chatId);
+      if (vf && mediaGuruh && msg.chat.type !== 'private') {
+        // Guruh = ombor: kichik video arxivga tushadi, har ikkalasiga "Montajga?" tugmasi
+        if (Number(vf.file_size) <= 19 * 1048576) await handleMediaArxiv(env, msg).catch(() => {});
+        await tgSendMessageKb(env, msg.chat.id,
+          `🎬 Video qabul qilindi (${Math.round(Number(vf.file_size || 0) / 1048576)} MB). Montaj qilinsinmi?${Number(vf.file_size) <= 19 * 1048576 ? '' : ' (katta fayl: "Montajga" bosilgach PC ga yuklanadi)'}`,
+          { inline_keyboard: [[{ text: '🎬 Montajga', callback_data: `mg:m:${msg.message_id}` }, { text: Number(vf.file_size) <= 19 * 1048576 ? '🗄 Arxivda qolsin' : '✖️ Kerak emas', callback_data: `mg:a:${msg.message_id}` }]] }).catch(() => {});
+        return json({ ok: true });
+      }
+      if (vf && Number(vf.file_size) > 19 * 1048576 && adminShaxsiy) {
+        const adminChat = chatId;
         await mediaChaqir(env, '/tg-yukla', { chatId: msg.chat.id, messageId: msg.message_id, adminChatId: adminChat, korsatma: (msg.caption || '').trim() || undefined }, adminChat).catch(() => {});
         return json({ ok: true });
       }
