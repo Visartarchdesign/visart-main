@@ -1243,6 +1243,20 @@ export async function bajarNashr({ env, id, adminChatId }) {
       await xabar(`⚠️ Instagram Reels/Story xato: ${String((e && e.message) || e)}`);
     }
   }
+  if (env.TELEGRAM_CHANNEL_ID) {
+    try {
+      const vr = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
+      if (!vr.ok) throw new Error(`video yuklab bo'lmadi (${vr.status})`);
+      const fd = new FormData();
+      fd.append('chat_id', String(env.TELEGRAM_CHANNEL_ID)); fd.append('caption', String(caption || sarlavha || '').slice(0, 1000)); fd.append('supports_streaming', 'true');
+      fd.append('video', new Blob([await vr.arrayBuffer()], { type: 'video/mp4' }), 'reel.mp4');
+      const tr = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd, signal: AbortSignal.timeout(180000) });
+      if (!tr.ok) throw new Error(`Telegram ${tr.status} ${(await tr.text().catch(() => '')).slice(0, 160)}`);
+      await xabar('📣 Telegram kanalga joylandi.');
+    } catch (e) {
+      await xabar(`⚠️ Telegram kanal xato: ${String((e && e.message) || e)}`);
+    }
+  } else await xabar("ℹ️ Telegram kanal: TELEGRAM_CHANNEL_ID sozlanmagan -- o'tkazib yuborildi");
   if (env.FACEBOOK_PAGE_ID) {
     try {
       await navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption);
