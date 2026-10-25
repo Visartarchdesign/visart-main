@@ -17,10 +17,12 @@ $act2 = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile 
 $trg2 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(2) -RepetitionInterval (New-TimeSpan -Minutes 5)
 Register-ScheduledTask -TaskName 'VisartMediaNazorat' -Action $act2 -Trigger $trg2 -Settings $set -RunLevel Highest -Force | Out-Null
 
-# 3) Cloudflare tunnel: xizmat bo'lsa avtomatik yoqish va qayta yoqish
-$svc = Get-Service -Name 'cloudflared' -ErrorAction SilentlyContinue
-if ($svc) { Set-Service -Name 'cloudflared' -StartupType Automatic; if ($svc.Status -ne 'Running') { Start-Service 'cloudflared' }; sc.exe failure cloudflared reset= 86400 actions= restart/5000/restart/5000/restart/5000 | Out-Null; Write-Host 'cloudflared xizmati: avtomatik' }
-else { Write-Host "DIQQAT: 'cloudflared' xizmati topilmadi. Tunnel qanday yoqiladi? (cloudflared service install ...) -- menga yozing." }
+# 3) Cloudflare tunnel (visart-media): tizimga kirganda yonadi, o'chsa qayta yoqiladi
+$tun = Join-Path $dir 'tunnel_fon.bat'
+if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) { Write-Host "DIQQAT: cloudflared topilmadi (PATH'da yo'q)." }
+$actT = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$tun`"" -WorkingDirectory $dir
+Register-ScheduledTask -TaskName 'VisartTunnel' -Action $actT -Trigger $trg -Settings $set -RunLevel Highest -Force | Out-Null
+Start-ScheduledTask -TaskName 'VisartTunnel'
 
 # 4) Kompyuter uxlab qolmasin (tarmoqdan quvvatlanganda)
 powercfg /change standby-timeout-ac 0
