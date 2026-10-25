@@ -41,14 +41,14 @@ async function meta(env, method, path, params = {}) {
 const offset = (env, cur) => OFFSET[cur] || Number(env.META_OFFSET) || null;
 const maksKunlik = (env) => Number(env.TARGET_MAKS_KUNLIK) || 30;
 
-async function claude(env, system, user, maxTokens = 1800) {
+async function claude(env, system, user, maxTokens = 1800, prefill = '') {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }] }), signal: AbortSignal.timeout(50000),
+    body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }, ...(prefill ? [{ role: 'assistant', content: prefill }] : [])] }), signal: AbortSignal.timeout(50000),
   });
   if (!res.ok) throw new Error(`Claude ${res.status}`);
   const d = await res.json();
-  return (((d.content || []).find((x) => x.type === 'text') || {}).text || '').trim();
+  return (prefill + (((d.content || []).find((x) => x.type === 'text') || {}).text || '')).trim();
 }
 const jsonAjrat = (t) => { const m = t.match(/\{[\s\S]*\}/); return m ? JSON.parse(m[0]) : null; };
 
@@ -84,9 +84,15 @@ export async function targetTaklif(env, chatId) {
   const sys = `Sen Visart Design'ning senior targetologi va marketologisan. Tanqidiy, raqamlarga tayanadigan, bo'rttirmaydigan. Bilimlar:\n${bilimMatn()}\nFaqat JSON qaytar.`;
   const user = `Maqsad: Toshkentda arxitektura/interyer loyiha mijozlaridan sifatli lid olish (Telegram bot orqali). Oldingi kampaniyalar: ${JSON.stringify(tarix)}. Organik eng yaxshi postlar (kreativ nomzodlari): ${JSON.stringify((postlar || []).map((p) => ({ id: p.id, tur: p.media_type, like: p.like_count, izoh: p.comments_count, matn: (p.caption || '').slice(0, 120) })))}.
 JSON sxema: {"nom":str,"maqsad":str,"auditoriya":{"yosh_min":int,"yosh_max":int,"jins":"all|1|2","qiziqishlar":[str,str,str,str]},"post_id":str|null,"matn":str(<=125 belgi, o'zbekcha),"sarlavha":str(<=40),"variantlar":[{"kun_usd":num,"kunlar":int}] (aynan 3 ta, o'sib boruvchi, kun_usd 3..${maksKunlik(env)}),"kutilgan":{"ctr_pct":str,"klik_narxi_usd":str,"lid_oraliq":str},"xavflar":[str],"tanqid":str(o'z taklifingdagi eng zaif joy va uni qanday tekshirish)}`;
-  let t;
-  try { t = jsonAjrat(await claude(env, sys, user)); } catch (e) { return tg(env, chatId, `⚠️ Taklif xato: ${esc(e.message)}`); }
-  if (!t || !Array.isArray(t.variantlar)) return tg(env, chatId, "⚠️ Taklif formati noto'g'ri, qayta urinib ko'ring.");
+  let t, xom = '';
+  try { xom = await claude(env, sys, user, 3000, '{'); t = jsonAjrat(xom); } catch (e) { return tg(env, chatId, `⚠️ Taklif xato: ${esc(e.message)}\n${esc(xom.slice(0, 200))}`); }
+  if (!t) return tg(env, chatId, `⚠️ Taklif formati noto'g'ri (JSON topilmadi), qayta urinib ko'ring.\n${esc(xom.slice(0, 200))}`);
+  if (!Array.isArray(t.variantlar) || !t.variantlar.length) {
+    const arr = Object.values(t).find((x) => Array.isArray(x) && x.some((y) => y && y.kun_usd != null));
+    t.variantlar = arr || [{ kun_usd: 5, kunlar: 7 }, { kun_usd: 10, kunlar: 7 }, { kun_usd: 20, kunlar: 7 }];
+  }
+  t.auditoriya = t.auditoriya || {}; t.nom = t.nom || 'Visart reklama'; t.matn = t.matn || ''; t.sarlavha = t.sarlavha || t.nom;
+  t.auditoriya.yosh_min = Number(t.auditoriya.yosh_min) || 28; t.auditoriya.yosh_max = Number(t.auditoriya.yosh_max) || 55; t.auditoriya.qiziqishlar = t.auditoriya.qiziqishlar || ['Interior design', 'Home improvement', 'Renovation'];
   t.variantlar = t.variantlar.slice(0, 3).map((v) => ({ kun_usd: Math.min(Math.max(Number(v.kun_usd) || 5, 3), maksKunlik(env)), kunlar: Math.min(Math.max(Number(v.kunlar) || 7, 3), 30) }));
   const post = (postlar || []).find((p) => p.id === t.post_id) || (postlar || [])[0] || null;
   const row = await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'target', holat: 'tasdiq_kutilmoqda', nashr_vaqti: new Date().toISOString(), payload: { taklif: t, post: post ? { id: post.id, rasm: post.thumbnail_url || post.media_url, link: post.permalink } : null, chatId } }]) });
