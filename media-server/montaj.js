@@ -764,7 +764,7 @@ export async function srtVideogaKuydir(videoPath, segmentlar, outPath, toza = fa
 // Tayyor videoni Supabase Storage'ning ochiq ("public-media") bucket'iga
 // yuklaydi -- Instagram Graph API video kontentni FAQAT ochiq URL orqali
 // qabul qiladi. mijoz-bot.js'dagi supabasePublicUpload bilan bir xil bucket.
-async function supabaseVideoUpload(env, videoPath) {
+export async function supabaseVideoUpload(env, videoPath) {
   const bucket = 'public-media';
   const objPath = `instagram-video/${Date.now()}-reel.mp4`;
   const buffer = fs.readFileSync(videoPath);
@@ -790,7 +790,7 @@ async function supabaseVideoUpload(env, videoPath) {
   return `${env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${objPath}`;
 }
 
-async function supabaseRasmUpload(env, buf) {
+export async function supabaseRasmUpload(env, buf) {
   const bucket = 'public-media';
   const objPath = `instagram-video/${Date.now()}-cover.jpg`;
   const jpg = await sharp(buf).jpeg({ quality: 90 }).toBuffer();

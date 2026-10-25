@@ -2,6 +2,7 @@
 import fs from 'fs'; import os from 'os'; import path from 'path';
 import { fileURLToPath } from 'url';
 import { senariyYoz, reelB } from './reelB.mjs';
+import { supabaseVideoUpload, supabaseRasmUpload } from './montaj.js';
 
 const ILDIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), 'loyihalar');
 const REG = path.join(ILDIZ, 'ishlatilgan.json');
@@ -48,6 +49,19 @@ export async function bajarReelYarat({ env, adminChatId, loyiha, variant = 'uzun
     if (fs.existsSync(cover)) await tgFayl(env, 'sendPhoto', adminChatId, 'photo', cover, 'image/jpeg', '🖼 Oblojka');
     const matnF = out.replace(/\.mp4$/, '_matn.txt');
     if (fs.existsSync(matnF)) await tg(env, 'sendMessage', { chat_id: adminChatId, text: `📝 Ovoz matni:\n${fs.readFileSync(matnF, 'utf8').slice(0, 3500)}` });
+    try {
+      let S = {}; try { S = JSON.parse(fs.readFileSync(path.join(dir, 'senariy.json'), 'utf8')); } catch (e) { /* ixtiyoriy */ }
+      const sarlavha = String(S.oblojka || S.hook || 'Nega shunday loyihalangan').slice(0, 95);
+      const tavsif = String(S.hook || '');
+      const videoUrl = await supabaseVideoUpload(env, out);
+      const coverUrl = fs.existsSync(cover) ? await supabaseRasmUpload(env, fs.readFileSync(cover)) : null;
+      const caption = `${sarlavha}\n\n${tavsif}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
+      const sb = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' };
+      const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, { method: 'POST', headers: sb, body: JSON.stringify({ turi: 'video_nashr', holat: 'tasdiq_kutilmoqda', payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, taklifId: null }, nashr_vaqti: new Date().toISOString() }) });
+      if (!resp.ok) throw new Error(`navbat ${resp.status}`);
+      const nid = (await resp.json())[0].id;
+      await tg(env, 'sendMessage', { chat_id: adminChatId, text: `✅ Tayyor. Instagram, Facebook, Telegram kanal va YouTube'ga joylaymizmi?\n\n"${sarlavha}"`, reply_markup: { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${nid}:ok` }, { text: '❌ Bekor', callback_data: `vnash:${nid}:no` }]] } });
+    } catch (e) { await tg(env, 'sendMessage', { chat_id: adminChatId, text: `⚠️ Joylashga tayyorlashda xato: ${String((e && e.message) || e).slice(0, 300)}` }); }
     const ishl = oqi(); if (!ishl.includes(loyiha)) { ishl.push(loyiha); fs.writeFileSync(REG, JSON.stringify(ishl, null, 2)); }
     for (const f of [out, cover, matnF]) fs.rmSync(f, { force: true });
   } finally { band = false; }
