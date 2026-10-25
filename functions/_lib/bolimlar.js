@@ -17,6 +17,7 @@ async function tg(env, chat_id, text, reply_markup) {
 export const BOLIMLAR = {
   kontent: { nom: '🎬 Kontent (SMM · Senarist · Montajchi)', tugma: [
     [['🎞 Yangi reel (senariy)', 'bl:reel'], ['🗂 Nashr navbati', 'ap:nav']],
+    [['📦 Tayyor, joylanmagan ishlar', 'bl:tayyor']],
     [['💡 Maslahat (test)', 'ap:ms']],
   ] },
   target: { nom: '🎯 Marketing va target', tugma: [
@@ -84,6 +85,19 @@ export async function bolimCb(env, cq, eskiPanel) {
   await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callback_query_id: cq.id }) }).catch(() => {});
   if (amal === 'bosh') return bolimBosh(env, chatId);
   if (amal === 'eski') return eskiPanel();
+  if (amal === 'tayyor') {
+    const rows = await sb(env, 'nashr_navbati?turi=eq.video_nashr&holat=eq.tasdiq_kutilmoqda&select=id,payload,created_at&order=id.desc&limit=10').catch(() => null);
+    if (!rows || !rows.length) return tg(env, chatId, "📦 Tasdiq kutayotgan tayyor video yo'q.");
+    await tg(env, chatId, `📦 Tayyor, joylanmagan ishlar: <b>${rows.length}</b> ta (eng yangi 10). Ko'rib chiqing; "✅ Joylash" bossangiz haftalik jadvalning keyingi bo'sh slotiga qo'yiladi.`);
+    for (const r of rows) {
+      const p = r.payload || {};
+      const cap = `🎞 #${r.id} — ${String(p.sarlavha || '').slice(0, 120)}\n${String(r.created_at).slice(0, 10)}`;
+      const markup = { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${r.id}:ok` }, { text: '❌ Bekor', callback_data: `vnash:${r.id}:no` }]] };
+      const ok = p.video_url && await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendVideo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, video: p.video_url, caption: cap, reply_markup: markup }), signal: AbortSignal.timeout(20000) }).then((x) => x.ok).catch(() => false);
+      if (!ok) await tg(env, chatId, `${cap}\n${p.video_url || ''}`, markup);
+    }
+    return;
+  }
   if (amal === 'reel') {
     await tg(env, chatId, "⏳ Senarist ishga tushdi, senariy 1–2 daqiqada keladi. Tasdiqlasangiz montajchi yig'adi.");
     return mediaChaqir(env, '/reel-senariy', { adminChatId: chatId }, chatId).catch(() => {});
