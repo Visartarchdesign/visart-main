@@ -56,11 +56,11 @@ try{const s=localStorage.getItem('vl');if(s)L=s}catch(e){}
 const T={uz:{narx:'Narx',xiz:'Xizmatlar',loy:'Loyihalar',alo:'Aloqa',kab:'Kabinet',
  tarif:'Taxminiy narx hisoblash',arch:'Arxitektura',int:'Interyer',tk:'Pod klyuch',sotix:'Yer maydoni (sotix)',bino:'Bino turi',res:'Turar joy',non:'Noturar bino',qav:'Qavatlar',uslub:'Uslub',pak:'Paket',m2:'Maydon (m²)',qosh:"Qo'shimcha xizmatlar",hisob:'Hisoblash',som:"so'm",taxm:"Taxminiy narx. Aniq hisob-kitob uchun ariza qoldiring.",ariza:'Ariza qoldirish',katta:"Bu hajmda narx alohida hisoblanadi — ariza qoldiring.",kiradi:'Kiradi',
  ism:'Ismingiz',tel:'Telefon',xizm:'Xizmat',izoh:'Loyiha haqida',yubor:'Yuborish',rahmat:"Ariza qabul qilindi. Menejer tez orada bog'lanadi.",xato:"Xatolik. Ism va telefonni tekshiring.",
- kabT:'Mening obyektim',kabD:"Loyihangiz bosqichi, chizmalar va to'lov holati. Login va parol bilan kiring.",kabB:'Kabinetga kirish',batafsil:'Batafsil',hammasi:'Hammasi',call:"Qo'ng'iroq",oraliq:'oraliq',kv:'kv.m'},
+ tkq:"Narxga kiradigan qismlar (o'chirib-yoqing)",kabT:'Mening obyektim',kabD:"Loyihangiz bosqichi, chizmalar va to'lov holati. Login va parol bilan kiring.",kabB:'Kabinetga kirish',batafsil:'Batafsil',hammasi:'Hammasi',call:"Qo'ng'iroq",oraliq:'oraliq',kv:'kv.m'},
 ru:{narx:'Цена',xiz:'Услуги',loy:'Проекты',alo:'Связь',kab:'Кабинет',
  tarif:'Расчёт примерной стоимости',arch:'Архитектура',int:'Интерьер',tk:'Под ключ',sotix:'Участок (сот.)',bino:'Тип здания',res:'Жилой дом',non:'Нежилое здание',qav:'Этажность',uslub:'Стиль',pak:'Пакет',m2:'Площадь (м²)',qosh:'Доп. услуги',hisob:'Рассчитать',som:'сум',taxm:'Примерная цена. Для точного расчёта оставьте заявку.',ariza:'Оставить заявку',katta:'Для такого объёма цена считается отдельно — оставьте заявку.',kiradi:'Входит',
  ism:'Ваше имя',tel:'Телефон',xizm:'Услуга',izoh:'О проекте',yubor:'Отправить',rahmat:'Заявка принята. Менеджер скоро свяжется.',xato:'Ошибка. Проверьте имя и телефон.',
- kabT:'Мой объект',kabD:'Этап проекта, чертежи и оплата. Войдите по логину и паролю.',kabB:'Войти в кабинет',batafsil:'Подробнее',hammasi:'Все',call:'Позвонить',oraliq:'диапазон',kv:'м²'}};
+ tkq:'Что входит в расчёт (включайте/отключайте)',kabT:'Мой объект',kabD:'Этап проекта, чертежи и оплата. Войдите по логину и паролю.',kabB:'Войти в кабинет',batafsil:'Подробнее',hammasi:'Все',call:'Позвонить',oraliq:'диапазон',kv:'м²'}};
 const t=k=>(T[L]||T.uz)[k];
 const SV=[['interior','interyer-dizayn','dizajn-interera','interior','Interyer dizayn','Дизайн интерьера','Planirovka, 3D vizualizatsiya, ishchi chizmalar','Планировка, 3D, рабочие чертежи'],
 ['arch','arxitektura-loyihalash','arhitekturnoe-proektirovanie','arch','Arxitektura loyihalash','Архитектурное проектирование','Uy, kottej va binolar loyihasi','Проекты домов, коттеджей, зданий'],
@@ -68,7 +68,7 @@ const SV=[['interior','interyer-dizayn','dizajn-interera','interior','Interyer d
 ['turnkey','pod-klyuch','remont-pod-klyuch','turnkey','Pod klyuch: ta’mir va qurilish','Ремонт и строительство под ключ','Loyihadan topshirishgacha','От проекта до сдачи'],
 ['drawings','ishchi-chizmalar','rabochie-chertezhi','drawings','Ishchi chizmalar','Рабочие чертежи','Ustalar uchun aniq chizmalar','Точные чертежи для мастеров']];
 const CT={interior:{uz:'Interyer',ru:'Интерьер'},architecture:{uz:'Arxitektura',ru:'Архитектура'},drawings:{uz:'Chizmalar',ru:'Чертежи'},exterior:{uz:'Eksterier',ru:'Экстерьер'}};const ctn=c=>(CT[c]&&CT[c][L])||c;
-let D=null,tab='narx',calc='arch',S={sotix:6,non:false,fl:null,st:null,m2:80,pk:null,add:{},res:null},cat='all';
+let TKOFF={};let D=null,tab='narx',calc='arch',S={sotix:6,non:false,fl:null,st:null,m2:80,pk:null,add:{},res:null},cat='all';
 const U=u=>!u?'':/^(https?:)?\/\//.test(u)||u[0]==='/'||u.startsWith('data:')?u:'/'+u;
 const imgFix=(el)=>{const a=(el.dataset.alt||'').split('|').filter(Boolean);const n=a.shift();el.dataset.alt=a.join('|');if(n)el.src=n;else el.style.visibility='hidden'};
 const nm=(o)=>o?(o[L]||o.uz||''):'';const fmt=n=>Math.round(n).toLocaleString('ru-RU').replace(/,/g,' ');
@@ -79,6 +79,7 @@ function go(k){tab=k;S.res=null;render();window.scrollTo(0,0)}
 $('#lg').onclick=()=>{L=L==='uz'?'ru':'uz';try{localStorage.setItem('vl',L)}catch(e){}render()};
 function seg(opts,cur,fn){return `<div class="seg">${opts.map(([v,l])=>`<button class="${String(cur)===String(v)?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`}
 function pickCalc(v){calc=v;S.res=null;render()}function setS(k,v){S[k]=v;S.res=null;render()}
+function tkT(id){TKOFF[id]=!TKOFF[id];S.res=null}
 function togg(i){S.add[i]=!S.add[i];S.res=null}
 function num(k,v){S[k]=parseFloat(v)||0;S.res=null}
 function renderNarx(){
@@ -100,6 +101,8 @@ function renderNarx(){
  }else{
   h+=`<label>${t('m2')}</label><input type="number" inputmode="decimal" value="${S.m2}" oninput="num('m2',this.value)">`;
   h+=`<label>${t('uslub')}</label>`+seg(st.map(x=>[x.id,nm(x)]),S.st,'setSt');
+  const cs=(p.turnkey&&p.turnkey.components)||[];
+  if(cs.length)h+=`<label>${t('tkq')}</label>`+cs.map(c=>`<div class="chk"><input type="checkbox" ${TKOFF[c.id]?'':'checked'} onchange="tkT('${c.id}')"><span style="flex:1">${nm(c)}</span></div>`).join('');
  }
  h+=`<button class="btn" onclick="hisobla()">${t('hisob')}</button></div>`;
  if(S.res)h+=`<div class="card">${S.res}</div>`;
@@ -124,9 +127,10 @@ function hisobla(){
   const tk=p.turnkey;if(!tk||S.m2<=0)return;const m2=S.m2;
   const tier=tk.areaTiers.find(x=>m2<=x.maxArea)||tk.areaTiers[tk.areaTiers.length-1];
   const mg=tk.managementTiers.find(x=>m2<=x.maxArea)||tk.managementTiers[tk.managementTiers.length-1];
-  let mn=0,mx=0,rows=[];for(const c of tk.components){const q=tier[c.id];if(!q)continue;mn+=q.min*st.mult*m2;mx+=q.max*st.mult*m2;rows.push(`• ${nm(c)}: $${Math.round(q.min*st.mult)}–${Math.round(q.max*st.mult)}/${t('kv')}`)}
-  mn*=1+mg.pct;mx*=1+mg.pct;const k=p.usdRate||12700;
-  out=`<div class="mut">${t('tk')} · ${m2} ${t('kv')}</div><div class="res">$${fmt(mn)} – $${fmt(mx)}</div><div class="mut">≈ ${fmt(mn*k)} – ${fmt(mx*k)} ${som}</div><p class="mut">${rows.join('<br>')}<br>• ${L==='ru'?'Авторский надзор':'Mualliflik nazorati xizmat haqqi'}: +${Math.round(mg.pct*100)}%</p><p class="mut">${t('taxm')}</p>${arizaBtn()}`;
+  let mn=0,mx=0,rows=[];for(const c of tk.components){if(TKOFF[c.id])continue;const q=tier[c.id];if(!q)continue;const a=q.min*st.mult*m2,b=q.max*st.mult*m2;mn+=a;mx+=b;rows.push(`• ${nm(c)}: $${fmt(a)} – $${fmt(b)} <span style="opacity:.7">($${Math.round(q.min*st.mult)}–${Math.round(q.max*st.mult)}/${t('kv')})</span>`)}
+  if(!rows.length){S.res=`<p class="mut">${t('tkq')}</p>`;render();return}
+  const nzA=mn*mg.pct,nzB=mx*mg.pct;mn*=1+mg.pct;mx*=1+mg.pct;const k=p.usdRate||12700;
+  out=`<div class="mut">${t('tk')} · ${m2} ${t('kv')}</div><div class="res">$${fmt(mn)} – $${fmt(mx)}</div><div class="mut">≈ ${fmt(mn*k)} – ${fmt(mx*k)} ${som}</div><p class="mut">${rows.join('<br>')}<br>• ${L==='ru'?'Авторский надзор':'Mualliflik nazorati xizmat haqqi'}: +${Math.round(mg.pct*100)}% ($${fmt(nzA)} – $${fmt(nzB)})</p><p class="mut">${t('taxm')}</p>${arizaBtn()}`;
  }
  S.res=out;render();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50);
 }
