@@ -1197,7 +1197,7 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
 // (navbat) va YouTube Shorts'ga chiqaradi.
 
 // ===== Haftalik nashr jadvali (Toshkent, UTC+5) =====
-const IG_REJA = { vaqt: { 2: [20, 0], 5: [12, 30], 0: [20, 30] } };   // Sesh 20:00, Juma 12:30, Yak 20:30 (Reel)
+const IG_REJA = { vaqt: { 2: [20, 0], 5: [14, 0], 0: [20, 30] } };   // Sesh 20:00, Juma 14:00 (Juma namozidan keyin), Yak 20:30 (Reel); Telegram video = IG +30 daqiqa
 const YT_REJA = { vaqt: { 1: [18, 30], 4: [18, 30], 6: [11, 0] } };  // Dush 18:30, Pay 18:30, Shan 11:00 (Shorts)
 const tosh = (d) => { const t = new Date(d.getTime() + 5 * 3600e3), p = (n) => String(n).padStart(2, '0'); return `${['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Juma', 'Shan'][t.getUTCDay()]} ${p(t.getUTCDate())}.${p(t.getUTCMonth() + 1)} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`; };
 export function keyingiSlot(reja, dan) {
@@ -1219,6 +1219,7 @@ async function slotlarHisobla(env) {
     const r = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?turi=eq.video_ig_tg&select=nashr_vaqti,payload&order=created_at.desc&limit=20`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });
     for (const q of (await r.json()) || []) {
       const a = new Date(q.nashr_vaqti), b = q.payload && q.payload.yt_vaqt ? new Date(q.payload.yt_vaqt) : null;
+      if (q.payload && q.payload.qism === 'tg') continue;
       if (a > oxirIg) oxirIg = a; if (b && b > oxirYt) oxirYt = b;
     }
   } catch (e) { /* jadval bo'sh -- eng yaqin slot */ }
@@ -1229,7 +1230,7 @@ async function slotlarHisobla(env) {
 export async function igTgNashr(env, p, adminChatId) {
   const xabar = (t) => tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, t).catch(() => {});
   const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha } = p;
-  if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID) {
+  if (p.qism !== 'tg' && env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID) {
     try {
       await xabar('⏳ Instagram Reels/Story joylanmoqda...');
       await instagramReelsPost(env, videoUrl, caption, coverUrl);
@@ -1258,6 +1259,7 @@ export async function igTgNashr(env, p, adminChatId) {
       await xabar(`⚠️ Instagram Reels/Story xato: ${String((e && e.message) || e)}`);
     }
   }
+  if (p.qism === 'ig') return;
   if (env.TELEGRAM_CHANNEL_ID) {
     try {
       const vr = await fetch(videoUrl, { signal: AbortSignal.timeout(120000) });
@@ -1305,14 +1307,15 @@ export async function bajarNashr({ env, id, adminChatId }) {
   const slotlar = await slotlarHisobla(env);
   let igReja = null;
   try {
-    const r = await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: slotlar.ig.toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
+    const r = await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: slotlar.ig.toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, qism: 'ig', yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
+    await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: new Date(slotlar.ig.getTime() + 30 * 60e3).toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, qism: 'tg', yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
     if (!r.ok) throw new Error(`navbat ${r.status}`);
     igReja = slotlar.ig;
   } catch (e) {
     await xabar(`⚠️ Jadvalga qo'yib bo'lmadi (${String((e && e.message) || e).slice(0, 120)}), Instagram va Telegram kanalga darhol joylanadi.`);
     await igTgNashr(env, { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif }, adminChatId);
   }
-  if (igReja) await xabar(`🗓 Jadval (Toshkent):\n📸 Instagram Reels + 📣 Telegram kanal: ${tosh(igReja)}\n📺 YouTube Shorts: ${tosh(slotlar.yt)}\n📘 Facebook: ertalabki oynada`);
+  if (igReja) await xabar(`🗓 Jadval (Toshkent):\n📸 Instagram Reels: ${tosh(igReja)}\n📣 Telegram kanal: ${tosh(new Date(igReja.getTime() + 30 * 60e3))}\n📺 YouTube Shorts: ${tosh(slotlar.yt)}\n📘 Facebook: ertalabki oynada`);
   if (env.FACEBOOK_PAGE_ID) {
     try {
       await navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption);
