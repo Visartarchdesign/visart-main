@@ -450,7 +450,7 @@ async function youtubeUpload(env, videoPath, title, description, coverBuf, publi
           body: jpg,
           signal: AbortSignal.timeout(30000),
         });
-        if (!tr.ok) thumbXato = tr.status === 403 ? "kanal tasdiqlanmagan: youtube.com/verify da telefon raqamini tasdiqlang (video yuklandi, qopqoq faqat shu uchun o'rnatilmadi)" : `${tr.status} ${(await tr.text().catch(() => '')).slice(0, 150)}`;
+        if (!tr.ok) thumbXato = tr.status === 403 ? "YouTube API Shorts uchun maxsus qopqoqni qabul qilmadi (kanal tasdiqlangan, kod xatosi emas). Kerak bo'lsa qopqoqni YouTube Studio/ilovadan qo'lda qo'ying" : `${tr.status} ${(await tr.text().catch(() => '')).slice(0, 150)}`;
       } catch (e) { thumbXato = String((e && e.message) || e); }
     }
     return data.id ? { thumbXato, url: `https://youtube.com/shorts/${data.id}`, nashrVaqti } : null;
