@@ -1,10 +1,10 @@
 // B seriya senariy QONUNI -- bitta manba: Gemini'ga prompt ham, tekshiruv ham shu yerdan.
 export const QONUN = [
-  'FORMULA: HOOK (raqamli savol/da\'vo) -> 3 zona [QOIDA (umumiy me\'yor, raqam bilan) -> SABAB (shu rejadagi o\'lcham, FAKTLARdan) -> KAMCHILIK (boshqacha qilinsa aniq oqibat)] -> CTA (Direct + kalit so\'z).',
+  'FORMULA: HOOK (raqamli savol/da\'vo) -> 3 zona [MUAMMO (umumiy me\'yor raqam bilan + buzilsa kundalik oqibat; rejada ko\'rsatiladi) -> YECHIM ("Visart Design" shu rejada aniq nima qilgani, FAKTLARdagi o\'lcham bilan; renderda ko\'rsatiladi)] -> CTA (Direct + kalit so\'z).',
   'Hook: <=10 so\'z, kamida 1 raqam yoki aniq savol. "sir", "siz bilmagan", "3 ta sir" kabi bo\'sh va\'dalar TAQIQ.',
   'Qoida: odatda qabul qilingan ergonomika me\'yori, albatta raqam bilan (sm/mm/m). Hamma kimdir o\'zi uyida qo\'llay oladigan bo\'lsin.',
-  'Sabab: faqat FAKTLARda yozilgan o\'lchamlar. FAKTLARda yo\'q raqam, deraza, oyna, rang, material TAQIQ.',
-  'Kamchilik (boshqa): jismoniy, kundalik oqibat (tirsak tegadi, idish sig\'maydi). Raqamsiz, <=16 so\'z.',
+  'Muammo: <=24 so\'z; birinchi gapda me\'yor (raqam), ikkinchisida buzilsa jismoniy oqibat (tirsak tegadi, idish sig\'maydi).',
+  'Yechim: "Visart Design" so\'zlari bilan boshlanadi, <=22 so\'z, faqat FAKTLARda yozilgan o\'lcham. FAKTLARda yo\'q raqam, deraza, oyna, rang, material TAQIQ.',
   '"kam" -- muammo nomi (Tor ..., Past ...), yechim emas.',
   '3 zona: har xil xona yoki har xil qaror, har xil render. Render faqat shu qaror ROSTDAN ko\'ringanda.',
   'Mijoz, loyiha nomi, "kvartirasi" tilga olinmasin. Oblojka: <=6 so\'z, mazmunga mos umumiy foyda.',
@@ -37,15 +37,15 @@ export function tekshir(S, faktlar, nom = '') {
   let jami = soz(S.hook) + soz(S.oxir);
   Z.forEach((z, i) => {
     const n = `zona${i + 1}`;
-    if (!raqamlar(z.qoida).length) x.push(`${n}: qoidada raqam yo'q`);
-    raqamlar(z.sabab).forEach((r) => { if (!fraq.has(r) && !raqamlar(z.qoida).includes(r)) x.push(`${n}: sababdagi "${r}" FAKTLARda yo'q`); });
-    if (!raqamlar(z.sabab).length) x.push(`${n}: sababda rejadagi o'lcham yo'q`);
-    if (raqamlar(z.boshqa).length) x.push(`${n}: kamchilik gapida raqam bor`);
-    if (soz(z.boshqa) > 16) x.push(`${n}: boshqa 16 so'zdan uzun`);
-    if (soz(z.sabab) > 24) x.push(`${n}: sabab 24 so'zdan uzun`);
+    if (!raqamlar(z.muammo).length) x.push(`${n}: muammoda me'yor raqami yo'q`);
+    if (soz(z.muammo) > 24) x.push(`${n}: muammo 24 so'zdan uzun`);
+    if (!/^visart design/i.test(String(z.yechim || '').trim())) x.push(`${n}: yechim "Visart Design" bilan boshlanmaydi`);
+    if (soz(z.yechim) > 22) x.push(`${n}: yechim 22 so'zdan uzun`);
+    if (!raqamlar(z.yechim).length) x.push(`${n}: yechimda rejadagi o'lcham yo'q`);
+    raqamlar(z.yechim).forEach((r) => { if (!fraq.has(r)) x.push(`${n}: yechimdagi "${r}" FAKTLARda yo'q`); });
     if (/^(joyni tejash|yechim|qulay)/i.test(z.kam || '')) x.push(`${n}: "kam" yechim, muammo nomi emas`);
-    if (derazaYoq && deraza.test(`${z.kam} ${z.qoida} ${z.sabab} ${z.boshqa}`)) x.push(`${n}: rejada deraza yo'q, lekin tilga olingan`);
-    jami += soz(z.sabab) + soz(z.boshqa);
+    if (derazaYoq && deraza.test(`${z.kam} ${z.muammo} ${z.yechim}`)) x.push(`${n}: rejada deraza yo'q, lekin tilga olingan`);
+    jami += soz(z.muammo) + soz(z.yechim);
   });
   if (jami < 60 || jami > 130) x.push(`ovoz matni ${jami} so'z (60-110 bo'lsin)`);
   return x;
