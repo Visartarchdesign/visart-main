@@ -64,7 +64,7 @@ async function tgSend(token, chatId, text) {
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://app.visartdesign.uz/' }]] } }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
     signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) return null;
@@ -76,7 +76,7 @@ async function tgEdit(token, chatId, messageId, text) {
   const res = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://app.visartdesign.uz/' }]] } }),
+    body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' }),
     signal: AbortSignal.timeout(10000),
   });
   return res.ok;
