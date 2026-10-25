@@ -126,7 +126,7 @@ function hisobla(){
   const mg=tk.managementTiers.find(x=>m2<=x.maxArea)||tk.managementTiers[tk.managementTiers.length-1];
   let mn=0,mx=0,rows=[];for(const c of tk.components){const q=tier[c.id];if(!q)continue;mn+=q.min*st.mult*m2;mx+=q.max*st.mult*m2;rows.push(`• ${nm(c)}: $${Math.round(q.min*st.mult)}–${Math.round(q.max*st.mult)}/${t('kv')}`)}
   mn*=1+mg.pct;mx*=1+mg.pct;const k=p.usdRate||12700;
-  out=`<div class="mut">${t('tk')} · ${m2} ${t('kv')}</div><div class="res">$${fmt(mn)} – $${fmt(mx)}</div><div class="mut">≈ ${fmt(mn*k)} – ${fmt(mx*k)} ${som}</div><p class="mut">${rows.join('<br>')}<br>+${Math.round(mg.pct*100)}%</p><p class="mut">${t('taxm')}</p>${arizaBtn()}`;
+  out=`<div class="mut">${t('tk')} · ${m2} ${t('kv')}</div><div class="res">$${fmt(mn)} – $${fmt(mx)}</div><div class="mut">≈ ${fmt(mn*k)} – ${fmt(mx*k)} ${som}</div><p class="mut">${rows.join('<br>')}<br>• ${L==='ru'?'Авторский надзор':'Mualliflik nazorati xizmat haqqi'}: +${Math.round(mg.pct*100)}%</p><p class="mut">${t('taxm')}</p>${arizaBtn()}`;
  }
  S.res=out;render();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50);
 }
