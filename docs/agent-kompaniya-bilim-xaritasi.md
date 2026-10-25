@@ -36,3 +36,7 @@ Doston plan va mebel joylashtiradi -> agent faqat blok nomlarini to'g'rilaydi (m
 - Namuna indeksi: `portfolio\portfolio_katalog.json` (loyiha -> dwg/render/max/pdf/video). Agentlar yangi loyihada planlar, mebel joylashuvi, qatlamlar va renderlarni shu yerdan namuna qilib oladi (nusxalamaydi).
 - Qatlam lug'ati: `bilim\autocad_qatlamlar.json`.
 - Navbat: smeta agenti (narxlar kerak), rabochka generatori, QA.
+
+## Katta video (>20 MB) Telegramdan (2026-10-25)
+Guruh/admin shaxsiy chatiga tashlangan katta video -> Cloudflare `/tg-yukla` -> media-server `tgBuyuk.js` (GramJS, bot tokeni bilan MTProto, 2 GB gacha) -> `xom_video` -> papka kuzatuvchisi -> montaj (subtitr, vizual kesim, ovoz effektlari) -> tasdiq.
+Sozlash (bir marta): my.telegram.org -> API development tools -> `TG_API_ID`, `TG_API_HASH` ni `media-server\.env` ga yozish. Paket `telegram` serverni yoqishda `npm install` bilan o'zi o'rnatiladi.

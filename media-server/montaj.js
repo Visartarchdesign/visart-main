@@ -1026,7 +1026,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
       catch (e) {
         if (/too big/i.test(String((e && e.message) || e))) {
           await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId,
-            "📦 Video 20 MB dan katta -- Telegram bot uni yuklab ololmaydi.\nFaylni kompyuterdagi Documents\\Visart_AI_Studio\\xom_video papkasiga tashlang -- montaj avtomatik boshlanadi.");
+            "📦 Video 20 MB dan katta -- oddiy yo'l bilan yuklab bo'lmadi. Videoni qayta yuboring (katta fayllar avtomatik MTProto bilan olinadi, agar TG_API_ID/TG_API_HASH sozlangan bo'lsa), yoki faylni Documents\\Visart_AI_Studio\\xom_video papkasiga tashlang.");
           return true;
         }
         throw e;

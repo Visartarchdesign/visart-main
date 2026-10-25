@@ -18,6 +18,7 @@ app.use(express.json({ limit: '20mb' }));
 // Render'da SUPABASE_*/MIJOZ_BOT_TOKEN/GEMINI_API_KEY sozlanmagan bo'lsa ham ishlashi uchun, Cloudflare bot
 // ularni (MEDIA_SECRET bilan himoyalangan HTTPS so'rovda) uzatadi. Cloudflare qiymatlari ustun (Render'dagi eski/almashtirilgan token 401 bermasligi uchun).
 import { keshYoz, xomKuzatuvchi } from './xomKuzatuvchi.js';
+import { tgYukla } from './tgBuyuk.js';
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
   const out = { ...process.env };
@@ -91,6 +92,15 @@ app.post('/montaj', (req, res) => {
   }
   res.json({ ok: true, holat: 'boshlandi' });
   ish('Montaj', req, (env) => bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma }));
+});
+
+// POST /tg-yukla -- Telegram'dagi katta (>20 MB) videoni MTProto bilan xom_video papkasiga yuklaydi
+app.post('/tg-yukla', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  const { chatId, messageId, adminChatId, korsatma } = req.body || {};
+  if (!chatId || !messageId || !adminChatId) return res.status(400).json({ ok: false, error: 'chatId, messageId, adminChatId kerak' });
+  res.json({ ok: true, holat: 'boshlandi' });
+  ish('TgYukla', req, (env) => tgYukla({ env, chatId, messageId, adminChatId, korsatma }));
 });
 
 // POST /nashr-ig-tg -- jadval vaqti kelganda (Cloudflare cron chaqiradi)

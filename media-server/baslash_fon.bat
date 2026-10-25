@@ -1,6 +1,7 @@
 @echo off
 rem Fonda ishlaydi, o'zi qayta ishga tushadi, jurnal: server.log
 cd /d "%~dp0"
+call npm install --omit=dev --no-audit --no-fund >> server.log 2>&1
 :loop
 for /f "usebackq tokens=1,* delims==" %%a in (".env") do set "%%a=%%b"
 echo [%date% %time%] server ishga tushdi >> server.log

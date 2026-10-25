@@ -2202,6 +2202,17 @@ export async function onRequestPost({ request, env }) {
     // so'rovi chiqariladi (yuqoridagi handleUstaMedia o'zi guruh ro'yxatdan
     // o'tmagan bo'lsa jim e'tiborsiz qoldiradi).
     const hujjatRasmYokiVideo = msg.document && /^(image|video)\//.test(msg.document.mime_type || '');
+    // KATTA video (>20 MB): Bot API yuklab ololmaydi -- media-server MTProto orqali xom_video papkasiga oladi va montaj o'zi boshlanadi
+    {
+      const vf = msg.video || (msg.document && /^video\//.test(msg.document.mime_type || '') ? msg.document : null);
+      const mediaGuruh = env.MEDIA_GROUP_CHAT_ID && String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID);
+      const adminShaxsiy = msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id);
+      if (vf && Number(vf.file_size) > 19 * 1048576 && (mediaGuruh || adminShaxsiy)) {
+        const adminChat = adminShaxsiy ? chatId : (menejerlar(env)[0] || chatId);
+        await mediaChaqir(env, '/tg-yukla', { chatId: msg.chat.id, messageId: msg.message_id, adminChatId: adminChat, korsatma: (msg.caption || '').trim() || undefined }, adminChat).catch(() => {});
+        return json({ ok: true });
+      }
+    }
     if ((msg.chat.type === 'group' || msg.chat.type === 'supergroup') && (msg.photo || msg.video || msg.video_note || hujjatRasmYokiVideo)) {
       if (env.MEDIA_GROUP_CHAT_ID && String(msg.chat.id) === String(env.MEDIA_GROUP_CHAT_ID)) {
         try {

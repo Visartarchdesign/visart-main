@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { bajarMontaj } from './montaj.js';
 
 const KESH = path.join(path.dirname(fileURLToPath(import.meta.url)), '_env_kesh.json');
-const KALITLAR = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY', 'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ACCOUNT_ID', 'FACEBOOK_PAGE_ID', 'TELEGRAM_CHANNEL_ID'];
+const KALITLAR = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'MIJOZ_BOT_TOKEN', 'GEMINI_API_KEY', 'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_BUSINESS_ACCOUNT_ID', 'FACEBOOK_PAGE_ID', 'TELEGRAM_CHANNEL_ID', 'TG_API_ID', 'TG_API_HASH'];
 const VIDEO = /\.(mp4|mov|mkv|m4v|avi|webm)$/i;
 
 // Cloudflare so'rovlaridan kelgan kalitlar va admin chat id -- qayta ishga tushganda ham kuzatuvchi ishlashi uchun
