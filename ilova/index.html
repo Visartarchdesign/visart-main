@@ -39,6 +39,7 @@ nav button{flex:1;background:none;border:0;color:var(--mut);font-size:10.5px;pad
 .modal{position:fixed;inset:0;background:var(--bg);z-index:20;overflow:auto;padding:16px;display:none}.modal.show{display:block}.modal img{width:100%;border-radius:10px;margin-bottom:10px;display:block}.x{display:flex;align-items:center;justify-content:center;position:sticky;top:0;float:right;background:#000a;color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:20px;z-index:2}
 .ok{color:#7fd48a}.err{color:#ff8b8b}.hid{display:none}
 iframe#kf{display:none;width:100%;height:calc(100vh - 130px);border:0;background:#fff}
+.pg{position:fixed;inset:0;background:var(--bg);z-index:30;display:none;flex-direction:column}.pg.show{display:flex}.pg .bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);color:var(--gold-l);font-weight:600}.pg .bar button{background:none;border:0;color:inherit;font:inherit;display:flex;align-items:center;gap:6px;padding:4px 0}.pg iframe{flex:1;width:100%;border:0;background:#fff}
 </style>
 </head>
 <body>
@@ -47,6 +48,7 @@ iframe#kf{display:none;width:100%;height:calc(100vh - 130px);border:0;background
 <div id="kb" class="hid" style="text-align:center;padding:4px 0 0"><a href="https://app.visartdesign.uz/" style="color:var(--mut);font-size:12px">Kabinet ochilmasa shu yerni bosing</a></div>
 <nav id="nav"></nav>
 <div class="modal" id="md"></div>
+<div class="pg" id="pg"><div class="bar"><button onclick="closePg()"><svg class="i" viewBox="0 0 24 24" style="transform:rotate(180deg)"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span id="pgb">Orqaga</span></button></div><iframe id="pgf"></iframe></div>
 <script>
 const IC={narx:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/>',xiz:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',loy:'<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',alo:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',kab:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',interior:'<path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 11v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v2H6v-2a2 2 0 0 0-4 0z"/><path d="M4 18v2M20 18v2"/>',arch:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',docs:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/>',turnkey:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',drawings:'<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/>',go:'<path d="M5 12h14M13 6l6 6-6 6"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',ig:'<rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',ok:'<path d="M20 6 9 17l-5-5"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>'};
 const ic=(n)=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
@@ -134,15 +136,17 @@ function hisobla(){
  }
  S.res=out;render();setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50);
 }
-function renderXiz(){return `<h2>${t('xiz')}</h2>`+SV.map(s=>`<a class="card" style="display:block;color:inherit;text-decoration:none" href="${L==='ru'?'/ru/uslugi/'+s[2]:'/xizmatlar/'+s[1]}"><div class="sv">${ic(s[0])}</div><b>${L==='ru'?s[5]:s[4]}</b><div class="mut">${L==='ru'?s[7]:s[6]}</div><div style="color:var(--gold-l);font-size:13px;margin-top:6px"><span class="ib">${t('batafsil')} ${ic('go')}</span></div></a>`).join('')+arizaBtn()}
+function renderXiz(){return `<h2>${t('xiz')}</h2>`+SV.map(s=>`<a class="card" style="display:block;color:inherit;text-decoration:none" href="${L==='ru'?'/ru/uslugi/'+s[2]:'/xizmatlar/'+s[1]}" onclick="openPg(this.getAttribute('href'));return false"><div class="sv">${ic(s[0])}</div><b>${L==='ru'?s[5]:s[4]}</b><div class="mut">${L==='ru'?s[7]:s[6]}</div><div style="color:var(--gold-l);font-size:13px;margin-top:6px"><span class="ib">${t('batafsil')} ${ic('go')}</span></div></a>`).join('')+arizaBtn()}
 function renderLoy(){
  const ps=(D&&D.projects)||[];const cats=['all',...new Set(ps.map(p=>p.cat).filter(Boolean))];
  const list=ps.filter(p=>cat==='all'||p.cat===cat);
  return `<h2>${t('loy')}</h2><div class="pills">${cats.map(c=>`<button class="${cat===c?'on':''}" onclick="cat='${c}';render()">${c==='all'?t('hammasi'):ctn(c)}</button>`).join('')}</div><div class="grid">${list.map(p=>`<div class="pj" onclick="openPj(${p.id})"><img loading="lazy" src="${U(p.thumb||p.hero)}" data-alt="${[p.hero,...(p.gallery||[])].map(U).join('|')}" onerror="imgFix(this)" alt=""><div>${nm(p.title)}</div></div>`).join('')}</div>`}
 function openPj(id){const p=D.projects.find(x=>x.id===id);if(!p)return;const imgs=[p.hero,...(p.gallery||[])].filter(Boolean);
  $('#md').innerHTML=`<button class="x" onclick="closePj()">${ic('x')}</button><h2>${nm(p.title)}</h2><div class="mut" style="margin-bottom:10px">${[nm(p.type),p.area?p.area+' '+t('kv'):'',nm(p.location)].filter(Boolean).join(' · ')}</div><p class="mut">${nm(p.desc)}</p>${imgs.map(u=>`<img loading="lazy" src="${U(u)}" onerror="this.style.display='none'" alt="">`).join('')}<button class="btn" onclick="closePj();go('alo')">${t('ariza')}</button>`;$('#md').classList.add('show');if(tg)tg.BackButton.show()}
-function closePj(){$('#md').classList.remove('show');if(tg)tg.BackButton.hide()}
-if(tg)tg.BackButton.onClick(closePj);
+function closePj(){$('#md').classList.remove('show');if(tg&&!$('#pg').classList.contains('show'))tg.BackButton.hide()}
+function openPg(u){$('#pgb').textContent=L==='ru'?'Назад':'Orqaga';$('#pgf').src=u;$('#pg').classList.add('show');if(tg)tg.BackButton.show()}
+function closePg(){$('#pg').classList.remove('show');$('#pgf').src='about:blank';if(tg&&!$('#md').classList.contains('show'))tg.BackButton.hide()}
+if(tg)tg.BackButton.onClick(()=>{if($('#pg').classList.contains('show'))closePg();else closePj()});
 function renderAlo(){const s=(D&&D.settings)||{};const ph=(s.phone||'').replace(/[^\d+]/g,'');
  const h=v=>{v=String(v||'').trim();return v?(/^https?:/i.test(v)?v:null):null};
  const ig=s.instagram?(h(s.instagram)||'https://instagram.com/'+s.instagram.replace(/^@/,'')):null;const tgl=s.telegram?(h(s.telegram)||'https://t.me/'+s.telegram.replace(/^@/,'')):null;
