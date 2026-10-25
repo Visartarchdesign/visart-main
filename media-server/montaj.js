@@ -1338,7 +1338,7 @@ export async function ovozYarat(env, matnTeg, outPath, tmpDir) {
     try {
       const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${env.ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: elMatn(matnTeg, env), model_id: env.ELEVENLABS_MODEL || 'eleven_v3', language_code: env.EL_TIL === 'yoq' ? undefined : (env.EL_TIL || 'uz'), voice_settings: { stability: Number(env.EL_STABILITY || 0.5), similarity_boost: 0.85 } }),
+        body: JSON.stringify({ text: elMatn(matnTeg, env), model_id: env.ELEVENLABS_MODEL || 'eleven_v3', voice_settings: { stability: Number(env.EL_STABILITY || 0.5), similarity_boost: 0.85 } }),
         signal: AbortSignal.timeout(45000) });
       if (r.ok) { fs.writeFileSync(outPath, Buffer.from(await r.arrayBuffer())); return; }
       console.error('ElevenLabs xato:', r.status, (await r.text().catch(() => '')).slice(0, 200));
