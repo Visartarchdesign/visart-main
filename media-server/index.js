@@ -9,6 +9,7 @@
 
 import express from 'express';
 import { yasaOblojka } from './oblojka.js';
+import { bajarReelSenariy, bajarReelYarat } from './reelBot.js';
 import { bajarMontaj, bajarNashr, bajarStoryVariant, bajarAnimatsion, bajarYuzStudio } from './montaj.js';
 
 const app = express();
@@ -115,6 +116,22 @@ app.post('/animatsion', (req, res) => {
   if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
   ish('Animatsiya', req, (env) => bajarAnimatsion({ env, adminChatId, mavzu, korsatma, ishId }));
+});
+
+app.post('/reel-senariy', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  const { adminChatId, loyiha, qayta } = req.body || {};
+  if (!adminChatId) return res.status(400).json({ ok: false, error: 'adminChatId kerak' });
+  res.json({ ok: true, holat: 'boshlandi' });
+  ish('ReelSenariy', req, (env) => bajarReelSenariy({ env, adminChatId, loyiha, qayta: !!qayta }));
+});
+
+app.post('/reel-yarat', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  const { adminChatId, loyiha, variant } = req.body || {};
+  if (!adminChatId || !loyiha) return res.status(400).json({ ok: false, error: 'adminChatId va loyiha kerak' });
+  res.json({ ok: true, holat: 'boshlandi' });
+  ish('ReelVideo', req, (env) => bajarReelYarat({ env, adminChatId, loyiha, variant: variant === 'teaser' ? 'teaser' : 'uzun' }));
 });
 
 app.post('/yuz-studio', (req, res) => {

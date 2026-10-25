@@ -1890,6 +1890,13 @@ export async function onRequestPost({ request, env }) {
         }).catch(() => {});
         return json({ ok: true });
       }
+      if (data.startsWith('rb:') && isAdmin(env, cq.from && cq.from.id)) {
+        const [, amal, ...q] = data.split(':'), loyiha = q.join(':');
+        await answerCq(env, cq.id, { text: amal === 'qayta' ? 'Senariy qayta yoziladi...' : 'Boshlandi' });
+        if (amal === 'qayta') await mediaChaqir(env, '/reel-senariy', { adminChatId: chatId, loyiha, qayta: true }, chatId);
+        else await mediaChaqir(env, '/reel-yarat', { adminChatId: chatId, loyiha, variant: amal }, chatId);
+        return json({ ok: true });
+      }
       if (data.startsWith('umaq:')) {
         await handleUstaMaqsad(env, cq, data);
         return json({ ok: true });
@@ -2142,6 +2149,12 @@ export async function onRequestPost({ request, env }) {
       const mavzu = (msg.text || '').replace(/^\s*\/?animatsiya(@\w+)?\s*/i, '').trim();
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⏳ Animatsion video buyurtmasi qabul qilindi${mavzu ? ` (mavzu: ${escH(mavzu)})` : ' (mavzuni AI tanlaydi)'}. 3–6 daqiqada tasdiqqa keladi.`);
       await animatsiyaBuyurtma(env, msg.chat.id, mavzu || undefined);
+      return json({ ok: true });
+    }
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/reelb\b/i.test(msg.text || '')) {
+      const loyiha = (msg.text || '').replace(/^\s*\/reelb(@\w+)?\s*/i, '').trim();
+      await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, "⏳ B seriya buyurtmasi qabul qilindi. Senariy 1–2 daqiqada keladi.");
+      await mediaChaqir(env, '/reel-senariy', { adminChatId: msg.chat.id, loyiha: loyiha || undefined }, msg.chat.id);
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/?yuz\s?studio\b/i.test(msg.text || '')) {
