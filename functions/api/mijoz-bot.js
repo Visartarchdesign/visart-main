@@ -1834,7 +1834,7 @@ async function handleGuruhMaster(env, cq, data) {
       body: JSON.stringify([{ obyekt_id: obyektId, telegram_chat_id: Number(guruhId) }]),
     });
     await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `✅ Tayyor: guruh «${nom}» obyektiga ${rol === 'm' ? 'MIJOZLAR' : 'USTALAR'} guruhi sifatida ulandi.`);
-    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm' ? TANISH_MIJOZ : TANISH_USTA, rol === 'm' ? { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: ILOVA_URL }]] } : undefined);
+    await tgSend(env.MIJOZ_BOT_TOKEN, guruhId, rol === 'm' ? TANISH_MIJOZ : TANISH_USTA, rol === 'm' ? { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://t.me/visart_design_bot/ilova?startapp=kabinet' }]] } : undefined);
   } catch (e) {
     await tgSend(env.MIJOZ_BOT_TOKEN, dmChat, `⚠️ Bog'lashda xato: ${String((e && e.message) || e).slice(0, 200)}`);
   }
@@ -2017,7 +2017,7 @@ export async function onRequestPost({ request, env }) {
           const ids = [...new Set((gs || []).map((g) => String(g.telegram_chat_id)))];
           let ok = 0, xato = 0;
           for (const id of ids) {
-            const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: id, text: ILOVA_YANGILIK, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: ILOVA_URL }]] } }), signal: AbortSignal.timeout(10000) }).catch(() => null);
+            const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: id, text: ILOVA_YANGILIK, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: 'https://t.me/visart_design_bot/ilova?startapp=kabinet' }]] } }), signal: AbortSignal.timeout(10000) }).catch(() => null);
             if (r && r.ok) ok++; else xato++;
           }
           await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Yuborildi: ${ok} ta guruh${xato ? `, yuborilmadi: ${xato} (bot guruhdan chiqarilgan bo'lishi mumkin)` : ''}.`);
