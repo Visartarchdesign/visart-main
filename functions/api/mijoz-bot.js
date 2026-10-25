@@ -53,7 +53,7 @@ import { targetMenyu, targetCb } from '../_lib/target.js';
 import { bolimBosh, bolimCb } from '../_lib/bolimlar.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
-import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat } from '../_lib/mijozMenyu.js';
+import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat, ILOVA_URL } from '../_lib/mijozMenyu.js';
 
 const INSERT_COLUMNS = {
   ism: 'ism',
@@ -2359,6 +2359,10 @@ export async function onRequestPost({ request, env }) {
       else await guruhgaXabarVaHisobot(env, String(o.id), o.nom, MUZLATISH_MATN(o.nom), '⏸ Muzlatish (qo\'lda)');
       return json({ ok: true });
     }
+    if (msg.text === '/ilova' && msg.chat.type === 'private') {
+      await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "📱 Visart ilovasi — login va parolingiz bilan kiring:", { inline_keyboard: [[{ text: '📱 Ilovani ochish', web_app: { url: ILOVA_URL } }]] });
+      return json({ ok: true });
+    }
     if (msg.text === '/target' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
       await targetMenyu(env, chatId).catch((e) => xatoYoz(env, 'target-menyu', e));
       return json({ ok: true });
@@ -2376,6 +2380,9 @@ export async function onRequestPost({ request, env }) {
     if (msg.chat.type === 'private' && (msg.text === '/obyekt' || msg.text === '/start obyekt')) {
       await obyektKorsat(env, H, chatId, await getProfil(env, H, chatId)); // yashirin yo'l: menyuda tugma yo'q, mijozga guruhdan havola beriladi
       return json({ ok: true });
+    }
+    if ((msg.text === '/start' || msg.text === '/menu') && msg.chat.type === 'private') {
+      fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setChatMenuButton`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, menu_button: { type: 'web_app', text: '📱 Ilova', web_app: { url: ILOVA_URL } } }) }).catch(() => {});
     }
     if (msg.text === '/start' || msg.text === '/menu' || msg.text === '/start guruh' || msg.text === '/start reklama') {
       await menyuKorsat(env, H, chatId, msg.text === '/start' || msg.text === '/start reklama');

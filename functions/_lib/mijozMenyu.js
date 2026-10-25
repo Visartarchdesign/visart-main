@@ -133,6 +133,7 @@ async function saytMalumot() {
 const havola = (v, baza) => { v = String(v || '').trim(); if (!v) return null; return /^https?:\/\//i.test(v) ? v : baza + v.replace(/^@/, ''); };
 
 // ── MENYU ──
+export const ILOVA_URL = 'https://app.visartdesign.uz/';
 function menyuKb(til, obyektBor) {
   const rows = [
     [{ text: t(til, 'b_narx'), callback_data: 'menu:narx' }, { text: t(til, 'b_xiz'), callback_data: 'menu:xiz' }],
@@ -142,6 +143,7 @@ function menyuKb(til, obyektBor) {
   rows.push(obyektBor
     ? [{ text: t(til, 'b_obyekt'), callback_data: 'menu:obyekt' }, { text: t(til, 'b_til'), callback_data: 'menu:til' }]
     : [{ text: t(til, 'b_til'), callback_data: 'menu:til' }]);
+  rows.unshift([{ text: til === 'ru' ? '📱 Приложение Visart' : '📱 Visart ilovasi', web_app: { url: ILOVA_URL } }]);
   return { inline_keyboard: rows };
 }
 async function obyektBormi(env, h, p) {
