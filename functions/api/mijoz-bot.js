@@ -120,6 +120,7 @@ async function sbFetch(env, path, init = {}) {
   return txt ? JSON.parse(txt) : null;
 }
 
+const ILOVA_YANGILIK = "📱 <b>Yangilik: Visart ilovasi</b>\n\nEndi loyihangizni Telegram ichida ham kuzatishingiz mumkin.\n\n<b>Ilovada:</b>\n• loyiha holati, xarajat va to'lovlar\n• narx kalkulyatori\n• xizmatlarimiz va loyihalarimiz\n• savol yoki ariza qoldirish\n\n<b>Qanday kirish:</b>\n1. Pastdagi «Visart ilovasiga kirish» tugmasini bosing\n2. «Kabinet» bo'limini tanlang\n3. Menejer bergan login va parol bilan kiring\n\nBotimiz orqali ham ochish mumkin: @visart_design_bot → /menu → «Visart ilovasi».\nLogin-parol yo'q yoki unutilgan bo'lsa, shu yerga yozing — menejerimiz yuboradi.";
 function isAdmin(env, userId) {
   const raw = env.ADMIN_TELEGRAM_IDS || '';
   const ids = raw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -2008,6 +2009,21 @@ export async function onRequestPost({ request, env }) {
         return json({ ok: true });
       }
       if (data.startsWith('bl:') && isAdmin(env, cq.from && cq.from.id)) { await bolimCb(env, cq, () => adminPanel(env, chatId)).catch((e) => xatoYoz(env, 'bolim-cb', e)); return json({ ok: true }); }
+      if (data.startsWith('yg:') && isAdmin(env, cq.from && cq.from.id)) {
+        await answerCq(env, cq.id);
+        await removeKb(env, chatId, cq.message.message_id);
+        if (data === 'yg:ok') {
+          const gs = await sbFetch(env, 'visart_loyiha_guruhlar?select=telegram_chat_id&limit=500').catch(() => []);
+          const ids = [...new Set((gs || []).map((g) => String(g.telegram_chat_id)))];
+          let ok = 0, xato = 0;
+          for (const id of ids) {
+            const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: id, text: ILOVA_YANGILIK, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '📱 Visart ilovasiga kirish', url: ILOVA_URL }]] } }), signal: AbortSignal.timeout(10000) }).catch(() => null);
+            if (r && r.ok) ok++; else xato++;
+          }
+          await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `✅ Yuborildi: ${ok} ta guruh${xato ? `, yuborilmadi: ${xato} (bot guruhdan chiqarilgan bo'lishi mumkin)` : ''}.`);
+        } else await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Bekor qilindi.');
+        return json({ ok: true });
+      }
       if (data.startsWith('mg:') && isAdmin(env, cq.from && cq.from.id)) {
         const [, amal, mid] = data.split(':');
         const cid = cq.message.chat.id;
@@ -2362,6 +2378,12 @@ export async function onRequestPost({ request, env }) {
     if (msg.text === '/panel' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📱 Admin ilova:', { inline_keyboard: [[{ text: '📱 Admin ilovani ochish', web_app: { url: 'https://visartdesign.uz/admin-ilova/' } }]] });
       fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setChatMenuButton`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, menu_button: { type: 'web_app', text: '📱 Admin', web_app: { url: 'https://visartdesign.uz/admin-ilova/' } } }) }).catch(() => {});
+      return json({ ok: true });
+    }
+    if (msg.text === '/yangilik' && msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id)) {
+      const gs = await sbFetch(env, 'visart_loyiha_guruhlar?select=telegram_chat_id&limit=500').catch(() => []);
+      const n = new Set((gs || []).map((g) => String(g.telegram_chat_id))).size;
+      await tgSendMessageKb(env, chatId, `Mijozlar guruhlariga (${n} ta) yuboriladigan xabar:\n\n${ILOVA_YANGILIK.replace(/<\/?b>/g, '')}\n\nYuboraymi?`, { inline_keyboard: [[{ text: `✅ ${n} ta guruhga yuborish`, callback_data: 'yg:ok' }, { text: '❌ Bekor', callback_data: 'yg:no' }]] });
       return json({ ok: true });
     }
     if (msg.text === '/ilova' && msg.chat.type === 'private') {
