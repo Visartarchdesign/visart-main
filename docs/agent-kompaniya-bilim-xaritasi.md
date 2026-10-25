@@ -30,3 +30,9 @@ Asosan sifatiy (sonli qoida kam): Materiallar darsligi (2 MB), Interyerni loyiha
 
 ## Ish tartibi (o'zgarmas)
 Doston plan va mebel joylashtiradi -> agent faqat blok nomlarini to'g'rilaydi (mebelni surmaydi) -> Max (bitta fayl ochiq) -> QA Q1-Q10 -> preview -> final -> ishchi chizma. Qoidalar o'zgargach faqat JSON/DB yangilanadi, builder qattiq kodsiz.
+
+## DWG zaxira va namuna (2026-10-25)
+- Zaxira: `Visart_AI_Studio\zaxira_dwg\{D,E1,ER}\...` (437 DWG, ~608 MB; manba o'zgarmaydi). Skript: `portfolio\zaxira_dwg.py`.
+- Namuna indeksi: `portfolio\portfolio_katalog.json` (loyiha -> dwg/render/max/pdf/video). Agentlar yangi loyihada planlar, mebel joylashuvi, qatlamlar va renderlarni shu yerdan namuna qilib oladi (nusxalamaydi).
+- Qatlam lug'ati: `bilim\autocad_qatlamlar.json`.
+- Navbat: smeta agenti (narxlar kerak), rabochka generatori, QA.
