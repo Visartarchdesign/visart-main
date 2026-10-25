@@ -63,11 +63,34 @@ async function instagram(env) {
 
 async function media(env) {
   if (!env.MEDIA_SERVER_URL) return 'media-server: sozlanmagan';
+  let ok = false, kod = '';
   try {
     const r = await fetch(`${env.MEDIA_SERVER_URL}/health`, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) await xatoYoz(env, 'nazorat:media', `Media-server ${r.status} qaytardi (video/story ishlamaydi).`);
-    return r.ok ? 'media-server OK' : `media-server ${r.status}`;
-  } catch (e) { return 'media-server: javob yo\'q (uxlayotgan bo\'lishi mumkin)'; }
+    ok = r.ok; kod = r.ok ? '' : String(r.status);
+  } catch (e) { kod = 'javob yoq'; }
+  // Holat qatori: oflayn bo'lsa ketma-ket 2 tekshiruvdan keyin (~15-30 daq) ogohlantiradi, qaytganda xabar beradi
+  try {
+    const H = { ...sh(env), 'Content-Type': 'application/json' };
+    const rows = await sb(env, 'nashr_navbati?turi=eq.media_holat&select=id,holat,payload&limit=1');
+    const q = rows[0];
+    const now = Date.now();
+    const yoz = (id, holat, payload) => fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati${id ? `?id=eq.${id}` : ''}`, { method: id ? 'PATCH' : 'POST', headers: H, body: JSON.stringify(id ? { holat, payload } : [{ turi: 'media_holat', holat, payload, nashr_vaqti: new Date().toISOString() }]), signal: AbortSignal.timeout(6000) }).catch(() => {});
+    if (!ok) {
+      const p = (q && q.holat === 'media_oflayn' && q.payload) || null;
+      if (!p) await yoz(q && q.id, 'media_oflayn', { birinchi: now, xabar: false });
+      else if (!p.xabar && now - p.birinchi >= 10 * 60e3) {
+        await adminXabar(env, `🔴 Media-server (kompyuter) ${Math.round((now - p.birinchi) / 60000)}+ daqiqadan beri javob bermayapti${kod ? ` (${kod})` : ''}.\nKompyuter o'chgan, uxlayotgan yoki internet uzilgan bo'lishi mumkin. Montaj, video va Instagram/YouTube joylash to'xtaydi (matnli postlar ishlayveradi).\nKompyuter yonganda hamma narsa o'zi ishga tushadi va men xabar beraman.`);
+        await yoz(q.id, 'media_oflayn', { ...p, xabar: true });
+      }
+      return `media-server: OFLAYN (${kod})`;
+    }
+    if (q && q.holat === 'media_oflayn') {
+      const p = q.payload || {};
+      if (p.xabar) await adminXabar(env, `🟢 Media-server qayta ishga tushdi (${Math.round((now - p.birinchi) / 60000)} daqiqa o'chiq bo'lgan). Kutib turgan ishlar davom etadi.`);
+      await yoz(q.id, 'media_ok', { tiklandi: now });
+    }
+  } catch (e) { /* holat yozilmasa ham tekshiruv davom etadi */ }
+  return 'media-server OK';
 }
 
 export async function tizimNazorati(env) {
