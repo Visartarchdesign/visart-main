@@ -11,6 +11,7 @@
 
 import fs from 'fs';
 import { keyingiMavzu } from './mavzuBanki.js';
+import { effektQosh } from './effektlar.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import os from 'os';
@@ -1096,6 +1097,12 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
           try { segmentlar = await geminiSubtitrYarat(env, outputPath, tmpDir); }
           catch (ge) { segmentlar = await whisperSubtitrYarat(outputPath, tmpDir); }
           if (segmentlar) {
+            // Vizual kesimlar (nutqqa mos rasm) + majburiy ovoz effektlari -- subtitrdan OLDIN, subtitr ustida qolsin
+            try {
+              const effPath = path.join(tmpDir, 'output-effekt.mp4');
+              const er = await effektQosh({ env, videoPath: outputPath, segmentlar, tmpDir, outPath: effPath, deps: { rasmYarat, geminiJsonSora, ffmpegOlchamOl }, bosqich });
+              if (er && fs.existsSync(effPath)) { fs.renameSync(effPath, outputPath); await bosqich(`✨ Effektlar: ${er.kesim} vizual kesim, ${er.sfx} ovoz effekti`).catch(() => {}); }
+            } catch (ee) { await bosqich(`⚠️ Effektlar qo'shilmadi: ${String((ee && ee.message) || ee).slice(0, 300)}`).catch(() => {}); }
             await bosqich('Subtitr videoga kuydirilmoqda...');
             const bilanSubtitrPath = path.join(tmpDir, 'output-subtitr.mp4');
             const bajarildi = await srtVideogaKuydir(outputPath, segmentlar, bilanSubtitrPath);
