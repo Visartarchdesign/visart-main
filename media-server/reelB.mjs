@@ -40,6 +40,7 @@ async function geminiObj(env, parts, temperature = 0.3) {
 }
 
 // 1-bosqich: rejadan faktlar. 2-bosqich: faktlar + renderlardan senariy (faqat faktlarga tayanib).
+import { QONUN, tekshir } from './senariyQoida.js';
 export async function senariyYoz(env, dir, nom = '') {
   const kesh = path.join(dir, 'senariy.json');
   if (fs.existsSync(kesh)) return JSON.parse(fs.readFileSync(kesh, 'utf8'));
@@ -50,13 +51,23 @@ export async function senariyYoz(env, dir, nom = '') {
   const faktlar = await geminiObj(env, [{ text:
     `Birinchi rasm -- AutoCAD reja (tepadan). Faqat rasmda HAQIQATAN ko'ringan narsalarni yozing, o'ylab topmang. Ruscha yozuvlarni o'zbekchaga tarjima qiling (СТОЛ=stol, ДИВАН=divan, ШКАФ=shkaf, ТВ=televizor, СЕРВАНТ=servant, САНУЗЕЛ=sanuzel, Холодильник=muzlatgich, Мойка=moyka, Плита=plita). JSON: {"xonalar":[{"nom":"xona nomi","box":[ymin,xmin,ymax,xmax] (0-1000),"olchamlar":["rejada yozilgan raqamlar va nimaga tegishli"],"mebel":["..."],"qoshni":["..."],"eshik_deraza":"..."}],"umumiy":"tartib haqida 1-2 gap"}` },
     rejaB], 0.1);
-  const S = await geminiObj(env, [{
+  let S = await geminiObj(env, [{
     text: `Siz arxitektura/interyer dizayn Reels senaristisiz. Auditoriya: kvartira/uy egalari va dizayn sevuvchilar. Quyida rejadan olingan FAKTLAR va renderlar (tartib raqami 1..${renders.length}).\nFAKTLAR: ${JSON.stringify(faktlar)}\n` +
       `Vazifa: 3 ta eng qiziqarli va FOYDALI dizayn qarorini tanlang. Har biri uchun odamga o'zi uyida qo'llay oladigan umumiy ergonomika qoidasini (aniq raqam bilan, odatda qabul qilingan me'yor) ayting va shu qaror bu rejada qanday ishlaganini FAKTLARdagi o'lchamga bog'lang. Renderni faqat shu xona/qaror ROSTDAN ko'rinsa tanlang (rasmga qarang). Faqat JSON obyekt:\n` +
       `{"hook":"<=10 so'z, aniq savol (masalan: Dush necha santimetr bo'lsa qulay?). '3 ta sir' kabi umumiy va'dalar TAQIQ","oblojka":"<=6 so'z, videoning HAQIQIY mazmuniga mos UMUMIY mavzu va foyda (masalan: Qulay uy uchun 3 ta o'lcham qoidasi). Mijoz ismi, loyiha nomi, 'kvartirasi' kabi nomlar TAQIQ","hero":<eng chiroyli render>,"oxir":"<=14 so'z, Direct'ga yozishga chaqiruv","zonalar":[{"sar":"2-3 so'z","tag":"3-5 so'z","xona":"FAKTLARdagi xona nomi","nom":"1-2 so'z","rasm":<render raqami>,"belgi":"2-3 so'z render yorlig'i","joy":[x,y],"kam":"3-5 so'z","qoida":"umumiy qoida raqam bilan","sabab":"2 qisqa gap, <=24 so'z: qoida + shu rejadagi o'lcham","boshqa":"1 gap <=16 so'z: boshqacha qilinsa nima xato","sfx":"pol|oshxona|eshik|shamol|suv|null"}]}\n` +
-      `Qoidalar: oddiy og'zaki o'zbek (lotin), qisqa gaplar, FAKTLARda yo'q o'lchamni yozmang, mijoz/loyiha nomini tilga olmang.`,
+      `QONUN (majburiy):\n- ${QONUN.join('\n- ')}`,
   }, ...renderB], 0.4);
+  const tuz = async (A) => {
+    for (let i = 0; i < 2; i++) {
+      const x = tekshir(A, faktlar, nom);
+      if (!x.length) return A;
+      console.log('Senariy qonun buzilishlari:', x.join('; '));
+      try { A = await geminiObj(env, [{ text: `Quyidagi senariyni QONUNga muvofiq TUZATING, faqat shu xatolarni: ${x.join('; ')}.\nQONUN:\n- ${QONUN.join('\n- ')}\nFAKTLAR: ${JSON.stringify(faktlar)}\nSENARIY: ${JSON.stringify(A)}\nO'sha JSON tuzilmasini qaytaring.` }], 0.2); } catch (e) { console.log('Tuzatish xato:', e.message); break; }
+    }
+    return A;
+  };
   const boxOf = (xn) => { const x = (faktlar.xonalar || []).find((r) => String(r.nom).toLowerCase() === String(xn).toLowerCase()) || (faktlar.xonalar || []).find((r) => String(r.nom).toLowerCase().includes(String(xn).toLowerCase().split(' ')[0])); return x && x.box; };
+  S = await tuz(S);
   S.zonalar = (S.zonalar || []).slice(0, 3).map((z, i) => {
     const b = boxOf(z.xona) || z.box || [100, 100, 900, 900];
     return { ...z, box: b, zona: [b[1] / 1000, b[0] / 1000, b[3] / 1000, b[2] / 1000], yon: i % 2 ? -1 : 1 };
@@ -140,6 +151,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     if (!bayroq.includes('--senariy')) { ishl.push(nom); fs.writeFileSync(reg, JSON.stringify(ishl, null, 2)); }
   } else { dir = arg[0]; nom = arg[3] || ''; }
   const out = path.resolve((bayroq.includes('--auto') ? arg[0] : arg[1]) || 'reelB.mp4'), variant = (bayroq.includes('--auto') ? arg[1] : arg[2]) || 'uzun';
+  if (bayroq.includes('--tekshir')) { const S = JSON.parse(fs.readFileSync(path.join(dir, 'senariy.json'), 'utf8')); const x = tekshir(S, S.faktlar, nom); console.log(x.length ? 'BUZILISH:\n- ' + x.join('\n- ') : 'QONUNGA MOS'); process.exit(0); }
   if (bayroq.includes('--senariy')) { const S = await senariyYoz(process.env, dir, nom); console.log(JSON.stringify({ hook: S.hook, oblojka: S.oblojka, hero: S.hero, oxir: S.oxir, zonalar: S.zonalar.map((z) => ({ xona: z.xona, rasm: z.rasm, qoida: z.qoida, sabab: z.sabab, boshqa: z.boshqa })) }, null, 2)); console.log('Tekshiring/tahrirlang:', path.join(dir, 'senariy.json')); }
   else await reelB(process.env, { dir, out, variant, nom });
 }
