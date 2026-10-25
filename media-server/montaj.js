@@ -1763,6 +1763,26 @@ async function animatsionSenariy(env, mavzu) {
   return geminiJsonSora(env.GEMINI_API_KEY, [{ text: prompt }]);
 }
 
+// Mantiq/aniqlik muharriri: ketma-ketlik, atamalar izohi, slaydlararo moslik, takror va ziddiyatni tuzatadi (faqat "ovoz" matni).
+export async function mantiqTahrir(env, slaydlar, mavzu) {
+  try {
+    const tuz = await geminiJsonSora(env.GEMINI_API_KEY, [{ text:
+      "Siz arxitektura bo'yicha ta'limiy video bosh muharririsiz. Quyida video diktor matnlari (slaydlar tartibida) va har slaydda ko'rinadigan sahna berilgan. Mavzu: " + (mavzu || 'berilgan') + ".\n" +
+      "VAZIFA: matnni oddiy odam ham tushunadigan, lekin detalgacha aniq qiling. Tekshiring va tuzating:\n" +
+      "1) SODDALIK: murakkab atama birinchi marta kelganda bitta qisqa jumla bilan izohlansin ('gumbaz -- tepadagi yarim shar shaklidagi yopma'); 12 so'zdan uzun gap bo'lmasin.\n" +
+      "2) DETALGACHA: umumiy gap ('yaxshi yechim') o'rniga aniq element va uning vazifasi ('ustun yukni pastga uzatadi, devor esa faqat to'siq').\n" +
+      "3) KETMA-KETLIK: har slayd oldingisidan mantiqan kelib chiqsin (savol -> sabab -> mexanizm -> yechim -> xulosa); slaydlar orasi bog'lansin ('shuning uchun', 'endi qarang', 'natijada').\n" +
+      "4) MOSLIK: ovoz shu slaydda ko'rinayotgan sahnani aytsin; slaydlar bir-biriga zid bo'lmasin; bir fikr/jumla ikki marta takrorlanmasin; murojaat bir xil ('Siz').\n" +
+      "5) ISHONCHLILIK: tasdiqlanmagan yil, raqam, ism, foiz qo'shmang; shubhali bo'lsa olib tashlang yoki umumiy ayting.\n" +
+      "6) HAJM: har slayd matni uzunligi asl matndan ko'pi bilan 25% farq qilsin. Ma'noni o'zgartirmang.\n" +
+      "Faqat JSON massiv qaytaring: aynan " + slaydlar.length + " ta obyekt [{\"ovoz\":\"...\"}], tartib saqlansin. Kirish: " + JSON.stringify(slaydlar.map((x, i) => ({ n: i + 1, tur: x.tur, sahna: x.sahna, ovoz: x.ovoz }))) }]);
+    if (Array.isArray(tuz) && tuz.length === slaydlar.length && tuz.every((x) => x && typeof x.ovoz === 'string' && x.ovoz.trim().length > 5)) {
+      return slaydlar.map((x, i) => ({ ...x, ovoz: tuz[i].ovoz.trim() }));
+    }
+  } catch (e) { /* ixtiyoriy */ }
+  return slaydlar;
+}
+
 export async function ovozTahrir(env, slaydlar, sarlavhaSaqla = false, brend = true) {
   try {
     const tuz = await geminiJsonSora(env.GEMINI_API_KEY, [{ text:
@@ -1803,6 +1823,7 @@ async function bajarAnimatsionIc({ env, adminChatId, mavzu, korsatma, ishId }) {
     const meta = raw.find((x) => x.tur === 'meta') || {};
     let slaydlar = raw.filter((x) => x.tur !== 'meta' && x.ovoz).slice(0, 9);
     if (slaydlar.length < 3) throw new Error('senariy yetarli emas');
+    if (!bank) slaydlar = await mantiqTahrir(env, slaydlar, mavzu || (meta && meta.post_sarlavha) || '');
     slaydlar = await ovozTahrir(env, slaydlar, !!bank);
 
     const yuzBuf = await yuzTanla(env);
