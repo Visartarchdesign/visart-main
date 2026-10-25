@@ -10,7 +10,7 @@
 import express from 'express';
 import { yasaOblojka } from './oblojka.js';
 import { bajarReelSenariy, bajarReelYarat } from './reelBot.js';
-import { bajarMontaj, bajarNashr, bajarStoryVariant, bajarAnimatsion, bajarYuzStudio } from './montaj.js';
+import { bajarMontaj, bajarNashr, bajarIgTg, bajarStoryVariant, bajarAnimatsion, bajarYuzStudio } from './montaj.js';
 
 const app = express();
 app.use(express.json({ limit: '20mb' }));
@@ -89,6 +89,15 @@ app.post('/montaj', (req, res) => {
   }
   res.json({ ok: true, holat: 'boshlandi' });
   ish('Montaj', req, (env) => bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma }));
+});
+
+// POST /nashr-ig-tg -- jadval vaqti kelganda (Cloudflare cron chaqiradi)
+app.post('/nashr-ig-tg', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  const { id, adminChatId } = req.body || {};
+  if (!id) return res.status(400).json({ ok: false, error: 'id kerak' });
+  res.json({ ok: true, holat: 'boshlandi' });
+  ish('IG+TG nashr', req, (env) => bajarIgTg({ env, id, adminChatId }));
 });
 
 // POST /nashr -- admin "✅ Joylash" bosganda (Cloudflare bot chaqiradi)

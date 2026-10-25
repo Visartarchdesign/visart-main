@@ -297,6 +297,9 @@ export async function onRequestGet({ request, env, waitUntil }) {
         await bajarFacebookPhoto(env, q.payload);
       } else if (q.turi === 'facebook_video') {
         await bajarFacebookVideo(env, q.payload);
+      } else if (q.turi === 'video_ig_tg') {
+        const r = await mediaChaqir(env, '/nashr-ig-tg', { id: q.id, adminChatId: (q.payload && q.payload.adminChatId) || null }, (q.payload && q.payload.adminChatId) || null);
+        if (!r.ok) throw new Error(`media-server: ${r.sabab || 'javob yo\'q'}`);
       } else if (q.turi === 'lid_followup') {
         await bajarLidFollowup(env, q.payload);
       } else if (q.turi === 'maslahat_yarat') {

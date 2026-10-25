@@ -385,14 +385,14 @@ function keyingiYoutubeVaqt() {
 // "private" + publishAt bilan yuklanadi -- YouTube o'zi belgilangan optimal
 // vaqtda avtomatik ommaga ochadi. Sozlanmagan yoki xato bo'lsa, jim null
 // qaytaradi -- asosiy Telegram oqimi buzilmaydi.
-async function youtubeUpload(env, videoPath, title, description, coverBuf) {
+async function youtubeUpload(env, videoPath, title, description, coverBuf, publishAt) {
   if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET || !env.YOUTUBE_REFRESH_TOKEN) return null;
   try {
     const accessToken = await youtubeAccessToken(env);
     if (!accessToken) return null;
 
     const stat = fs.statSync(videoPath);
-    const nashrVaqti = keyingiYoutubeVaqt();
+    const nashrVaqti = publishAt || keyingiYoutubeVaqt();
     const metadata = {
       snippet: {
         title: `${String(title || 'Visart Design').slice(0, 85)} #Shorts`,
@@ -1195,25 +1195,37 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
 
 // Admin "✅ Joylash" bosgandan keyin: Instagram Reels + Story, Facebook
 // (navbat) va YouTube Shorts'ga chiqaradi.
-export async function bajarNashr({ env, id, adminChatId }) {
-  const sb = (p, init = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/${p}`, {
-    ...init,
-    headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
-    signal: AbortSignal.timeout(15000),
-  });
-  const xabar = (t) => tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, t).catch(() => {});
-  const rows = await (await sb(`nashr_navbati?id=eq.${id}&select=*`)).json();
-  const q = rows && rows[0];
-  if (!q || q.turi !== 'video_nashr') return xabar('⚠️ Nashr yozuvi topilmadi');
-  if (q.holat === 'bajarildi') return xabar('ℹ️ Bu video allaqachon joylangan');
-  const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif } = q.payload;
-  await sb(`nashr_navbati?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bajarildi' }) }).catch(() => {});
 
+// ===== Haftalik nashr jadvali (Toshkent, UTC+5) =====
+const IG_REJA = { kunlar: [2, 5, 0], soat: 20, daq: 0 };   // Seshanba, Juma, Yakshanba 20:00
+const YT_REJA = { kunlar: [1, 4, 6], soat: 18, daq: 30 };  // Dushanba, Payshanba, Shanba 18:30
+const tosh = (d) => { const t = new Date(d.getTime() + 5 * 3600e3), p = (n) => String(n).padStart(2, '0'); return `${['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Juma', 'Shan'][t.getUTCDay()]} ${p(t.getUTCDate())}.${p(t.getUTCMonth() + 1)} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`; };
+export function keyingiSlot(reja, dan) {
+  for (let i = 0; i < 15; i++) {
+    const t = new Date(dan.getTime() + 5 * 3600e3);
+    t.setUTCDate(t.getUTCDate() + i); t.setUTCHours(reja.soat, reja.daq, 0, 0);
+    const utc = new Date(t.getTime() - 5 * 3600e3);
+    if (reja.kunlar.includes(t.getUTCDay()) && utc > dan) return utc;
+  }
+  return new Date(dan.getTime() + 24 * 3600e3);
+}
+async function slotlarHisobla(env) {
+  const boshi = new Date(Date.now() + 30 * 60e3);
+  let oxirIg = boshi, oxirYt = boshi;
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?turi=eq.video_ig_tg&select=nashr_vaqti,payload&order=created_at.desc&limit=20`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });
+    for (const q of (await r.json()) || []) {
+      const a = new Date(q.nashr_vaqti), b = q.payload && q.payload.yt_vaqt ? new Date(q.payload.yt_vaqt) : null;
+      if (a > oxirIg) oxirIg = a; if (b && b > oxirYt) oxirYt = b;
+    }
+  } catch (e) { /* jadval bo'sh -- eng yaqin slot */ }
+  return { ig: keyingiSlot(IG_REJA, oxirIg), yt: keyingiSlot(YT_REJA, oxirYt) };
+}
+
+// Instagram Reels (+3 Story) va Telegram kanal -- jadval vaqti kelganda yoki darhol
+export async function igTgNashr(env, p, adminChatId) {
+  const xabar = (t) => tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, t).catch(() => {});
+  const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha } = p;
   if (env.INSTAGRAM_ACCESS_TOKEN && env.INSTAGRAM_BUSINESS_ACCOUNT_ID) {
     try {
       await xabar('⏳ Instagram Reels/Story joylanmoqda...');
@@ -1257,6 +1269,47 @@ export async function bajarNashr({ env, id, adminChatId }) {
       await xabar(`⚠️ Telegram kanal xato: ${String((e && e.message) || e)}`);
     }
   } else await xabar("ℹ️ Telegram kanal: TELEGRAM_CHANNEL_ID sozlanmagan -- o'tkazib yuborildi");
+}
+
+// Cron chaqiradi (Cloudflare nashr-navbati -> /nashr-ig-tg)
+export async function bajarIgTg({ env, id, adminChatId }) {
+  const r = await (await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?id=eq.${id}&select=payload`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } })).json();
+  const p = r && r[0] && r[0].payload;
+  if (!p) throw new Error('video_ig_tg yozuvi topilmadi');
+  await igTgNashr(env, p, p.adminChatId || adminChatId);
+}
+
+export async function bajarNashr({ env, id, adminChatId }) {
+  const sb = (p, init = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/${p}`, {
+    ...init,
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  const xabar = (t) => tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, t).catch(() => {});
+  const rows = await (await sb(`nashr_navbati?id=eq.${id}&select=*`)).json();
+  const q = rows && rows[0];
+  if (!q || q.turi !== 'video_nashr') return xabar('⚠️ Nashr yozuvi topilmadi');
+  if (q.holat === 'bajarildi') return xabar('ℹ️ Bu video allaqachon joylangan');
+  const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif } = q.payload;
+  await sb(`nashr_navbati?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bajarildi' }) }).catch(() => {});
+
+  // Instagram Reels + Story + Telegram kanal: haftalik jadval bo'yicha (nashr_navbati 'video_ig_tg'), xato bo'lsa darhol.
+  const slotlar = await slotlarHisobla(env);
+  let igReja = null;
+  try {
+    const r = await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: slotlar.ig.toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
+    if (!r.ok) throw new Error(`navbat ${r.status}`);
+    igReja = slotlar.ig;
+  } catch (e) {
+    await xabar(`⚠️ Jadvalga qo'yib bo'lmadi (${String((e && e.message) || e).slice(0, 120)}), Instagram va Telegram kanalga darhol joylanadi.`);
+    await igTgNashr(env, { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif }, adminChatId);
+  }
+  if (igReja) await xabar(`🗓 Jadval (Toshkent):\n📸 Instagram Reels + 📣 Telegram kanal: ${tosh(igReja)}\n📺 YouTube Shorts: ${tosh(slotlar.yt)}\n📘 Facebook: ertalabki oynada`);
   if (env.FACEBOOK_PAGE_ID) {
     try {
       await navbatgaQoshFacebookVideo(env, videoUrl, coverUrl, caption);
@@ -1274,7 +1327,7 @@ export async function bajarNashr({ env, id, adminChatId }) {
     const vp = path.join(tmp, 'v.mp4');
     fs.writeFileSync(vp, Buffer.from(await (await fetch(videoUrl)).arrayBuffer()));
     const cb = coverUrl ? Buffer.from(await (await fetch(coverUrl)).arrayBuffer()) : null;
-    const yt = await youtubeUpload(env, vp, sarlavha, tavsif || '', cb);
+    const yt = await youtubeUpload(env, vp, sarlavha, tavsif || '', cb, slotlar.yt);
     if (yt && yt.url) {
       const t = new Date(yt.nashrVaqti.getTime() + 5 * 3600 * 1000);
       const p = (n) => String(n).padStart(2, '0');
