@@ -10,7 +10,7 @@
 :root{--bg:#151412;--card:#201e1b;--line:#33302b;--tx:#f4efe6;--mut:#a39d93;--gold:#A9895A;--gold-l:#C4A876;--r:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,Segoe UI,Roboto,sans-serif}
-body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+body{padding-bottom:calc(60px + env(safe-area-inset-bottom))}
 header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px}
 header b{font-size:18px;letter-spacing:.5px}header b span{color:var(--gold-l)}
 .lg{background:none;border:1px solid var(--line);color:var(--mut);border-radius:8px;padding:4px 10px;font-size:12px}
@@ -33,11 +33,13 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#1a1815f2;bac
 nav button{flex:1;background:none;border:0;color:var(--mut);font-size:10.5px;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:2px}nav button i{font-style:normal;font-size:20px}nav button.on{color:var(--gold-l)}
 .modal{position:fixed;inset:0;background:#000d;z-index:20;overflow:auto;padding:16px;display:none}.modal.show{display:block}.modal img{width:100%;border-radius:10px;margin-bottom:10px;display:block}.x{position:sticky;top:0;float:right;background:#000a;color:#fff;border:0;border-radius:50%;width:38px;height:38px;font-size:20px;z-index:2}
 .ok{color:#7fd48a}.err{color:#ff8b8b}.hid{display:none}
+iframe#kf{display:none;width:100%;height:calc(100vh - 130px);border:0;background:#fff}
 </style>
 </head>
 <body>
 <header><b>VISART <span>DESIGN</span></b><button class="lg" id="lg">RU</button></header>
 <main id="m"></main>
+<div id="kb" class="hid" style="text-align:center;padding:4px 0 0"><a href="https://app.visartdesign.uz/" style="color:var(--mut);font-size:12px">↗ Kabinet ochilmasa shu yerni bosing</a></div>
 <nav id="nav"></nav>
 <div class="modal" id="md"></div>
 <script>
@@ -137,7 +139,12 @@ async function yubor(){const r=$('#fr');r.className='';r.textContent='…';
  try{const x=await fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#fn').value,phone:$('#fp').value,service:$('#fs').value+' (Telegram ilova)',message:$('#fm').value,lang:L})});const j=await x.json();
  if(j.ok){r.className='ok';r.textContent=t('rahmat')}else{r.className='err';r.textContent=t('xato')}}catch(e){r.className='err';r.textContent=t('xato')}}
 function renderKab(){return `<h2>${t('kabT')}</h2><div class="card"><div style="font-size:34px">🔐</div><p class="mut">${t('kabD')}</p><a class="btn" href="https://app.visartdesign.uz/">${t('kabB')}</a></div>`}
-function render(){nav();$('#m').innerHTML=tab==='narx'?renderNarx():tab==='xiz'?renderXiz():tab==='loy'?renderLoy():tab==='alo'?renderAlo():renderKab()}
+function render(){nav();const kab=tab==='kab';let f=$('#kf');
+ if(kab&&!f){f=document.createElement('iframe');f.id='kf';f.src='https://app.visartdesign.uz/';f.allow='clipboard-write';document.body.insertBefore(f,$('#nav'))}
+ if(f)f.style.display=kab?'block':'none';
+ $('#m').style.display=kab?'none':'block';
+ if(kab){$('#kb').style.display='block';return}$('#kb').style.display='none';
+ $('#m').innerHTML=tab==='narx'?renderNarx():tab==='xiz'?renderXiz():tab==='loy'?renderLoy():renderAlo()}
 render();
 fetch('/api/content').then(r=>r.json()).then(d=>{if(d&&d.ok){D=d;render()}}).catch(()=>{});
 </script>
