@@ -1197,15 +1197,18 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
 // (navbat) va YouTube Shorts'ga chiqaradi.
 
 // ===== Haftalik nashr jadvali (Toshkent, UTC+5) =====
-const IG_REJA = { kunlar: [2, 5, 0], soat: 20, daq: 0 };   // Seshanba, Juma, Yakshanba 20:00
-const YT_REJA = { kunlar: [1, 4, 6], soat: 18, daq: 30 };  // Dushanba, Payshanba, Shanba 18:30
+const IG_REJA = { vaqt: { 2: [20, 0], 5: [12, 30], 0: [20, 30] } };   // Sesh 20:00, Juma 12:30, Yak 20:30 (Reel)
+const YT_REJA = { vaqt: { 1: [18, 30], 4: [18, 30], 6: [11, 0] } };  // Dush 18:30, Pay 18:30, Shan 11:00 (Shorts)
 const tosh = (d) => { const t = new Date(d.getTime() + 5 * 3600e3), p = (n) => String(n).padStart(2, '0'); return `${['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Juma', 'Shan'][t.getUTCDay()]} ${p(t.getUTCDate())}.${p(t.getUTCMonth() + 1)} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`; };
 export function keyingiSlot(reja, dan) {
   for (let i = 0; i < 15; i++) {
     const t = new Date(dan.getTime() + 5 * 3600e3);
-    t.setUTCDate(t.getUTCDate() + i); t.setUTCHours(reja.soat, reja.daq, 0, 0);
+    t.setUTCDate(t.getUTCDate() + i);
+    const v = reja.vaqt[t.getUTCDay()];
+    if (!v) continue;
+    t.setUTCHours(v[0], v[1], 0, 0);
     const utc = new Date(t.getTime() - 5 * 3600e3);
-    if (reja.kunlar.includes(t.getUTCDay()) && utc > dan) return utc;
+    if (utc > dan) return utc;
   }
   return new Date(dan.getTime() + 24 * 3600e3);
 }
