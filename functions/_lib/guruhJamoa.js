@@ -43,6 +43,7 @@ const TAYYOR_MASLAHAT = [
 const BANNER = `${SAYT}/assets/bot-welcome.png`;
 const SALOM_MATN = "<b>Visart Design</b> — arxitektura, interyer dizayn va remont (pod klyuch). Toshkent.\n\nPastdagi tugmalar orqali narxni hisoblang, ish bosqichlari va to'lov tartibi bilan tanishing. 👇\n\n💡 Haftada bir marta foydali interyer maslahati yuboriladi. O'chirish: /obunabekor";
 const ASOSIY_KB = { inline_keyboard: [
+  [{ text: '📱 Visart ilovasiga kirish', url: 'https://app.visartdesign.uz/' }],
   [{ text: '💰 Smeta hisoblash', callback_data: 'gk:s' }, { text: '📋 Ish bosqichlari', callback_data: 'gk:b' }],
   [{ text: "💳 To'lov bosqichlari", callback_data: 'gk:t' }, { text: '🛠 Xizmatlar', callback_data: 'gk:x' }],
   [{ text: '🖼 Loyihalar', url: `${SAYT}/#projects` }, { text: '🌐 Tarmoqlar', callback_data: 'gk:o' }],
