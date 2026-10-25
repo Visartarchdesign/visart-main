@@ -30,10 +30,11 @@ export function keyingiMavzu() {
   nomzod.sort((a, b) => sanoq(a) - sanoq(b) || Math.random() - 0.5);
   const ustun = nomzod[0] || nomlar[0];
   const bosh = MAVZU_BANKI[ustun].filter((g) => !t.g.includes(g));
-  const royxat = bosh.length ? bosh : MAVZU_BANKI[ustun];
-  const goya = royxat[Math.floor(Math.random() * royxat.length)];
+  // Bank tugasa takrorlamaymiz: goya=null -> AI shu ustundan YANGI g'oya topadi (ishlatilganlar ro'yxati beriladi)
+  const goya = bosh.length ? bosh[Math.floor(Math.random() * bosh.length)] : null;
+  const ishlatilgan = MAVZU_BANKI[ustun];
   t.ustunlar = [...t.ustunlar, ustun].slice(-60);
-  t.g = [...t.g.filter((x) => x !== goya), goya].slice(-120);
+  if (goya) t.g = [...t.g.filter((x) => x !== goya), goya].slice(-120);
   try { fs.writeFileSync(FAYL, JSON.stringify(t)); } catch { /* ixtiyoriy */ }
-  return { ustun, goya };
+  return { ustun, goya, ishlatilgan };
 }
