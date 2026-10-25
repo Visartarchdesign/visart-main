@@ -50,6 +50,7 @@ import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
 import { targetMenyu, targetCb } from '../_lib/target.js';
+import { bolimBosh, bolimCb } from '../_lib/bolimlar.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat } from '../_lib/mijozMenyu.js';
@@ -1551,12 +1552,13 @@ async function adminTaklifQabul(env, msg, tok) {
   await adminPanel(env, chatId);
 }
 
-async function adminPanel(env, chatId) {
+async function adminPanel(env, chatId, faqatBuyruq = false) {
   // Telegram'dagi "Menu" tugmasi: admin uchun alohida buyruqlar ro'yxati
   const sm = (body) => fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setMyCommands`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) }).catch(() => {});
   await sm({ scope: { type: 'chat', chat_id: chatId }, commands: [
-    { command: 'admin', description: '🛠 Admin panel' }, { command: 'menu', description: '👁 Mijoz menyusi' }, { command: 'id', description: '🆔 Mening ID' } ] });
+    { command: 'admin', description: '🏢 Bo\'limlar paneli' }, { command: 'target', description: '🎯 Target agent' }, { command: 'reelb', description: '🎞 Yangi reel' }, { command: 'menu', description: '👁 Mijoz menyusi' }, { command: 'id', description: '🆔 Mening ID' } ] });
   await sm({ commands: [{ command: 'start', description: 'Boshlash' }, { command: 'menu', description: 'Asosiy menyu' }] });
+  if (faqatBuyruq) return;
   await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '🛠 <b>Visart admin panel</b>', { inline_keyboard: [
     [{ text: '🆕 Oxirgi lidlar', callback_data: 'ap:lid' }, { text: '📊 Bugun / hafta', callback_data: 'ap:stat' }],
     [{ text: '🏗 Obyektlar', callback_data: 'ap:ob' }, { text: '🗂 Nashr navbati', callback_data: 'ap:nav' }],
@@ -2005,6 +2007,7 @@ export async function onRequestPost({ request, env }) {
         if (mm > 0) { await removeKb(env, cid, cq.message.message_id); await finishDialog(env, cid, dlg, mm, data === 'dk:1'); }
         return json({ ok: true });
       }
+      if (data.startsWith('bl:') && isAdmin(env, cq.from && cq.from.id)) { await bolimCb(env, cq, () => adminPanel(env, chatId)).catch((e) => xatoYoz(env, 'bolim-cb', e)); return json({ ok: true }); }
       if (data.startsWith('tg:') && isAdmin(env, cq.from && cq.from.id)) { await targetCb(env, cq).catch((e) => xatoYoz(env, 'target-cb', e)); return json({ ok: true }); }
       if (data.startsWith('ap:')) { await adminPanelCb(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('menu:')) { await handleMenu(env, H, cq, data); return json({ ok: true }); }
@@ -2336,7 +2339,8 @@ export async function onRequestPost({ request, env }) {
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) &&
         (msg.text === '/start' || msg.text === '/admin' || msg.text === '/start guruh')) {
-      await adminPanel(env, chatId);
+      await adminPanel(env, chatId, true);
+      await bolimBosh(env, chatId).catch((e) => xatoYoz(env, 'bolim-bosh', e));
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && (msg.text === '/obyekt' || msg.text === '/start obyekt')) {

@@ -16,3 +16,6 @@ Boshqaruv: Telegram bot, `/target` (faqat adminlar).
 ## Hali tasdiqlanmagan
 - Meta API chaqiruvlari (kampaniya/adset/kreativ) jonli sinalmagan; xato bo'lsa botga Meta xabari keladi, pul sarflanmaydi.
 - Lidlar reklamadan ajratilmagan (botdagi barcha yangi lidlar sanaladi). O'zbekiston narx oraliqlari taxminiy -- 1-2 hafta natijasidan keyin yangilanadi.
+
+## Bo'limlar paneli (`/admin`)
+`functions/_lib/bolimlar.js`: Kontent, Target, Mijozlar, Ishlab chiqarish (AutoCAD/3ds Max -- keyingi bosqich), Tizim. Bosh ekran jonli holat ko'rsatadi (navbat, faol kampaniya, bugungi lid, media-server 🟢/🔴). Yangi bo'lim: `BOLIMLAR` va `IZOH` ga yozuv + `bosh` ekraniga qator. Eski panel: Tizim -> "Eski panel".
