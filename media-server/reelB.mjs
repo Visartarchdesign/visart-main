@@ -9,6 +9,7 @@ import { rejaSegment } from './rejaReel.js';
 import { ovozTahrir, ovozYarat, srtVideogaKuydir, muzikaTanla, ffmpegMuzikaDuck, sfxQosh } from './montaj.js';
 import { elchiOblojka } from './oblojkaElchi.js';
 import { yuzTanla } from './yuz.js';
+import { sablonOblojka, sablonTanla } from './oblojkaShablon.js';
 const ex = promisify(execFile);
 const MODELLAR = ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'];
 const SFX = {
@@ -114,7 +115,10 @@ export async function reelB(env, { dir, out, variant = 'uzun', nom = '' }) {
     if (!yuzBuf) console.log("DIQQAT: oblojkaga yuz topilmadi -- media-server\\yuz\\ papkasiga portret qo'ying");
     const toza = (x) => String(x || '').replace(new RegExp(`\\b(${[...String(nom).split(/\\s+/), 'kvartirasi', 'kvartira', 'uyi'].filter((w) => w.length > 2).join('|')})\\b`, 'gi'), '').replace(/\s+/g, ' ').trim();
     let logoB64 = ''; try { logoB64 = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'logo-mark.png')).toString('base64'); } catch (e) { /* ixtiyoriy */ }
-    const jpg = await elchiOblojka({ sarlavha: toza(S.oblojka) || toza(HOOK), vurgu: '', fotoBuf: fs.readFileSync(imgs(hero)), yuzBuf, logoB64 });
+    const sab = sablonTanla();
+    const sarl = toza(S.oblojka) || toza(HOOK), fotoB = fs.readFileSync(imgs(hero));
+    const jpg = sab ? await sablonOblojka({ sablon: sab, sarlavha: sarl, fotoBuf: fotoB, logoB64 })
+      : await elchiOblojka({ sarlavha: sarl, vurgu: '', fotoBuf: fotoB, yuzBuf, logoB64 });
     fs.writeFileSync(out.replace(/\.mp4$/, '_oblojka.jpg'), jpg);
   } catch (e) { console.log('oblojka xato', e.message); }
   console.log('TAYYOR:', out);
