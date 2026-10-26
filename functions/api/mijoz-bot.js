@@ -52,6 +52,7 @@ import { xatoYoz } from '../_lib/xato.js';
 import { targetMenyu, targetCb } from '../_lib/target.js';
 import { bolimBosh, bolimCb } from '../_lib/bolimlar.js';
 import { seoYangi, seoMedia, seoMatn, seoCb, domenSet, domenKorsat } from '../_lib/seoAgent.js';
+import { fotoMenu, fotoMedia, fotoCb, fotoQayta, fotoHolat } from '../_lib/fotoBot.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat, ILOVA_URL } from '../_lib/mijozMenyu.js';
@@ -2025,6 +2026,7 @@ export async function onRequestPost({ request, env }) {
         } else await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Bekor qilindi.');
         return json({ ok: true });
       }
+      if (data.startsWith('fg:') && isAdmin(env, cq.from && cq.from.id)) { await fotoCb(env, cq).catch((e) => xatoYoz(env, 'foto-cb', e)); return json({ ok: true }); }
       if (data.startsWith('sg:') && isAdmin(env, cq.from && cq.from.id)) { await seoCb(env, cq).catch((e) => xatoYoz(env, 'seo-cb', e)); return json({ ok: true }); }
       if (data.startsWith('mg:') && isAdmin(env, cq.from && cq.from.id)) {
         const [, amal, mid] = data.split(':');
@@ -2264,6 +2266,7 @@ export async function onRequestPost({ request, env }) {
     }
 
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) && await seoMedia(env, msg).catch(() => false)) return json({ ok: true });
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) && await fotoMedia(env, msg).catch(() => false)) return json({ ok: true });
     // Oddiy mijoz shaxsiy chatda: kontakt (obyekt holati) yoki rasm-reference.
     if (msg.chat.type === 'private' && !isAdmin(env, msg.from && msg.from.id)) {
       if (msg.contact) {
@@ -2402,6 +2405,8 @@ export async function onRequestPost({ request, env }) {
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && msg.text) {
       if (msg.text === '/seo') { await seoYangi(env, chatId); return json({ ok: true }); }
+      if (msg.text === '/foto') { await fotoMenu(env, chatId); return json({ ok: true }); }
+      if (msg.text === '/foto_qayta') { await fotoQayta(env, chatId); return json({ ok: true }); }
       if (msg.text === '/domen') { await domenKorsat(env, chatId); return json({ ok: true }); }
       if (/^\/domen\s+\S+/.test(msg.text)) { await domenSet(env, chatId, msg.text.split(/\s+/)[1]); return json({ ok: true }); }
       if (!msg.text.startsWith('/') && !msg.reply_to_message && await seoMatn(env, msg).catch(() => false)) return json({ ok: true });

@@ -19,6 +19,7 @@ app.use(express.json({ limit: '20mb' }));
 // ularni (MEDIA_SECRET bilan himoyalangan HTTPS so'rovda) uzatadi. Cloudflare qiymatlari ustun (Render'dagi eski/almashtirilgan token 401 bermasligi uchun).
 import { keshYoz, xomKuzatuvchi } from './xomKuzatuvchi.js';
 import { tgYukla } from './tgBuyuk.js';
+import { fotoIshchi } from './fotoIshchi.js';
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
   const out = { ...process.env };
@@ -179,4 +180,4 @@ app.get('/montaj-test', (req, res) => {
 
 const port = process.env.PORT || 10000;
 app.listen(port, () => console.log(`Visart media-server ${port}-portda ishga tushdi`));
-if (process.platform === 'win32' || process.env.XOM_KUZAT) xomKuzatuvchi();
+if (process.platform === 'win32' || process.env.XOM_KUZAT) { xomKuzatuvchi(); fotoIshchi(); }
