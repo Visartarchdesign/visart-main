@@ -22,7 +22,7 @@ export async function vazifaTayyor(env, id) {
 }
 
 export async function direktorChat(env, text, holat) {
-  if (!env.ANTHROPIC_API_KEY) return { javob: 'ANTHROPIC_API_KEY sozlanmagan.', taklif: [] };
+  if (!env.ANTHROPIC_API_KEY) return { javob: 'ANTHROPIC_API_KEY sozlanmagan.', taklif: [], xato: true };
   const [tarix, vaz] = await Promise.all([direktorTarix(env, 12), vazifalarOchiq(env)]);
   const ctx = holat.agentlar.filter((a) => a.id !== 'direktor').map((x) => `${x.id} (${x.nom}): ${x.h} — ${x.i}`).join('\n');
   const vz = vaz.length ? vaz.map((v) => `#${v.id} → ${v.agent}: ${v.matn}`).join('\n') : "yo'q";
@@ -40,6 +40,7 @@ Egasining talabi bo'yicha har bir agentga topshiriq tuzing ("buyruqlar"):
 - amal "reel": Senarist yangi reel senariysi tayyorlaydi (agent=senarist). Pul/resurs ketadi — egasi tasdiqlaydi.
 - amal "animatsiya": Montajchi yangi animatsiya (agent=montajchi). Egasi tasdiqlaydi.
 - amal "vazifa": boshqa har qanday topshiriq — vazifa ro'yxatiga yoziladi (agent: ${Object.keys(AGENT_NOM).join('/')}). "matn" — agentga aniq, qisqa topshiriq.
+Senariy tasdig'i Telegram botda (Senarist yuborgan xabardagi tugmalar), tayyor video tasdig'i ilovada Boshqaruv → Tayyor ishlar, reklama tasdig'i botda. Texnik xato yoki tizim nosozligi uchun vazifa YARATMANG — shunchaki egasiga ayting.
 Rasm yuklash (SEO) uchun egasi ilovadagi SEO agent bo'limidan rasm yuboradi — shuni ayting.
 Agar egasi shunchaki savol bersa, buyruqlar bo'sh bo'lsin. Pul sarflashni (reklama) o'zingiz boshlamaysiz.
 FAQAT JSON: {"javob":"...","buyruqlar":[{"agent":"senarist","amal":"reel","matn":"..."}]}
@@ -47,7 +48,7 @@ FAQAT JSON: {"javob":"...","buyruqlar":[{"agent":"senarist","amal":"reel","matn"
 Egasi: ${text}`;
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 900, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(45000) });
-    if (!r.ok) return { javob: `Claude API xatosi (${r.status}).`, taklif: [] };
+    if (!r.ok) return { javob: `Claude API xatosi (${r.status}).`, taklif: [], xato: true };
     const d = await r.json();
     const raw = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');
     const m = raw.match(/\{[\s\S]*\}/); const j = m ? JSON.parse(m[0]) : null;
@@ -61,7 +62,7 @@ Egasi: ${text}`;
       else if (matn) { const rr = await post(env, 'direktor_vazifa', 'ochiq', { agent, matn }).catch(() => null); taklif.push({ agent, amal: 'vazifa', matn, id: rr && rr[0] && rr[0].id }); }
     }
     return { javob: String(j.javob).slice(0, 1200), taklif };
-  } catch (e) { return { javob: "Javob olinmadi, qayta urinib ko'ring.", taklif: [] }; }
+  } catch (e) { return { javob: "Javob olinmadi, qayta urinib ko'ring.", taklif: [], xato: true }; }
 }
 
 export async function direktorYoz(env, rol, t, taklif) { await post(env, 'direktor_xabar', 'xabar', { rol, t: String(t).slice(0, 1500), taklif: taklif || null, vaqt: new Date().toISOString() }).catch(() => {}); }

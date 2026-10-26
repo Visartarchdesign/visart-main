@@ -104,9 +104,8 @@ export async function onRequestPost({ request, env }) {
   if (a === 'dir_tarix') return J({ ok: true, rows: await direktorTarix(env) });
   if (a === 'dir_chat' && b.text) {
     const text = String(b.text).slice(0, 800); const h = await agentHolat(env);
-    await direktorYoz(env, 'u', text);
     const r = await direktorChat(env, text, h);
-    await direktorYoz(env, 'd', r.javob, r.taklif && r.taklif.length ? r.taklif : null);
+    if (!r.xato) { await direktorYoz(env, 'u', text); await direktorYoz(env, 'd', r.javob, r.taklif && r.taklif.length ? r.taklif : null); }
     return J({ ok: true, ...r });
   }
   if (a === 'vazifalar') return J({ ok: true, rows: await vazifalarOchiq(env) });
