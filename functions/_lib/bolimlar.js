@@ -18,6 +18,7 @@ export const BOLIMLAR = {
   kontent: { nom: '🎬 Kontent (SMM · Senarist · Montajchi)', tugma: [
     [['🎞 Yangi reel (senariy)', 'bl:reel'], ['🗂 Nashr navbati', 'ap:nav']],
     [['📦 Tayyor, joylanmagan ishlar', 'bl:tayyor']],
+    [['🔎 Saytga loyiha (SEO)', 'sg:yangi'], ['🌐 Domen holati', 'sg:domen']],
     [['💡 Maslahat (test)', 'ap:ms']],
   ] },
   target: { nom: '🎯 Marketing va target', tugma: [

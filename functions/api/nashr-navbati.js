@@ -3,6 +3,7 @@ import { navbatniYubor } from '../_lib/outbox.js';
 import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
+import { seoNashr, domenNazorat, seoAudit } from '../_lib/seoAgent.js';
 import { targetNazorat } from '../_lib/target.js';
 import { mediaUygot, mediaChaqir, animatsiyaBuyurtma, tgSend } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
@@ -263,6 +264,7 @@ async function tozalash(env) {
 }
 
 export async function onRequestGet({ request, env, waitUntil }) {
+  const fondaSeo = (p) => { const q = p.catch((e) => xatoYoz(env, 'seo-agent', e)); if (waitUntil) waitUntil(q); };
   const url = new URL(request.url);
   if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
     await ruxsatRad(env, 'nashr-navbati');
@@ -357,6 +359,11 @@ export async function onRequestGet({ request, env, waitUntil }) {
   }
 
   await tizimNazorati(env);
+  {
+    const n = new Date();
+    if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) fondaSeo(seoAudit(env)); }
+    fondaSeo(seoNashr(env));
+  }
   await targetNazorat(env).catch((e) => xatoYoz(env, 'target-nazorat', e));
   // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
   // Fonda (cron javobini kechiktirmaydi -- cron-job.org 30 soniyada uzadi va keyingi qadamlar kesilib qoladi)

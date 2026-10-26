@@ -51,6 +51,7 @@ import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/
 import { xatoYoz } from '../_lib/xato.js';
 import { targetMenyu, targetCb } from '../_lib/target.js';
 import { bolimBosh, bolimCb } from '../_lib/bolimlar.js';
+import { seoYangi, seoMedia, seoMatn, seoCb, domenSet, domenKorsat } from '../_lib/seoAgent.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat, ILOVA_URL } from '../_lib/mijozMenyu.js';
@@ -2024,6 +2025,7 @@ export async function onRequestPost({ request, env }) {
         } else await tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Bekor qilindi.');
         return json({ ok: true });
       }
+      if (data.startsWith('sg:') && isAdmin(env, cq.from && cq.from.id)) { await seoCb(env, cq).catch((e) => xatoYoz(env, 'seo-cb', e)); return json({ ok: true }); }
       if (data.startsWith('mg:') && isAdmin(env, cq.from && cq.from.id)) {
         const [, amal, mid] = data.split(':');
         const cid = cq.message.chat.id;
@@ -2261,6 +2263,7 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
 
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) && await seoMedia(env, msg).catch(() => false)) return json({ ok: true });
     // Oddiy mijoz shaxsiy chatda: kontakt (obyekt holati) yoki rasm-reference.
     if (msg.chat.type === 'private' && !isAdmin(env, msg.from && msg.from.id)) {
       if (msg.contact) {
@@ -2396,6 +2399,12 @@ export async function onRequestPost({ request, env }) {
       }
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, `Mijoz guruhlaridagi so'nggi 3 kunlik xabarlar: tugma yangilandi ${ok}, o'tkazib yuborildi ${xato}.`);
       return json({ ok: true });
+    }
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && msg.text) {
+      if (msg.text === '/seo') { await seoYangi(env, chatId); return json({ ok: true }); }
+      if (msg.text === '/domen') { await domenKorsat(env, chatId); return json({ ok: true }); }
+      if (/^\/domen\s+\S+/.test(msg.text)) { await domenSet(env, chatId, msg.text.split(/\s+/)[1]); return json({ ok: true }); }
+      if (!msg.text.startsWith('/') && !msg.reply_to_message && await seoMatn(env, msg).catch(() => false)) return json({ ok: true });
     }
     if (msg.text === '/ilova' && msg.chat.type === 'private') {
       await tgSend(env.MIJOZ_BOT_TOKEN, chatId, "📱 Visart ilovasi — login va parolingiz bilan kiring:", { inline_keyboard: [[{ text: '📱 Ilovani ochish', web_app: { url: ILOVA_URL } }]] });

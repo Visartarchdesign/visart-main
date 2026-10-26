@@ -32,6 +32,7 @@ const AGENTLAR = [
   { id: 'smm', nom: 'SMM', rol: 'Nashr jadvali: Instagram, YouTube, Telegram, Facebook' },
   { id: 'targetolog', nom: 'Targetolog', rol: 'Reklama taklifi va nazorat' },
   { id: 'mijoz', nom: 'Mijozlar menejeri', rol: 'Lidlar, obyektlar, guruhlar' },
+  { id: 'seo', nom: 'SEO agenti', rol: 'Saytga loyiha, SEO, domen muddati' },
   { id: 'nazorat', nom: 'Nazoratchi', rol: 'Tizim salomatligi va xatolar' },
   { id: 'autocad', nom: 'AutoCAD', rol: 'Chizmalar holati (keyingi bosqich)', kutish: true },
   { id: 'max', nom: '3ds Max', rol: 'Vizualizatsiya ishlari (keyingi bosqich)', kutish: true },
@@ -40,12 +41,14 @@ async function agentHolat(env) {
   const t0 = new Date(Date.now() + 5 * 3600e3); t0.setUTCHours(0, 0, 0, 0);
   const bugun = new Date(t0.getTime() - 5 * 3600e3).toISOString();
   const kun = new Date(Date.now() - 864e5).toISOString();
-  const [nv, tk, lid, xato, media] = await Promise.all([
+  const [nv, tk, lid, xato, media, seoR, dom] = await Promise.all([
     q(env, 'nashr_navbati?select=turi,holat,created_at&order=id.desc&limit=120'),
     q(env, 'media_taklif?holat=eq.kutilmoqda&select=id,created_at&limit=50'),
     q(env, `lidlar?created_at=gte.${encodeURIComponent(bugun)}&select=id&limit=300`),
     q(env, `bot_xatolar?created_at=gte.${encodeURIComponent(kun)}&select=id&limit=300`),
     fetch(`${env.MEDIA_SERVER_URL}/health`, { signal: AbortSignal.timeout(4000) }).then((r) => r.ok).catch(() => false),
+    q(env, 'nashr_navbati?turi=eq.seo_loyiha&holat=in.(seo_yig,seo_navbat,seo_ish,seo_xato)&select=holat&limit=50'),
+    q(env, 'nashr_navbati?turi=eq.domen_holat&select=payload&limit=1'),
   ]);
   const c = (f) => nv.filter(f).length;
   const yangi = (x) => Date.now() - new Date(x.created_at).getTime() < 15 * 60e3;
@@ -60,6 +63,10 @@ async function agentHolat(env) {
   H.targetolog = fa ? { h: 'ishlayapti', i: `${fa} ta faol kampaniya` } : ta ? { h: 'kutmoqda', i: `${ta} ta taklif tasdiq kutmoqda` } : { h: 'dam', i: 'Faol kampaniya yo\'q' };
   H.mijoz = lid.length ? { h: 'ishlayapti', i: `Bugun ${lid.length} ta lid` } : { h: 'dam', i: 'Bugun yangi lid yo\'q' };
   H.nazorat = !media ? { h: 'xato', i: 'Media-server javob bermayapti' } : xato.length > 20 ? { h: 'kutmoqda', i: `24 soatda ${xato.length} ta xato` } : { h: 'ishlayapti', i: 'Hammasi joyida' + (xato.length ? ` (${xato.length} ta kichik xato)` : '') };
+  const sy = seoR.filter((r) => r.holat === 'seo_yig').length, sn = seoR.filter((r) => r.holat === 'seo_navbat').length, sx = seoR.filter((r) => r.holat === 'seo_xato').length;
+  const dt = dom[0] && dom[0].payload && dom[0].payload.tugash; const dk = dt ? Math.ceil((new Date(dt + 'T23:59:59+05:00').getTime() - Date.now()) / 864e5) : null;
+  const dtext = dk === null ? 'Domen sanasi kiritilmagan (/domen)' : `Domen: ${dk} kun qoldi`;
+  H.seo = sx || (dk !== null && dk <= 14) ? { h: 'xato', i: sx ? 'Joylashda xato bor' : dtext } : seoR.some((r) => r.holat === 'seo_ish') ? { h: 'ishlayapti', i: 'Saytga yuklanmoqda' } : sy ? { h: 'kutmoqda', i: `${sy} ta loyiha ma'lumot kutmoqda` } : sn ? { h: 'kutmoqda', i: `${sn} ta loyiha jadvalda · ${dtext}` } : { h: 'dam', i: dtext };
   H.autocad = { h: 'dam', i: 'Keyingi bosqichda ulanadi' };
   H.max = { h: 'dam', i: 'Keyingi bosqichda ulanadi' };
   return { media, agentlar: AGENTLAR.map((a) => ({ ...a, ...H[a.id] })) };
