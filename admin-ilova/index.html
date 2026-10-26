@@ -85,17 +85,15 @@ svg.ag{width:100%;height:78px;display:block}
 .cin{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom));display:flex;gap:8px;padding:8px 12px;background:var(--bg);border-top:1px solid var(--line);z-index:4}.cin input{flex:1}.cin button{width:46px;border:0;border-radius:10px;background:var(--gold);color:#151412;font-size:20px;display:flex;align-items:center;justify-content:center}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gold);color:var(--gold-l);border-radius:20px;padding:6px 12px;font-size:13px;margin:4px 6px 0 0;background:none}
 .of{width:100%;display:block;border-radius:14px;border:1px solid var(--line);background:#121110}
-.of .fg{transition:transform 3.2s cubic-bezier(.45,0,.55,1);cursor:pointer}
-.of .fg .bb{transform-box:fill-box;transform-origin:center}
-.of .fg.yuradi .bb{animation:wk .42s ease-in-out infinite}
 .of .a-ishlayapti .al{animation:tpl .28s ease-in-out infinite alternate}.of .a-ishlayapti .ar{animation:tpr .28s ease-in-out .14s infinite alternate}
 .of .al,.of .ar{transform-box:fill-box;transform-origin:bottom center}
 .of .pu{animation:pu 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
 .of .gl{animation:fl 1.3s steps(2) infinite}
 @keyframes wk{50%{transform:scale(1.12,.9)}}@keyframes tpl{to{transform:rotate(-16deg)}}@keyframes tpr{to{transform:rotate(16deg)}}@keyframes pu{50%{transform:scale(1.3);opacity:.35}}
+.of .gl{animation:fl 1.3s steps(2) infinite}.of .st{animation:stm 1.6s ease-in-out infinite}@keyframes stm{0%{opacity:0}50%{opacity:.9}100%{opacity:0}}
 .bg{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;padding:11px 12px;margin-bottom:9px}.bg.er{border-left-color:#ff6b6b}.bg.ok2{border-left-color:#7fd48a}
 .bg b{display:block;font-size:13.5px}.bg .mut{margin-top:1px}
-#sh{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#1d1b17;border-top:1px solid var(--gold);border-radius:18px 18px 0 0;padding:16px 16px calc(74px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px #000a}
+#sh{position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));z-index:30;background:#1d1b17;border-top:1px solid var(--gold);border-radius:18px 18px 0 0;padding:16px;box-shadow:0 -10px 40px #000a}
 .sheet{display:flex;gap:12px;align-items:center}.sheet svg.ag{width:96px;height:80px;flex:none}
 </style></head>
 <body>
@@ -107,7 +105,7 @@ svg.ag{width:100%;height:78px;display:block}
 const IC={ofis:'<path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/>',agent:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',boshq:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',chat:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',bosh:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',kont:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m10 8 6 4-6 4z"/>',tar:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',mij:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',app:'<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',narx:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M8 6h8M16 14v4M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M8 18h.01M12 18h.01"/>',xiz:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',loy:'<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',alo:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',kab:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',interior:'<path d="M20 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v3"/><path d="M2 11v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v2H6v-2a2 2 0 0 0-4 0z"/><path d="M4 18v2M20 18v2"/>',arch:'<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',docs:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/>',turnkey:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',drawings:'<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/>',go:'<path d="M5 12h14M13 6l6 6-6 6"/>',send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',ig:'<rect width="20" height="20" x="2" y="2" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>',pin:'<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',ok:'<path d="M20 6 9 17l-5-5"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>'};
 const ic=(n)=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||''}</svg>`;
 const tg=window.Telegram&&Telegram.WebApp;if(tg){tg.ready();tg.expand();try{tg.setHeaderColor('#151412');tg.setBackgroundColor('#151412')}catch(e){}}
-const $=s=>document.querySelector(s);let OT=0,tab='ofis',sub='tayyor',lsub='bot',AG=null,CHAT={},cur='senarist';
+const $=s=>document.querySelector(s);let OT=0,tab='ofis',sub='tayyor',lsub='bot',AG=null,CHAT={},cur='direktor';
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function api(amal,x){try{const r=await fetch('/api/ilova-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg?tg.initData:'',amal,...(x||{})})});return await r.json()}catch(e){return {ok:false}}}
 const TABS=[['ofis','ofis','Ofis'],['agent','agent','Agentlar'],['boshq','boshq','Boshqaruv'],['chat','chat','Chat']];
@@ -115,7 +113,7 @@ function nav(){$('#nav').innerHTML=TABS.map(([k,i,l])=>`<button class="${tab===k
 function go(k,a){tab=k;if(a)cur=a;render()}
 $('#rf').onclick=()=>{AG=null;render()};
 const HOL={kutilmoqda:'Kutilmoqda',bajarilmoqda:'Bajarilmoqda',bajarildi:'Bajarildi',xato:'Xato',bekor:'Bekor',tasdiq_kutilmoqda:'Tasdiq kutmoqda',target_tayyor:'Tayyor',target_faol:'Faol',target_pauza:'Pauza',target_tugadi:'Tugadi'};
-const COL={senarist:'#c4a876',montajchi:'#6fa8dc',smm:'#e08fb0',targetolog:'#e8a35a',mijoz:'#8fd0a3',nazorat:'#b49be0',seo:'#5fc9c0',autocad:'#7f7f7f',max:'#7f7f7f'};
+const COL={senarist:'#c4a876',montajchi:'#6fa8dc',smm:'#e08fb0',targetolog:'#e8a35a',mijoz:'#8fd0a3',nazorat:'#b49be0',seo:'#5fc9c0',direktor:'#d4af37',autocad:'#7f7f7f',max:'#7f7f7f'};
 const HL={ishlayapti:'Ishlayapti',kutmoqda:'Kutmoqda',dam:'Dam olmoqda',xato:'Muammo'};
 function person(id,h){const c=COL[id]||'#c4a876';return `<svg class="ag ${h}" viewBox="0 0 80 70" aria-hidden="true">
 <rect x="6" y="48" width="68" height="5" rx="2" fill="#3a342b"/><rect x="10" y="53" width="3" height="12" fill="#2a2620"/><rect x="67" y="53" width="3" height="12" fill="#2a2620"/>
@@ -125,7 +123,7 @@ function person(id,h){const c=COL[id]||'#c4a876';return `<svg class="ag ${h}" vi
 <text class="zz" x="30" y="14" font-size="10" fill="#a39d93" font-family="Georgia">z</text><text class="ex" x="62" y="18" font-size="14" font-weight="700" fill="${h==='xato'?'#ff6b6b':'#e8c27a'}" font-family="Georgia">!</text></svg>`}
 async function agentlar(){if(!AG){const d=await api('agentlar');if(!d.ok)return null;AG=d}return AG}
 const denied=()=>`<div class="card err">Ruxsat yo'q yoki xato. Faqat adminlar uchun.</div>`;
-async function render(){clearInterval(OT);const o=document.getElementById('sh');if(o)o.remove();nav();const m=$('#m');$('#ci').style.display='none';m.style.paddingBottom='';
+async function render(){cancelAnimationFrame(OT);const o=document.getElementById('sh');if(o)o.remove();nav();const m=$('#m');$('#ci').style.display='none';m.style.paddingBottom='';
  if(!tg||!tg.initData){m.innerHTML='<div class="card">Bu sahifa faqat Telegram bot ichida ochiladi.</div>';return}
  m.innerHTML='<div class="card mut">Yuklanmoqda…</div>';
  if(tab==='ofis'){const [d,b]=await Promise.all([agentlar(),api('bosh')]);if(!d){m.innerHTML=denied();return}
@@ -135,39 +133,137 @@ async function render(){clearInterval(OT);const o=document.getElementById('sh');
   m.innerHTML=`<h2>Agentlar</h2>`+d.agentlar.map(a=>`<div class="card"><div class="sheet">${person(a.id,a.h)}<div style="flex:1"><b>${esc(a.nom)}</b><div class="mut">${esc(a.rol)}</div><div style="margin-top:6px;font-size:13px"><span class="dot ${a.h}"></span>${HL[a.h]||''} · ${esc(a.i||'')}</div></div></div>${a.kutish?'':`<div style="margin-top:8px">${acts(a.id)}<button class="chip" onclick="go('chat','${a.id}')">${ic('chat')} Chat</button></div>`}</div>`).join('')}
  else if(tab==='boshq')boshq();
  else chatView()}
-const SEAT=i=>({x:60+120*(i%3),y:18+78*Math.floor(i/3)});
-const REST=[[48,336],[98,336],[75,396],[200,306],[190,368],[236,368],[300,352],[332,352]];
-function fig(a,x,y,rest){const c=COL[a.id]||'#c4a876',sk='#e9c9a6';
- return `<g class="fg a-${a.h}" data-id="${a.id}" style="transform:translate(${x}px,${y}px)" onclick="agSheet('${a.id}')"><ellipse cx="0" cy="3" rx="9" ry="6" fill="#0007"/><g class="bb"><line class="al" x1="-6" y1="-3" x2="-4.5" y2="-11" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><line class="ar" x1="6" y1="-3" x2="4.5" y2="-11" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="0" cy="1" rx="8" ry="5.6" fill="${c}"/><circle cx="0" cy="-1" r="5" fill="#2b2118"/><circle cx="0" cy="-1.8" r="3.9" fill="${sk}"/></g>${!rest&&(a.h==='kutmoqda'||a.h==='xato')?`<circle class="pu" cx="0" cy="-17" r="7" fill="${a.h==='xato'?'#ff6b6b':'#e8c27a'}"/><text x="0" y="-13.5" font-size="10" font-weight="700" text-anchor="middle" fill="#151412">!</text>`:''}<circle cx="0" cy="0" r="14" fill="transparent"/></g>`}
-function ofisSvg(L){let desks='',figs='',ri=0;
- L.forEach((a,i)=>{const {x,y}=SEAT(i),c=COL[a.id]||'#c4a876',at=a.h!=='dam';
-  desks+=`<rect x="${x-36}" y="${y}" width="72" height="26" rx="3" fill="#4a3d2a" stroke="#6b5a3c" stroke-width=".8"/><rect x="${x-13}" y="${y+3}" width="26" height="5" rx="1" fill="#0d0c0a"/><rect class="${a.h==='ishlayapti'?'gl':''}" x="${x-11.5}" y="${y+4}" width="23" height="3" fill="${at?(a.h==='xato'?'#a33':c):'#1a1814'}" opacity="${at?.9:.5}"/><rect x="${x-9}" y="${y+14}" width="18" height="5" rx="1" fill="#2a2620"/><circle cx="${x}" cy="${y+40}" r="8.5" fill="#26231e" stroke="#3a352d"/><text x="${x}" y="${y+64}" font-size="9" fill="#cfc7b8" text-anchor="middle">${esc(a.nom)}</text>`;
-  if(at)figs+=fig(a,x,y+40,0);else{const r=REST[ri++%REST.length];figs+=fig(a,r[0],r[1],1)}});
- return `<svg class="of" id="of" viewBox="0 0 360 440" aria-label="Ofis">
-<defs><pattern id="fl" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#1a1713"/><path d="M0 0h12v12" fill="none" stroke="#ffffff07"/></pattern><pattern id="fl2" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#1b1a1e"/><path d="M0 0h14v14" fill="none" stroke="#ffffff08"/></pattern></defs>
-<rect width="360" height="440" fill="#0e0d0c"/>
-<rect x="4" y="4" width="352" height="252" rx="6" fill="url(#fl)" stroke="#A9895A" stroke-width="1.5"/><text x="12" y="250" font-size="8" fill="#A9895A" letter-spacing="1.5">ISH XONASI</text>
-<rect x="4" y="262" width="150" height="174" rx="6" fill="url(#fl2)" stroke="#A9895A" stroke-width="1.5"/><text x="12" y="430" font-size="8" fill="#A9895A" letter-spacing="1.5">DAM OLISH</text>
-<rect x="158" y="262" width="110" height="174" rx="6" fill="url(#fl2)" stroke="#A9895A" stroke-width="1.5"/><text x="166" y="430" font-size="8" fill="#A9895A" letter-spacing="1.5">OSHXONA</text>
-<rect x="272" y="262" width="84" height="174" rx="6" fill="url(#fl2)" stroke="#A9895A" stroke-width="1.5"/><text x="280" y="430" font-size="8" fill="#A9895A" letter-spacing="1.5">HOJATXONA</text>
-<rect x="14" y="270" width="130" height="10" rx="2" fill="#0d0c0a" stroke="#575046"/><rect x="14" y="300" width="64" height="28" rx="7" fill="#3a4a58"/><rect x="82" y="300" width="62" height="28" rx="7" fill="#3a4a58"/><rect x="50" y="372" width="50" height="22" rx="4" fill="#4a3d2a"/><circle cx="130" cy="402" r="9" fill="#2f5a3a"/>
-<rect x="166" y="270" width="94" height="16" rx="2" fill="#3a352d"/><rect x="170" y="272" width="16" height="12" fill="#6a6f73"/><rect x="194" y="272" width="30" height="12" fill="#26231e"/><circle cx="213" cy="368" r="22" fill="#4a3d2a" stroke="#6b5a3c"/><circle cx="213" cy="368" r="4" fill="#6b5a3c"/>
-<rect x="280" y="268" width="30" height="46" rx="2" fill="none" stroke="#575046"/><rect x="318" y="268" width="30" height="46" rx="2" fill="none" stroke="#575046"/><rect x="288" y="274" width="14" height="14" rx="5" fill="#cfd4d8"/><rect x="326" y="274" width="14" height="14" rx="5" fill="#cfd4d8"/><rect x="284" y="396" width="64" height="9" rx="2" fill="#3a352d"/>
-${desks}${figs}</svg>`}
-function ofisJon(L){const R=[...document.querySelectorAll('#of .a-dam')];if(!R.length)return;let k=0;
- OT=setInterval(()=>{const sp=[...REST].sort(()=>Math.random()-.5);R.forEach((g,i)=>{if(Math.random()<.35)return;const [x,y]=sp[i%sp.length];g.style.transform=`translate(${x}px,${y}px)`;g.classList.add('yuradi');setTimeout(()=>g.classList.remove('yuradi'),3300)})},6500)}
+// ===== Izometrik ofis (3/4 ko'rinish, agentlar odamdek yuradi, eshiklar ochiladi) =====
+const IW=22,ID=14,K=11.2,CX=.866*K,CY=.5*K,ZK=14,WH=2.6,OX=ID*CX+8,OY=WH*ZK+8;
+const P=(x,y,z=0)=>[OX+(x-y)*CX,OY+(x+y)*CY-z*ZK];
+const pt=a=>a.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
+const poly=(a,f,x='')=>`<polygon points="${pt(a)}" fill="${f}" ${x}/>`;
+function sh(h,f){const n=parseInt(h.slice(1),16),r=Math.min(255,(n>>16&255)*f|0),g=Math.min(255,(n>>8&255)*f|0),b=Math.min(255,(n&255)*f|0);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
+const box=(x0,y0,x1,y1,h,z0,c)=>{const t=[sh(c,1.15),sh(c,.88),sh(c,.66)];return poly([P(x0,y1,z0),P(x1,y1,z0),P(x1,y1,z0+h),P(x0,y1,z0+h)],t[2])+poly([P(x1,y0,z0),P(x1,y1,z0),P(x1,y1,z0+h),P(x1,y0,z0+h)],t[1])+poly([P(x0,y0,z0+h),P(x1,y0,z0+h),P(x1,y1,z0+h),P(x0,y1,z0+h)],t[0])};
+const DK=i=>{const r=i<5?0:1,c=i%5;return {cx:9+2.8*c,y0:r?4.9:.3,y1:r?6.3:1.7,sy:r?7.1:2.5,ay:r?8.1:3.5,row:r}};
+const NODE={C1:[7.2,3.5],C2:[7.2,8.1],C3:[7.2,9.7],LO:[6.9,3.5],LD:[6,3.5],LI:[4.7,3.5],LS1:[1.2,1.9],LS2:[1.2,3.0],LS3:[1.2,4.1],LT:[3.2,4.9],WO:[5.3,9.7],WD:[4,9.7],WI:[2,9.7],H1:[10.5,10],H2:[14.5,10],H3:[14.5,12.3],K1:[17.6,10.2],KS:[19.2,11],KT:[17.2,12.4]};
+const EDGE=[['C1','C2'],['C2','C3'],['C1','LO'],['LO','LD'],['LD','LI'],['LI','LS1'],['LI','LS2'],['LI','LS3'],['LI','LT'],['C3','WO'],['WO','WD'],['WD','WI'],['C3','H1'],['H1','H2'],['H2','H3'],['H2','K1'],['K1','KS'],['K1','KT'],['H3','KT']];
+function graf(n){const g={nodes:{...NODE},adj:{}};for(let i=0;i<n;i++){const d=DK(i);g.nodes['S'+i]=[d.cx,d.sy];g.nodes['A'+i]=[d.cx,d.ay]}
+ const E=[...EDGE];for(let i=0;i<n;i++){E.push(['S'+i,'A'+i]);const d=DK(i);if(i%5===0)E.push(['A'+i,d.row?'C2':'C1']);else E.push(['A'+i,'A'+(i-1)])}
+ E.forEach(([a,b])=>{(g.adj[a]=g.adj[a]||[]).push(b);(g.adj[b]=g.adj[b]||[]).push(a)});return g}
+function yol(g,a,b){const D={[a]:0},Pv={},Q=[a],dist=(u,v)=>Math.hypot(g.nodes[u][0]-g.nodes[v][0],g.nodes[u][1]-g.nodes[v][1]),done={};
+ while(Q.length){Q.sort((x,y)=>D[x]-D[y]);const u=Q.shift();if(done[u])continue;done[u]=1;if(u===b)break;(g.adj[u]||[]).forEach(v=>{const nd=D[u]+dist(u,v);if(D[v]===undefined||nd<D[v]){D[v]=nd;Pv[v]=u;Q.push(v)}})}
+ const r=[];let c=b;if(D[b]===undefined)return [];while(c!==a){r.unshift(c);c=Pv[c]}return r}
+const PL=(x,y,s=1,z=0)=>{const[X,Y]=P(x,y,z);return `<g transform="translate(${X.toFixed(1)} ${Y.toFixed(1)}) scale(${s})"><rect x="-3" y="-5" width="6" height="5" rx="1" fill="#6a4a30"/><ellipse cx="-3" cy="-9" rx="3.2" ry="5" fill="#3f8a4c" transform="rotate(-25 -3 -9)"/><ellipse cx="3" cy="-9" rx="3.2" ry="5" fill="#2f7a40" transform="rotate(25 3 -9)"/><ellipse cx="0" cy="-12" rx="3" ry="5.4" fill="#4a9a58"/><circle cx="-3.5" cy="-13" r="1.3" fill="#e86a8a"/><circle cx="3" cy="-11" r="1.2" fill="#f2c14e"/></g>`};
+function ofisSvg(L){const n=L.length,OB=[],add=(d,sv)=>OB.push([d,sv]);let base='';
+ // pol
+ base+=poly([P(0,0),P(IW,0),P(IW,ID),P(0,ID)],'#2b2218');
+ for(let i=1;i<IW;i++)base+=`<line x1="${P(i,0)[0].toFixed(1)}" y1="${P(i,0)[1].toFixed(1)}" x2="${P(i,ID)[0].toFixed(1)}" y2="${P(i,ID)[1].toFixed(1)}" stroke="#ffffff09"/>`;
+ for(let j=1;j<ID;j++)base+=`<line x1="${P(0,j)[0].toFixed(1)}" y1="${P(0,j)[1].toFixed(1)}" x2="${P(IW,j)[0].toFixed(1)}" y2="${P(IW,j)[1].toFixed(1)}" stroke="#ffffff09"/>`;
+ base+=poly([P(8.4,8.6),P(17,8.6),P(17,13),P(8.4,13)],'#3a2c2c')+poly([P(8.9,9.1),P(16.5,9.1),P(16.5,12.5),P(8.9,12.5)],'none','stroke="#A9895A" stroke-width=".8" opacity=".6"');
+ base+=poly([P(.3,.9),P(5.7,.9),P(5.7,5.6),P(.3,5.6)],'#3a3342');
+ base+=poly([P(19.4,9.2),P(21.9,9.2),P(21.9,12.8),P(19.4,12.8)],'#3a2f24');
+ // orqa devorlar
+ base+=poly([P(0,0,0),P(IW,0,0),P(IW,0,WH),P(0,0,WH)],'#3a352d')+poly([P(0,0,0),P(0,ID,0),P(0,ID,WH),P(0,0,WH)],'#2e2a24')+poly([P(0,0,.18),P(IW,0,.18),P(IW,0,0),P(0,0,0)],'#241f19')+poly([P(0,0,.18),P(0,ID,.18),P(0,ID,0),P(0,0,0)],'#1d1a16');
+ for(let c=0;c<5;c++){const x=9+2.8*c;base+=poly([P(x-1,0,1.3),P(x+1,0,1.3),P(x+1,0,2.3),P(x-1,0,2.3)],'#243a52','stroke="#A9895A" stroke-width=".8"')+poly([P(x-1,0,1.3),P(x,0,1.3),P(x-.2,0,2.3),P(x-1,0,2.3)],'#ffffff14')}
+ base+=poly([P(0,12.1,1.1),P(0,13.5,1.1),P(0,13.5,2.1),P(0,12.1,2.1)],'#3b3128','stroke="#A9895A" stroke-width=".8"')+poly([P(0,5.4,1.2),P(0,6.8,1.2),P(0,6.8,2.2),P(0,5.4,2.2)],'#223a50','stroke="#A9895A" stroke-width=".8"');
+ // qavat chizmalari: stol, stul, monitor
+ L.forEach((a,i)=>{const d=DK(i),c=COL[a.id]||'#c4a876',dir=a.id==='direktor',wood=dir?'#4a3320':'#6a5535',act=a.h!=='dam';
+  let sv=box(d.cx-1.25,d.y0,d.cx+1.25,d.y1,.75,0,wood);
+  sv+=box(d.cx-.5,d.y0+.25,d.cx+.5,d.y0+.42,.55,.75,'#222226')+poly([P(d.cx-.42,d.y0+.42,.82),P(d.cx+.42,d.y0+.42,.82),P(d.cx+.42,d.y0+.42,1.25),P(d.cx-.42,d.y0+.42,1.25)],act?(a.h==='xato'?'#b33':c):'#15151a',`class="${a.h==='ishlayapti'?'gl':''}" opacity="${act?.92:.6}"`)+box(d.cx-.5,d.y1-.65,d.cx+.5,d.y1-.35,.05,.75,'#2a2a2e');
+  if(a.h==='ishlayapti'||dir)sv+=box(d.cx+.8,d.y1-.8,d.cx+1.1,d.y1-.5,.22,.75,'#f4efe6')+`<path class="st" d="M${P(d.cx+.95,d.y1-.65,1)[0].toFixed(1)} ${P(d.cx+.95,d.y1-.65,1)[1].toFixed(1)} q-2 -4 0 -7 t0 -6" stroke="#fff" stroke-width=".9" fill="none"/>`;
+  if(dir)sv+=PL(d.cx-.8,d.y1-.8,.7,.75);
+  const nm=P(d.cx-1.05,d.y1,.12);sv+=`<text transform="matrix(.866 .5 0 1 ${nm[0].toFixed(1)} ${nm[1].toFixed(1)})" font-size="5.6" fill="#e8dcc2">${esc(a.nom)}</text>`;
+  add(d.cx+(d.y0+d.y1)/2,sv);
+  add(d.cx+d.sy-.5,box(d.cx-.4,d.sy-.4,d.cx+.4,d.sy+.4,.42,0,'#2a2620')+box(d.cx-.4,d.sy+.28,d.cx+.4,d.sy+.4,.55,.42,'#2a2620'))});
+ // dam olish
+ add(3.4,box(.1,1,1.4,4.6,.5,0,'#56677a')+box(.1,1,.5,4.6,.65,.5,'#56677a'));
+ add(4.4,box(2.4,2.6,3.6,3.8,.45,0,'#6b5a3c'));
+ add(2.9,box(4.5,.1,5.9,.8,1.9,0,'#5a4630'));
+ add(.6,poly([P(1.6,0,1.15),P(4.2,0,1.15),P(4.2,0,2.15),P(1.6,0,2.15)],'#0b0b0d','stroke="#6b645a" stroke-width=".8"')+poly([P(1.7,0,1.25),P(4.1,0,1.25),P(4.1,0,2.05),P(1.7,0,2.05)],'#3b6a96','class="gl" opacity=".75"'));
+ add(9.7,box(0,5.9,6.1,6.15,1,0,'#4d453a')); add(5.9,box(5.9,0,6.15,2.8,1,0,'#4d453a')); add(11.1,box(5.9,4.2,6.15,6.15,1,0,'#4d453a'));
+ // hojatxona (baland devorlar)
+ add(7.6,box(0,7.5,4.1,7.75,2.4,0,'#4a443a')); add(13.4,box(0,11.5,4.15,11.75,2.4,0,'#4a443a')); add(10,box(3.9,7.5,4.15,8.9,2.4,0,'#4a443a')); add(13,box(3.9,10.3,4.15,11.75,2.4,0,'#4a443a'));
+ add(14.2,box(3.9,8.9,4.15,10.3,.25,2.4,'#4a443a'));
+ add(9,poly([P(4.15,8.9,2.4),P(4.15,10.3,2.4),P(4.15,10.3,2.15),P(4.15,8.9,2.15)],'#2d6a8a'));
+ // qahva zonasi
+ add(31,box(20.2,9.4,21.8,12.6,1,0,'#6b5a3c')+box(20.6,10.3,21.4,11.1,.7,1,'#2a2a2e')+box(21.2,10.5,21.4,10.7,.12,1.45,'#d33')+box(20.45,11.5,20.75,11.8,.2,1,'#f4efe6')+box(20.45,9.8,20.75,10.1,.2,1,'#f4efe6'));
+ add(28,box(17,10.4,18.3,11.6,.9,0,'#6b5a3c')+box(17.3,10.7,17.7,11.1,.2,.9,'#f4efe6'));
+ add(26.6,box(16.1,10.6,16.6,11.1,.5,0,'#3a352d')+box(18.9,10.6,19.4,11.1,.5,0,'#3a352d'));
+ // gullar
+ [[6.5,.7],[21.3,.7],[.7,13.2],[5.4,13.1],[10,13.3],[15,13.5],[21.2,13.3],[7,6.8],[4.8,.5],[6.6,11.4]].forEach(([x,y])=>add(x+y+.2,PL(x,y,1.1)));
+ add(30,PL(21.3,9.3,1.2));
+ // yozuvlar
+ const T=(x,y,z,t,c)=>{const q=P(x,y,z);return `<text x="${q[0].toFixed(1)}" y="${q[1].toFixed(1)}" font-size="6.6" fill="${c||'#A9895A'}" text-anchor="middle" letter-spacing="1">${t}</text>`};
+ add(99,T(3,6,1.7,'DAM OLISH')+T(2,9.7,2.9,'WC','#7ab8d8')+T(20.9,11,2.2,'KOFE','#e8c27a')+T(15,0,2.7,'VISART DESIGN','#c4a876'));
+ OB.sort((p,q)=>p[0]-q[0]);
+ return `<svg class="of" id="of" viewBox="0 0 ${Math.ceil(OX+IW*CX+8)} ${Math.ceil(OY+(IW+ID)*CY+8)}" aria-label="Ofis"><rect width="100%" height="100%" fill="#0e0d0c"/>${base}<g id="sc">${OB.map(([d,v])=>`<g data-d="${d}">${v}</g>`).join('')}</g></svg>`}
+function sprite(a){const c=COL[a.id]||'#c4a876',sk='#e9c9a6',hair=a.id==='nazorat'?'#8a5a2a':'#2b2118';
+ return `<g class="fg" data-id="${a.id}" onclick="agSheet('${a.id}')"><ellipse cx="0" cy="0" rx="7" ry="2.5" fill="#0008"/>
+<g class="stn"><line class="l1" x1="-2" y1="-9" x2="-2" y2="0" stroke="#2b2a35" stroke-width="3" stroke-linecap="round"/><line class="l2" x1="2" y1="-9" x2="2" y2="0" stroke="#2b2a35" stroke-width="3" stroke-linecap="round"/><rect x="-4.6" y="-19" width="9.2" height="11" rx="3" fill="${c}"/><line class="a1" x1="-4.6" y1="-17" x2="-6" y2="-9.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><line class="a2" x1="4.6" y1="-17" x2="6" y2="-9.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><circle cy="-23" r="4.4" fill="${sk}"/><path d="M-4.5 -23.5a4.5 4.5 0 0 1 9 0c-2-1.3-7-1.3-9 0z" fill="${hair}"/></g>
+<g class="sit" display="none"><rect x="-4.8" y="-15" width="9.6" height="10" rx="3" fill="${c}"/><line class="b1" x1="-4.6" y1="-12" x2="-3" y2="-5.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><line class="b2" x1="4.6" y1="-12" x2="3" y2="-5.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><circle cy="-19" r="4.4" fill="${sk}"/><path d="M-4.5 -19.5a4.5 4.5 0 0 1 9 0c-2-1.3-7-1.3-9 0z" fill="${hair}"/></g>
+<g class="cp" display="none"><rect x="5" y="-14" width="3.6" height="4" rx=".8" fill="#f4efe6"/><path d="M6.8 -15q-1.5-2 0-3.5" stroke="#fff" stroke-width=".8" fill="none" class="st"/></g>
+<g class="bb" display="none"><circle cy="-34" r="5.5" fill="#e8c27a"/><text y="-31" font-size="8" font-weight="700" text-anchor="middle" fill="#151412">!</text></g>
+<text class="nm" y="-29" font-size="5.8" text-anchor="middle" fill="#d9d0bf" opacity=".85">${esc(a.nom.split(' ')[0])}</text><circle cy="-12" r="13" fill="transparent"/></g>`}
+function ofisJon(L){const sc=document.getElementById('sc');if(!sc)return;const G=graf(L.length),T=[...sc.children].map(e=>{e._d=+e.dataset.d;return e});
+ const ns='http://www.w3.org/2000/svg',mk=(t,att)=>{const e=document.createElementNS(ns,t);for(const k in att)e.setAttribute(k,att[k]);return e};
+ const dr=[{x:6,ya:2.8,yb:4.2,h:1,cx:6,cy:3.5,o:0,hy:2.8,sg:1,d:9.6,f:'#8a6a3c'},{x:4,ya:8.9,yb:10.3,h:2.15,cx:4,cy:9.6,o:0,hy:8.9,sg:1,d:13.7,f:'#8a6a3c'}];
+ dr.forEach(o=>{o.el=mk('polygon',{fill:o.f,stroke:'#c4a876','stroke-width':.8});o.el._d=o.d;sc.appendChild(o.el);T.push(o.el)});
+ const wcOcc=()=>0;
+ const A=L.map((a,i)=>{const e=document.createElementNS(ns,'g');e.innerHTML=sprite(a);const el=e.firstChild;sc.appendChild(el);el._d=0;T.push(el);const d=DK(i);
+  const g={a,i,el,x:d.cx,y:d.sy,node:'S'+i,path:[],wait:2+Math.random()*6,ph:Math.random()*6,mode:'sit',cup:false,tgt:null,
+   q:{st:el.querySelector('.stn'),si:el.querySelector('.sit'),cp:el.querySelector('.cp'),bb:el.querySelector('.bb'),l1:el.querySelector('.l1'),l2:el.querySelector('.l2'),a1:el.querySelector('.a1'),a2:el.querySelector('.a2'),b1:el.querySelector('.b1'),b2:el.querySelector('.b2')}};
+  if(a.h==='dam'){const s=['LS1','LS2','LT','KS','H2','H1','LS3'][i%7];g.node=s;g.x=G.nodes[s][0];g.y=G.nodes[s][1];g.mode=s[0]==='L'&&s!=='LT'?'sit':'stand'}
+  if(a.h!=='ishlayapti'&&a.h!=='dam')g.wait=999;
+  return g});
+ const sofa=n=>n==='LS1'||n==='LS2'||n==='LS3';
+ function git(g,dst){const p=yol(G,g.node,dst);if(!p.length)return false;g.path=p.map(id=>({id,xy:G.nodes[id]}));g.tgt=dst;return true}
+ function decide(g){const a=g.a;
+  if(a.h!=='dam'){const home='S'+g.i;
+   if(g.node!==home){g.cup=false;if(git(g,home)){}return}
+   if(a.h==='ishlayapti'&&Math.random()<.5){git(g,'KS');g.after='kofe';return}
+   g.wait=18+Math.random()*25;return}
+  const r=Math.random(),busy=n=>A.some(o=>o!==g&&(o.tgt===n||o.node===n&&!o.path.length));
+  let dst;
+  if(r<.3){dst=['LS1','LS2','LS3'].find(n=>!busy(n))||'LT'}else if(r<.5)dst='WI';else if(r<.78)dst='KS';else dst=['H1','H2','H3','LT','KT'][Math.floor(Math.random()*5)];
+  if(dst===g.node){g.wait=3;return}
+  git(g,dst);g.after=dst}
+ function arrive(g){g.node=g.tgt;const n=g.node;
+  if(n==='S'+g.i){g.mode='sit';g.wait=14+Math.random()*20;g.cup=false}
+  else if(sofa(n)){g.mode='sit';g.wait=9+Math.random()*8}
+  else if(n==='KS'){g.mode='stand';g.cup=true;g.wait=4.5+Math.random()*3}
+  else if(n==='WI'){g.mode='stand';g.wait=5+Math.random()*4}
+  else{g.mode='stand';g.wait=3+Math.random()*4}}
+ let last=performance.now(),k=0;
+ function frame(t){OT=requestAnimationFrame(frame);if(!document.getElementById('sc'))return;const dt=Math.min(.1,(t-last)/1000);last=t;k++;
+  A.forEach(g=>{
+   if(g.path.length){const tg=g.path[0].xy,dx=tg[0]-g.x,dy=tg[1]-g.y,dd=Math.hypot(dx,dy),sp=2.6*dt;
+    if(dd<=sp){g.x=tg[0];g.y=tg[1];g.node=g.path[0].id;g.path.shift();if(!g.path.length)arrive(g)}else{g.x+=dx/dd*sp;g.y+=dy/dd*sp}
+    g.mode='walk';g.ph+=dt*10}
+   else{g.wait-=dt;if(g.wait<=0)decide(g)}
+   const sit=g.mode==='sit',walk=g.mode==='walk',z=sit?(sofa(g.node)?.3:.34):0,q=g.q;
+   const[X,Y]=P(g.x,g.y,z);g.el.setAttribute('transform',`translate(${X.toFixed(1)} ${Y.toFixed(1)}) scale(.86)`);g.el._d=g.x+g.y+.05;
+   const inWC=g.x<3.95&&g.y>7.6&&g.y<11.5;g.el.setAttribute('opacity',inWC?0:1);g.el.style.pointerEvents=inWC?'none':'auto';
+   q.st.setAttribute('display',sit?'none':'inline');q.si.setAttribute('display',sit?'inline':'none');
+   if(walk){const s=Math.sin(g.ph)*5;q.l1.setAttribute('x2',-2+s);q.l2.setAttribute('x2',2-s);q.a1.setAttribute('x2',-6-s*.5);q.a2.setAttribute('x2',6+s*.5)}
+   else if(!sit){q.l1.setAttribute('x2',-2);q.l2.setAttribute('x2',2);q.a1.setAttribute('x2',-6);q.a2.setAttribute('x2',6)}
+   if(sit){const w=(g.a.h==='ishlayapti'&&g.node==='S'+g.i);const s=w?Math.sin(t/90+g.i)*1.6:0;q.b1.setAttribute('y2',-5.5+s);q.b2.setAttribute('y2',-5.5-s);q.b1.setAttribute('x2',-3);q.b2.setAttribute('x2',3)}
+   g.nm=g.nm||g.el.querySelector('.nm');g.nm.setAttribute('display',sit?'none':'inline');q.cp.setAttribute('display',g.cup?'inline':'none');
+   const bw=g.a.h==='kutmoqda'||g.a.h==='xato';q.bb.setAttribute('display',bw&&sit&&g.node==='S'+g.i?'inline':'none');if(bw)q.bb.firstChild.nextSibling&&0;q.bb.firstElementChild.setAttribute('fill',g.a.h==='xato'?'#ff6b6b':'#e8c27a')});
+  dr.forEach(o=>{const near=A.some(g=>Math.hypot(g.x-o.cx,g.y-o.cy)<1.9&&g.el.getAttribute('opacity')!=='0');o.o+=((near?1:0)-o.o)*Math.min(1,dt*7);
+   const th=o.o*1.48,L2=o.yb-o.ya,ex=o.x+L2*Math.sin(th),ey=o.ya+L2*Math.cos(th);
+   o.el.setAttribute('points',pt([P(o.x,o.ya,0),P(ex,ey,0),P(ex,ey,o.h),P(o.x,o.ya,o.h)]));o.el._d=o.d+o.o*.8});
+  if(k%2===0){const ord=T.slice().sort((a,b)=>a._d-b._d);let ch=false;for(let i=0;i<ord.length;i++)if(sc.children[i]!==ord[i]){ch=true;break}if(ch)ord.forEach(e=>sc.appendChild(e))}}
+ OT=requestAnimationFrame(frame)}
 function agSheet(id){const a=((AG&&AG.agentlar)||[]).find(x=>x.id===id);if(!a)return;const o=document.getElementById('sh');if(o)o.remove();
  const e=document.createElement('div');e.id='sh';e.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><b style="font-size:17px;font-family:'Playfair Display',Georgia,serif">${esc(a.nom)}</b><div class="mut">${esc(a.rol)}</div></div><button class="lg" onclick="document.getElementById('sh').remove()">Yopish</button></div><div style="margin:10px 0;font-size:14px"><span class="dot ${a.h}"></span>${HL[a.h]||''} · ${esc(a.i||'')}</div><div>${acts(a.id)}${a.kutish?'':`<button class="chip" onclick="cur='${a.id}';go('chat')">Chat</button>`}</div>`;document.body.appendChild(e)}
+async function vazTayyor(id){await api('vazifa_tayyor',{id});render()}
 function bugun(d,b){const t=[];b=b||{};
  if(!d.media)t.push(['er',"Media-server o'chiq","Video va rasm ishlari to'xtab qoldi. Kompyuterni tekshiring.",'']);
  d.agentlar.filter(a=>a.h==='xato').forEach(a=>t.push(['er',a.nom+': muammo',a.i,`<button class="chip" onclick="agSheet('${a.id}')">Ochish</button>`]));
  if(b.tayyor)t.push(['',b.tayyor+" ta tayyor video tasdig'ingizni kutmoqda","Ko'rib chiqing va joylashga ruxsat bering.",`<button class="chip" onclick="sub='tayyor';go('boshq')">Ko'rish</button>`]);
  if(b.taklif)t.push(['',b.taklif+" ta reklama taklifi","Targetolog taklifini ko'rib, tasdiqlang yoki rad eting.",`<button class="chip" onclick="sub='target';go('boshq')">Ko'rish</button>`]);
  d.agentlar.filter(a=>a.h==='kutmoqda'&&a.id!=='smm').forEach(a=>t.push(['',a.nom+': sizni kutmoqda',a.i,`<button class="chip" onclick="agSheet('${a.id}')">Ochish</button>`]));
+ (b.vaz||[]).forEach(v=>t.push(['','Direktor → '+AGN(v.agent),v.matn,`<button class="chip" onclick="vazTayyor(${v.id})">Bajarildi</button>`]));
  if(b.lid)t.push(['ok2',"Bugun "+b.lid+" ta yangi lid","Mijozga tezroq javob bering.",`<button class="chip" onclick="sub='lid';go('boshq')">Lidlar</button>`]);
  if(!b.navbat)t.push(['',"Nashr navbati bo'sh","Taklif: Senarist yangi reel senariysini tayyorlasin, siz tasdiqlaysiz.",`<button class="chip" onclick="run('reel')">Reel senariysi</button>`]);
  return t.length?t.map(([c,h,s,a])=>`<div class="bg ${c}"><div style="flex:1"><b>${esc(h)}</b><div class="mut">${esc(s)}</div>${a}</div></div>`).join(''):`<div class="bg ok2"><div><b>Bugun hammasi joyida</b><div class="mut">Tasdiq kutayotgan ish yo'q.</div></div></div>`}
-function acts(id){return {senarist:`<button class="chip" onclick="run('reel')">Yangi reel senariysi</button>`,montajchi:`<button class="chip" onclick="run('animatsiya')">Yangi animatsiya</button><button class="chip" onclick="sub='tayyor';go('boshq')">Tayyor ishlar</button>`,smm:`<button class="chip" onclick="sub='navbat';go('boshq')">Nashr navbati</button>`,targetolog:`<button class="chip" onclick="sub='target';go('boshq')">Kampaniyalar</button>`,mijoz:`<button class="chip" onclick="sub='lid';go('boshq')">Lidlar</button>`,nazorat:`<button class="chip" onclick="AG=null;go('ofis')">Holatni yangilash</button>`,seo:`<button class="chip" onclick="sub='seoyukla';go('boshq')">Rasm yuborish</button><span class="mut" style="font-size:12.5px">/seo, /domen — botda</span>`}[id]||''}
+function acts(id){return {direktor:`<button class="chip" onclick="cur='direktor';go('chat')">Direktorga vazifa berish</button>`,senarist:`<button class="chip" onclick="run('reel')">Yangi reel senariysi</button>`,montajchi:`<button class="chip" onclick="run('animatsiya')">Yangi animatsiya</button><button class="chip" onclick="sub='tayyor';go('boshq')">Tayyor ishlar</button>`,smm:`<button class="chip" onclick="sub='navbat';go('boshq')">Nashr navbati</button>`,targetolog:`<button class="chip" onclick="sub='target';go('boshq')">Kampaniyalar</button>`,mijoz:`<button class="chip" onclick="sub='lid';go('boshq')">Lidlar</button>`,nazorat:`<button class="chip" onclick="AG=null;go('ofis')">Holatni yangilash</button>`,seo:`<button class="chip" onclick="sub='seoyukla';go('boshq')">Rasm yuborish</button><span class="mut" style="font-size:12.5px">/seo, /domen — botda</span>`}[id]||''}
 async function run(a){const ok=!tg||!tg.showConfirm||await new Promise(r=>tg.showConfirm(a==='reel'?'Senarist yangi reel senariysini tayyorlasinmi?':'Yangi animatsiya buyurtma qilinsinmi?',r));if(!ok)return;const d=await api(a);msg(d.ok?'Buyruq yuborildi. Natija botga keladi.':'Xato: '+(d.sabab||'bajarilmadi'))}
 function msg(t){tg&&tg.showAlert?tg.showAlert(t):0}
 const sega=(arr,c,fn)=>`<div class="seg" style="margin-bottom:12px">${arr.map(([v,l])=>`<button class="${c===v?'on':''}" onclick="${fn}('${v}')">${l}</button>`).join('')}</div>`;
@@ -189,13 +285,18 @@ async function seoYubor(){const n={};document.querySelectorAll('#sn button').for
  b.disabled=false;if(d.ok){$('#si').textContent='';SF=[];msg(d.soni+' ta rasm yuborildi. Botga o\'ting: «Rasmlar tugadimi?»')}else{$('#si').textContent='';msg('Xato: '+(d.error||'yuborilmadi'))}}
 async function amal(a,id){const el=document.getElementById('v'+id);if(a==='bekor'&&tg&&tg.showConfirm){const ok=await new Promise(r=>tg.showConfirm('Bu videoni bekor qilasizmi?',r));if(!ok)return}
  if(el)el.style.opacity='.5';const d=await api(a,{id});if(d.ok){if(el)el.innerHTML='<div class="ok">'+(a==='joylash'?'Joylashga yuborildi':'Bekor qilindi')+'</div>'}else{if(el)el.style.opacity='1';msg('Xato: '+(d.sabab||'amal bajarilmadi'))}}
+async function dirYukla(){if(CHAT.dirYuk)return;CHAT.dirYuk=1;const d=await api('dir_tarix');CHAT.direktor=(d.rows||[]).map(r=>({me:r.rol==='u'?1:0,t:r.t,taklif:r.taklif||null}));if(!CHAT.direktor.length)CHAT.direktor=null}
 function chatView(){const m=$('#m');$('#ci').style.display='flex';m.style.paddingBottom='70px';
  const ags=(AG&&AG.agentlar||[]).filter(a=>!a.kutish);
- m.innerHTML=`<h2>Agentlar bilan chat</h2><div class="pills">${ags.map(a=>`<button class="${cur===a.id?'on':''}" onclick="cur='${a.id}';chatView()">${esc(a.nom)}</button>`).join('')}</div><div id="msgs">${(CHAT[cur]||[{me:0,t:'Salom! Qanday yordam kerak? Holatni so\'rang yoki buyruq bering.'}]).map(bub).join('')}</div>`;
+ if(cur==='direktor'&&!CHAT.dirYuk){m.innerHTML='<div class="card mut">Yuklanmoqda…</div>';dirYukla().then(chatView);return}
+ const hi=cur==='direktor'?"Salom, Doston! Men direktorman. Qanday ish bo'lsa ayting — agentlarga taqsimlayman, natija yoki muammo bo'lsa o'zim yozaman.":"Salom! Qanday yordam kerak? Holatni so'rang yoki buyruq bering.";
+ m.innerHTML=`<h2>Chat</h2><div class="pills">${ags.map(a=>`<button class="${cur===a.id?'on':''}" onclick="cur='${a.id}';chatView()">${esc(a.nom)}</button>`).join('')}</div><div class="mut" style="margin:-4px 0 8px">${cur==='direktor'?"Direktor vazifani taqsimlaydi. Alohida agentga to'g'ridan-to'g'ri buyruq berish uchun yuqoridan agentni tanlang.":'Bu agentga to\'g\'ridan-to\'g\'ri buyruq berasiz.'}</div><div id="msgs">${(CHAT[cur]||[{me:0,t:hi}]).map(bub).join('')}</div>`;
  if(!AG)agentlar().then(()=>chatView());window.scrollTo(0,document.body.scrollHeight)}
-const bub=x=>`<div class="bubble ${x.me?'me':''}">${esc(x.t)}${x.amal?`<div><button class="chip" onclick="run('${x.amal}')">${x.amal==='reel'?'Reel senariysini boshlash':'Animatsiyani boshlash'}</button></div>`:''}</div>`;
-async function send(){const i=$('#cm');const t=i.value.trim();if(!t)return;i.value='';(CHAT[cur]=CHAT[cur]||[{me:0,t:'Salom! Qanday yordam kerak? Holatni so\'rang yoki buyruq bering.'}]).push({me:1,t});CHAT[cur].push({me:0,t:'…'});chatView();
- const d=await api('chat',{agent:cur,text:t});CHAT[cur].pop();CHAT[cur].push({me:0,t:d.ok?d.javob:'Javob olinmadi.',amal:d.amal||null});chatView()}
+const AGN=id=>{const a=((AG&&AG.agentlar)||[]).find(x=>x.id===id);return a?a.nom:id};
+const bub=x=>`<div class="bubble ${x.me?'me':''}">${esc(x.t)}${x.amal?`<div><button class="chip" onclick="run('${x.amal}')">${x.amal==='reel'?'Reel senariysini boshlash':'Animatsiyani boshlash'}</button></div>`:''}${(x.taklif||[]).map(k=>k.amal==='vazifa'?`<div class="mut" style="margin-top:6px">📌 ${esc(AGN(k.agent))}: ${esc(k.matn)}</div>`:`<div class="mut" style="margin-top:6px">${esc(AGN(k.agent))}: ${esc(k.matn||'')}</div><button class="chip" onclick="run('${k.amal}')">${k.amal==='reel'?'Reel senariysini boshlash':'Animatsiyani boshlash'}</button>`).join('')}</div>`;
+async function send(){const i=$('#cm');const t=i.value.trim();if(!t)return;i.value='';const dir=cur==='direktor';if(dir&&!CHAT.dirYuk)await dirYukla();
+ (CHAT[cur]=CHAT[cur]||[{me:0,t:dir?"Salom, Doston! Men direktorman. Qanday ish bo'lsa ayting.":"Salom! Qanday yordam kerak?"}]).push({me:1,t});CHAT[cur].push({me:0,t:'…'});chatView();
+ const d=await api(dir?'dir_chat':'chat',{agent:cur,text:t});CHAT[cur].pop();CHAT[cur].push({me:0,t:d.ok?d.javob:'Javob olinmadi.',amal:d.amal||null,taklif:d.taklif||null});AG=null;agentlar();chatView()}
 $('#cs').onclick=send;$('#cm').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 render();
 </script>

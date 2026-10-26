@@ -1,6 +1,7 @@
 // POST /api/ilova-admin — Telegram Mini App (admin ilova) API. Kirish: Telegram initData (HMAC) + ADMIN_TELEGRAM_IDS.
 // Pul sarflaydigan amallar (target yoqish/byudjet) bu yerda YO'Q -- ular faqat botda tasdiqlanadi.
 import { mediaChaqir, animatsiyaBuyurtma } from '../_lib/media.js';
+import { direktorChat, direktorTarix, direktorYoz, vazifalarOchiq, vazifaTayyor } from '../_lib/direktor.js';
 
 const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -27,6 +28,7 @@ const q = (env, path) => sb(env, path, { headers: { Prefer: '' } }).catch(() => 
 
 
 const AGENTLAR = [
+  { id: 'direktor', nom: 'Direktor', rol: 'Vazifalarni taqsimlaydi, natijani o\'zi xabar qiladi' },
   { id: 'senarist', nom: 'Senarist', rol: 'Reel va post senariylari' },
   { id: 'montajchi', nom: 'Montajchi', rol: 'Video montaj, subtitr, effektlar' },
   { id: 'smm', nom: 'SMM', rol: 'Nashr jadvali: Instagram, YouTube, Telegram, Facebook' },
@@ -67,6 +69,9 @@ async function agentHolat(env) {
   const dt = dom[0] && dom[0].payload && dom[0].payload.tugash; const dk = dt ? Math.ceil((new Date(dt + 'T23:59:59+05:00').getTime() - Date.now()) / 864e5) : null;
   const dtext = dk === null ? 'Domen sanasi kiritilmagan (/domen)' : `Domen: ${dk} kun qoldi`;
   H.seo = sx || (dk !== null && dk <= 14) ? { h: 'xato', i: sx ? 'Joylashda xato bor' : dtext } : seoR.some((r) => r.holat === 'seo_ish') ? { h: 'ishlayapti', i: 'Saytga yuklanmoqda' } : sy ? { h: 'kutmoqda', i: `${sy} ta loyiha ma'lumot kutmoqda` } : sn ? { h: 'kutmoqda', i: `${sn} ta loyiha jadvalda · ${dtext}` } : { h: 'dam', i: dtext };
+  const vz = await vazifalarOchiq(env);
+  const ishda = Object.values(H).filter((x) => x.h === 'ishlayapti').length;
+  H.direktor = vz.length ? { h: 'kutmoqda', i: `${vz.length} ta ochiq vazifa nazoratda` } : ishda ? { h: 'ishlayapti', i: `${ishda} ta agent ishlayapti, nazorat qilyapman` } : { h: 'dam', i: "Vazifa kutmoqda — menga yozing" };
   H.autocad = { h: 'dam', i: 'Keyingi bosqichda ulanadi' };
   H.max = { h: 'dam', i: 'Keyingi bosqichda ulanadi' };
   return { media, agentlar: AGENTLAR.map((a) => ({ ...a, ...H[a.id] })) };
@@ -96,6 +101,16 @@ export async function onRequestPost({ request, env }) {
   const a = b.amal;
   if (a === 'agentlar') { const h = await agentHolat(env); return J({ ok: true, ...h }); }
   if (a === 'chat' && b.text) { const h = await agentHolat(env); return J({ ok: true, ...(await agentChat(env, b.agent, String(b.text).slice(0, 800), h)) }); }
+  if (a === 'dir_tarix') return J({ ok: true, rows: await direktorTarix(env) });
+  if (a === 'dir_chat' && b.text) {
+    const text = String(b.text).slice(0, 800); const h = await agentHolat(env);
+    await direktorYoz(env, 'u', text);
+    const r = await direktorChat(env, text, h);
+    await direktorYoz(env, 'd', r.javob, r.taklif && r.taklif.length ? r.taklif : null);
+    return J({ ok: true, ...r });
+  }
+  if (a === 'vazifalar') return J({ ok: true, rows: await vazifalarOchiq(env) });
+  if (a === 'vazifa_tayyor' && b.id) { await vazifaTayyor(env, b.id); return J({ ok: true }); }
   if (a === 'reel') { const r = await mediaChaqir(env, '/reel-senariy', { adminChatId: u.id }, u.id); return J({ ok: !!(r && r.ok), sabab: r && r.sabab }); }
   if (a === 'animatsiya') { await animatsiyaBuyurtma(env, u.id); return J({ ok: true }); }
   if (a === 'bosh') {
@@ -110,7 +125,8 @@ export async function onRequestPost({ request, env }) {
       q(env, `lidlar?created_at=gte.${encodeURIComponent(bugun)}&select=id&limit=300`),
       q(env, 'obyektlar?select=id&limit=1000'),
     ]);
-    return J({ ok: true, media, navbat: navbat.length, tayyor: tayyor.length, faol: faol.length, taklif: taklif.length, lid: lid.length, obyekt: obyekt.length });
+    const vaz = await vazifalarOchiq(env);
+    return J({ ok: true, vaz, media, navbat: navbat.length, tayyor: tayyor.length, faol: faol.length, taklif: taklif.length, lid: lid.length, obyekt: obyekt.length });
   }
   if (a === 'navbat') return J({ ok: true, rows: (await q(env, 'nashr_navbati?turi=neq.media_holat&turi=neq.target&select=id,turi,holat,nashr_vaqti,payload&order=id.desc&limit=40')).map((r) => ({ id: r.id, turi: r.turi, holat: r.holat, vaqt: r.nashr_vaqti, sarlavha: (r.payload && (r.payload.sarlavha || r.payload.matn || '')).toString().slice(0, 90) })) });
   if (a === 'tayyor') return J({ ok: true, rows: (await q(env, 'nashr_navbati?turi=eq.video_nashr&holat=eq.tasdiq_kutilmoqda&select=id,payload,created_at&order=id.desc&limit=20')).map((r) => ({ id: r.id, sarlavha: (r.payload && r.payload.sarlavha) || '', video: (r.payload && r.payload.video_url) || '', sana: String(r.created_at).slice(0, 10) })) });

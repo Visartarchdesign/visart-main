@@ -4,6 +4,7 @@ import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
 import { seoNashr, domenNazorat, seoAudit, seoKunlik } from '../_lib/seoAgent.js';
+import { direktorKuzat } from '../_lib/direktor.js';
 import { targetNazorat } from '../_lib/target.js';
 import { mediaUygot, mediaChaqir, animatsiyaBuyurtma, tgSend } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
@@ -364,6 +365,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
     if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) fondaSeo(seoAudit(env)); }
     if (n.getUTCHours() === 5 && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
     fondaSeo(seoNashr(env));
+    fondaSeo(direktorKuzat(env));
   }
   await targetNazorat(env).catch((e) => xatoYoz(env, 'target-nazorat', e));
   // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
