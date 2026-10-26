@@ -142,18 +142,14 @@ export function fotoIshchi() {
 
 // Qo'lda kirish rejimi: node fotoIshchi.js --kirish  (ko'rinadigan oyna; o'zingiz Yandex'ga kirasiz)
 if (process.argv[1] && process.argv[1].endsWith('fotoIshchi.js') && process.argv.includes('--kirish')) {
-  const { chromium } = await import('playwright-core');
+  // Oddiy Chrome (avtomatlashtirishsiz) ochiladi: Google avtomatik brauzerda kirishni rad etadi. Sessiya profilda saqlanadi.
+  const { spawn } = await import('child_process');
   fs.mkdirSync(PROFIL, { recursive: true });
-  const ctx = await chromium.launchPersistentContext(PROFIL, { channel: 'chrome', headless: false, viewport: null, ignoreDefaultArgs: ['--enable-automation'], args: ['--disable-blink-features=AutomationControlled'] });
-  const page = ctx.pages()[0] || await ctx.newPage();
-  const g = await ctx.newPage();
-  const och = (p, u) => p.goto(u, { waitUntil: 'commit', timeout: 60000 }).catch((e) => console.log('Ochilmadi:', u, String(e.message).slice(0, 80)));
-  await Promise.all([
-    och(page, 'https://passport.yandex.com/auth?retpath=' + encodeURIComponent(SAHIFA)),
-    och(g, 'https://accounts.google.com/ServiceLogin?continue=' + encodeURIComponent('https://business.google.com/locations')),
-  ]);
-  await page.bringToFront().catch(() => {});
-  console.log("Ikkala tabda kiring: 1) Yandex (Doston Toxtaev), 2) Google (visartarchdesign@gmail.com). Tugagach oynani yoping.");
-  await new Promise((r) => ctx.on('close', r));
+  const yollar = [process.env.PROGRAMFILES + '\\Google\\Chrome\\Application\\chrome.exe', process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe', process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe'];
+  const chrome = yollar.find((x) => fs.existsSync(x));
+  if (!chrome) { console.log('Chrome topilmadi'); process.exit(1); }
+  const ch = spawn(chrome, ['--user-data-dir=' + PROFIL, '--no-first-run', '--new-window', 'https://passport.yandex.com/auth?retpath=' + encodeURIComponent(SAHIFA), 'https://accounts.google.com/ServiceLogin?continue=' + encodeURIComponent('https://business.google.com/locations')], { stdio: 'ignore' });
+  console.log("Ikkala tabda kiring: 1) Yandex (Doston Toxtaev), 2) Google (visartarchdesign@gmail.com). Tugagach Chrome oynasini YOPING.");
+  await new Promise((r) => ch.on('exit', r));
   process.exit(0);
 }
