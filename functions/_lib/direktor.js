@@ -46,12 +46,12 @@ FAQAT JSON: {"javob":"...","buyruqlar":[{"agent":"senarist","amal":"reel","matn"
 
 Egasi: ${text}`;
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 900, messages: [{ role: 'user', content: prompt }, { role: 'assistant', content: '{' }] }), signal: AbortSignal.timeout(45000) });
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 900, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(45000) });
     if (!r.ok) return { javob: `Claude API xatosi (${r.status}).`, taklif: [] };
     const d = await r.json();
-    const raw = '{' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');
+    const raw = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');
     const m = raw.match(/\{[\s\S]*\}/); const j = m ? JSON.parse(m[0]) : null;
-    if (!j || !j.javob) return { javob: raw.slice(1, 500), taklif: [] };
+    if (!j || !j.javob) return { javob: raw.slice(0, 500), taklif: [] };
     const taklif = [];
     for (const b of (j.buyruqlar || []).slice(0, 5)) {
       const agent = AGENT_NOM[b.agent] ? b.agent : null; if (!agent) continue;
