@@ -2,6 +2,7 @@
 // Qo'shimcha: domen muddati nazorati va haftalik SEO audit.
 // Holatlar (nashr_navbati.turi='seo_loyiha'): seo_yig -> seo_navbat -> seo_ish -> seo_tayyor | seo_xato | seo_bekor  (cron'ning "kutilmoqda" oqimiga aralashmaydi).
 import { buildValues } from './projectFields.js';
+import { mediaChaqir } from './media.js';
 import { slugifyUz, slugifyRu, ensureUniqueSlug } from './slug.js';
 
 const SAYT = 'https://visartdesign.uz';
@@ -167,6 +168,14 @@ export async function seoCb(env, cq) {
   await tgApi(env, 'editMessageReplyMarkup', { chat_id: chatId, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } });
   const d = await aktiv(env, chatId); if (!d) return say(env, chatId, 'Faol loyiha yo\'q. /seo dan boshlang.');
   const p = d.payload;
+  if (amal === 'tk') {
+    if (p.step !== 'taklif') return;
+    const q = p0[2];
+    if (q === 'ha') { p.step = 'savol'; p.q = 0; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) }); await say(env, chatId, `📷 ${p.rasmlar.length} ta rasm${p.papka ? ' (' + esc(p.papka) + ')' : ''}. Endi bir nechta savol beraman, siz faqat javob bering.`); return savolBer(env, chatId, p); }
+    await upd(env, d.id, 'seo_bekor');
+    if (q === 'boshqa') { await say(env, chatId, '🔎 Boshqa loyiha qidiryapman…'); return mediaChaqir(env, '/loyiha-taklif', { adminChatId: chatId }, chatId).catch(() => {}); }
+    return say(env, chatId, 'Xo\'p, bugun taklif qilmayman. Ertaga yana ko\'rsataman.');
+  }
   if (amal === 'n') { const k = p0[2]; if (!NISHON[k] || p.step !== 'qayerga') return; p.n = { ...(p.n || {}), [k]: !(p.n || {})[k] }; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) }); return tgApi(env, 'editMessageReplyMarkup', { chat_id: chatId, message_id: cq.message.message_id, reply_markup: nishonKb(p.n) }); }
   if (amal === 'go') {
     if (p.step !== 'qayerga') return;
@@ -304,4 +313,12 @@ export async function seoAudit(env) {
   const q = [];
   if (altYoq) q.push(`${altYoq} ta loyihada alt matn to'liq emas`); if (tavsifYoq) q.push(`${tavsifYoq} ta loyiha tavsifi qisqa (<200 belgi)`); if (ruYoq) q.push(`${ruYoq} ta loyihada ruscha matn yo'q`); if (slugYoq) q.push(`${slugYoq} ta loyihada URL nomi yo'q`);
   await say(env, admin, `🔎 <b>Haftalik SEO hisoboti</b>\nSaytda ${rows.length} ta loyiha.\n${muammo.length ? '🔴 ' + muammo.join('; ') + '\n' : '🟢 sitemap, robots va bosh sahifa ishlayapti\n'}${q.length ? '• ' + q.join('\n• ') : '🟢 loyiha matnlari to\'liq'}\n\nYangi loyiha qo'shish: /seo`);
+}
+
+// Kunlik taklif (cron, 05:00 UTC = 10:00 Toshkent): bugun SEO ish bo'lmagan bo'lsa, kompyuterdan loyiha topishni so'raydi
+export async function seoKunlik(env) {
+  const admin = String(env.ADMIN_TELEGRAM_IDS || '').split(',')[0].trim(); if (!admin) return;
+  const oxirgi = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&nashr_vaqti=gte.${encodeURIComponent(new Date(Date.now() - 20 * 3600e3).toISOString())}&select=id&limit=1`).catch(() => []);
+  if (oxirgi && oxirgi.length) return;
+  await mediaChaqir(env, '/loyiha-taklif', { adminChatId: admin }, null).catch(() => {});
 }

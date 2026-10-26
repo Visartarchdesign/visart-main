@@ -20,6 +20,7 @@ app.use(express.json({ limit: '20mb' }));
 import { keshYoz, xomKuzatuvchi } from './xomKuzatuvchi.js';
 import { tgYukla } from './tgBuyuk.js';
 import { fotoIshchi } from './fotoIshchi.js';
+import { loyihaTaklif } from './loyihaTopuvchi.js';
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
   const out = { ...process.env };
@@ -93,6 +94,13 @@ app.post('/montaj', (req, res) => {
   }
   res.json({ ok: true, holat: 'boshlandi' });
   ish('Montaj', req, (env) => bajarMontaj({ env, aslFileId, adminChatId, title, taklifId, korsatma }));
+});
+
+// POST /loyiha-taklif -- kompyuterdan saytga joylanmagan loyiha topib, adminga taklif qiladi
+app.post('/loyiha-taklif', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  res.json({ ok: true, holat: 'boshlandi' });
+  ish('LoyihaTaklif', req, (env) => loyihaTaklif({ env, adminChatId: req.body && req.body.adminChatId }));
 });
 
 // POST /tg-yukla -- Telegram'dagi katta (>20 MB) videoni MTProto bilan xom_video papkasiga yuklaydi
