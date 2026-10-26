@@ -144,11 +144,15 @@ export function fotoIshchi() {
 if (process.argv[1] && process.argv[1].endsWith('fotoIshchi.js') && process.argv.includes('--kirish')) {
   const { chromium } = await import('playwright-core');
   fs.mkdirSync(PROFIL, { recursive: true });
-  const ctx = await chromium.launchPersistentContext(PROFIL, { channel: 'chrome', headless: false, viewport: null });
+  const ctx = await chromium.launchPersistentContext(PROFIL, { channel: 'chrome', headless: false, viewport: null, ignoreDefaultArgs: ['--enable-automation'], args: ['--disable-blink-features=AutomationControlled'] });
   const page = ctx.pages()[0] || await ctx.newPage();
-  await page.goto('https://passport.yandex.com/auth?retpath=' + encodeURIComponent(SAHIFA));
   const g = await ctx.newPage();
-  await g.goto('https://accounts.google.com/ServiceLogin?continue=' + encodeURIComponent('https://business.google.com/locations'));
+  const och = (p, u) => p.goto(u, { waitUntil: 'commit', timeout: 60000 }).catch((e) => console.log('Ochilmadi:', u, String(e.message).slice(0, 80)));
+  await Promise.all([
+    och(page, 'https://passport.yandex.com/auth?retpath=' + encodeURIComponent(SAHIFA)),
+    och(g, 'https://accounts.google.com/ServiceLogin?continue=' + encodeURIComponent('https://business.google.com/locations')),
+  ]);
+  await page.bringToFront().catch(() => {});
   console.log("Ikkala tabda kiring: 1) Yandex (Doston Toxtaev), 2) Google (visartarchdesign@gmail.com). Tugagach oynani yoping.");
   await new Promise((r) => ctx.on('close', r));
   process.exit(0);
