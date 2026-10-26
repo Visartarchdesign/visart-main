@@ -82,6 +82,30 @@ export async function seoIlovadan(env, chatId, n, fayllar) {
   await say(env, chatId, `📲 Ilovadan ${fayllar.length} ta rasm keldi. Joylanadi: <b>${qayer}</b>\n<b>Rasmlar tugadimi?</b> (hammasi bitta ish deb olinadi)`, { inline_keyboard: [[{ text: '✅ Ha, tugadi', callback_data: 'sg:done' }, { text: "➕ Yo'q, yana bor", callback_data: 'sg:more' }]] });
 }
 
+// Faol ish yo'q, admin rasmni (forward) to'g'ridan-to'g'ri botga yubordi: oxirgi tanlangan joylar bilan qoralama ochiladi.
+export async function seoAvto(env, msg) {
+  const chatId = msg.chat.id;
+  if (!(msg.forward_origin || msg.forward_date)) return false;
+  if (await aktiv(env, chatId)) return false;
+  const fid = msg.photo ? msg.photo[msg.photo.length - 1].file_id : (msg.document && /^image\//.test(msg.document.mime_type || '') ? msg.document.file_id : null);
+  if (!fid) return false;
+  const ox = await sb(env, 'nashr_navbati?turi=eq.seo_oxirgi&limit=1&select=payload').catch(() => []);
+  const n = (ox && ox[0] && ox[0].payload && ox[0].payload.n) || { sayt: true };
+  const r = await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, step: 'rasm', n, rasmlar: [], q: 0, j: {} } }]) });
+  const mine = r && r[0] && r[0].id; if (!mine) return false;
+  // albom: bir vaqtda kelgan xabarlar orasida eng birinchi qoralama qoladi
+  const all = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_yig&payload->>chatId=eq.${chatId}&order=id.asc&select=id`).catch(() => []);
+  const bosh = all && all[0] ? all[0].id : mine;
+  if (bosh !== mine) { await upd(env, mine, 'seo_bekor'); }
+  const d = { id: bosh, payload: { chatId, step: 'rasm' } };
+  await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_rasm', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, draft: d.id, fid, mid: msg.message_id } }]) });
+  if (bosh === mine) {
+    const qayer = Object.keys(NISHON).filter((k) => n[k]).map((k) => NISHON[k]).join(', ');
+    await say(env, chatId, `📲 Forward qilingan rasmlar qabul qilinmoqda. Joylanadi: <b>${qayer}</b> (oxirgi tanlovingiz; o'zgartirish: /seo)\n<b>Rasmlar tugadimi?</b>`, { inline_keyboard: [[{ text: '✅ Ha, tugadi', callback_data: 'sg:done' }, { text: "➕ Yo'q, yana bor", callback_data: 'sg:more' }]] });
+  }
+  return true;
+}
+
 async function savolBer(env, chatId, p) {
   const q = QS[p.q];
   const rows = [];

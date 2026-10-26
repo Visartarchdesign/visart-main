@@ -51,7 +51,7 @@ import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/
 import { xatoYoz } from '../_lib/xato.js';
 import { targetMenyu, targetCb } from '../_lib/target.js';
 import { bolimBosh, bolimCb } from '../_lib/bolimlar.js';
-import { seoYangi, seoMedia, seoMatn, seoCb, domenSet, domenKorsat } from '../_lib/seoAgent.js';
+import { seoYangi, seoMedia, seoAvto, seoMatn, seoCb, domenSet, domenKorsat } from '../_lib/seoAgent.js';
 import { fotoMenu, fotoMedia, fotoCb, fotoQayta, fotoHolat } from '../_lib/fotoBot.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
@@ -2267,6 +2267,7 @@ export async function onRequestPost({ request, env }) {
 
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) && await seoMedia(env, msg).catch(() => false)) return json({ ok: true });
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) && await fotoMedia(env, msg).catch(() => false)) return json({ ok: true });
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && (msg.photo || (msg.document && /^image\//.test(msg.document.mime_type || ''))) && await seoAvto(env, msg).catch(() => false)) return json({ ok: true });
     // Oddiy mijoz shaxsiy chatda: kontakt (obyekt holati) yoki rasm-reference.
     if (msg.chat.type === 'private' && !isAdmin(env, msg.from && msg.from.id)) {
       if (msg.contact) {
