@@ -95,7 +95,7 @@ async function agentChat(env, agentId, text, holat) {
 }
 
 // Ilovadagi tasdiqlar botning o'sha callback/matn yo'llaridan o'tadi (bitta mantiq, ikki joy). Webhook'ga ichki chaqiruv; natija botga ham yoziladi.
-const RUXSAT = /^(stak:\d+:(ok|no)|tg:(ok:\d+:\d|on:\d+|off:\d+|x:\d+)|ap:(ms)|tg:(nw|ls|rp(:\d+)?)|yg:(ok|no)|sg:(tk:(ha|boshqa|yoq)|done|more|go|ok|now|no|ed|o:\d+:-?\d+|n:[a-z0-9]+))$/;
+const RUXSAT = /^(stak:\d+:(ok|no)|tg:(ok:\d+:\d|on:\d+|off:\d+|x:\d+)|ap:(ms)|tg:(nw|ls|rp(:\d+)?)|yg:(ok|no)|gset:[mou]:-?\d+|gobj:[mu]:-?\d+:[\w.-]{1,40}|ld:(ok|no):\+?\d{7,15}|sg:(tk:(ha|boshqa|yoq)|done|more|go|ok|now|no|ed|o:\d+:-?\d+|n:[a-z0-9]+))$/;
 function botYubor(env, request, waitUntil, adminId, tur, qiymat) {
   const uid = Date.now() * 100 + Math.floor(Math.random() * 100);
   const chat = { id: Number(adminId), type: 'private' }, from = { id: Number(adminId), is_bot: false, first_name: 'Admin' };
@@ -122,7 +122,7 @@ async function amallarOpen(env, a, b, u) {
     const all = [...mg.map((x) => ({ ...x, r: 'Mijoz' })), ...ug.map((x) => ({ ...x, r: 'Usta' }))].slice(0, 30);
     const nomlar = await Promise.all(all.map((x) => nom(x.telegram_chat_id)));
     const mset = new Set(mg.map((x) => String(x.obyekt_id))), uset = new Set(ug.map((x) => String(x.obyekt_id)));
-    return { guruhlar: all.map((x, i) => ({ gid: x.telegram_chat_id, rol: x.r, nom: nomlar[i], obyekt: onom.get(String(x.obyekt_id)) || x.obyekt_id })), ulanmagan: ob.filter((o) => !mset.has(String(o.id)) || !uset.has(String(o.id))).map((o) => ({ nom: o.nom || o.id, mijoz: mset.has(String(o.id)), usta: uset.has(String(o.id)) })) };
+    return { guruhlar: all.map((x, i) => ({ gid: x.telegram_chat_id, rol: x.r, nom: nomlar[i], obyekt: onom.get(String(x.obyekt_id)) || x.obyekt_id })), obyektlar: ob.map((o) => ({ id: o.id, nom: o.nom || o.id })), ulanmagan: ob.filter((o) => !mset.has(String(o.id)) || !uset.has(String(o.id))).map((o) => ({ nom: o.nom || o.id, mijoz: mset.has(String(o.id)), usta: uset.has(String(o.id)) })) };
   }
   if (a === 'guruh_uz' && b.gid) { const g = String(b.gid).replace(/[^\d-]/g, ''); await sb(env, `visart_loyiha_guruhlar?telegram_chat_id=eq.${g}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(() => {}); await sb(env, `usta_guruhlar?telegram_chat_id=eq.${g}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }).catch(() => {}); return {}; }
   if (a === 'ulanishlar') return { rows: await q(env, 'obyektlar?select=id,nom,mijoz_ism,mijoz_tel&order=id.desc&limit=30') };
@@ -161,6 +161,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const AMAL = ['stat','norma','norma_belgila','guruhlar','guruh_uz','ulanishlar','ulanish_set','ulanish_del','adminlar','admin_del','admin_link','domen'];
   if (AMAL.includes(a)) { try { return J({ ok: true, ...(await amallarOpen(env, a, b, u)) }); } catch (e) { return J({ ok: false, error: String((e && e.message) || e).slice(0, 120) }); } }
   if (a === 'matn_buyruq' && MATN_RUXSAT.test(String(b.text || ''))) { botYubor(env, request, waitUntil, u.id, 'text', String(b.text)); return J({ ok: true }); }
+  if (a === 'senariy_tuzat' && b.id && b.text) { const id = Number(b.id); if (!id) return J({ ok: false }, 400); const chat = { id: u.id, type: 'private' }; const T = Math.floor(Date.now() / 1000); const pp = fetch(new URL('/api/mijoz-bot', request.url).href, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': env.MIJOZ_BOT_SECRET || '' }, body: JSON.stringify({ update_id: Date.now() * 100 + 7, message: { message_id: T, from: { id: u.id, is_bot: false, first_name: 'Admin' }, chat, date: T, text: String(b.text).slice(0, 800), reply_to_message: { message_id: T - 1, from: { is_bot: true }, chat, date: T, text: 'Tuzatish 🆔' + id } } }) }).catch(() => {}); if (waitUntil) waitUntil(pp); return J({ ok: true }); }
   if (a === 'tasdiq') return J({ ok: true, ...(await tasdiqRoyxat(env, u.id)) });
   if (a === 'tasdiq_amal' && RUXSAT.test(String(b.cb || ''))) { botYubor(env, request, waitUntil, u.id, 'cb', String(b.cb)); return J({ ok: true }); }
   if (a === 'tasdiq_matn' && b.text) { botYubor(env, request, waitUntil, u.id, 'text', String(b.text).slice(0, 1500)); return J({ ok: true }); }
