@@ -67,6 +67,21 @@ export async function seoMedia(env, msg) {
   return true;
 }
 
+// Admin ilovadan: rasmlar Telegram'ga yuklangan (fid, mid) -- loyiha qoralamasi ochiladi va botda "Rasmlar tugadimi?" so'raladi
+export async function seoIlovadan(env, chatId, n, fayllar) {
+  const old = await aktiv(env, chatId);
+  if (old) await upd(env, old.id, 'seo_bekor');
+  const r = await sb(env, 'nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, step: 'rasm', n, rasmlar: [], q: 0, j: {} } }]) });
+  const id = r && r[0] && r[0].id;
+  if (!id) throw new Error('qoralama ochilmadi');
+  await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify(fayllar.map((f) => ({ turi: 'seo_rasm', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, draft: id, fid: f.fid, mid: f.mid } }))) });
+  const ox = await sb(env, 'nashr_navbati?turi=eq.seo_oxirgi&limit=1&select=id').catch(() => []);
+  if (ox && ox[0]) await sb(env, `nashr_navbati?id=eq.${ox[0].id}`, { method: 'PATCH', body: JSON.stringify({ payload: { n } }) }).catch(() => {});
+  else await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_oxirgi', holat: 'seo_sozlama', nashr_vaqti: new Date().toISOString(), payload: { n } }]) }).catch(() => {});
+  const qayer = Object.keys(NISHON).filter((k) => n[k]).map((k) => NISHON[k]).join(', ');
+  await say(env, chatId, `📲 Ilovadan ${fayllar.length} ta rasm keldi. Joylanadi: <b>${qayer}</b>\n<b>Rasmlar tugadimi?</b> (hammasi bitta ish deb olinadi)`, { inline_keyboard: [[{ text: '✅ Ha, tugadi', callback_data: 'sg:done' }, { text: "➕ Yo'q, yana bor", callback_data: 'sg:more' }]] });
+}
+
 async function savolBer(env, chatId, p) {
   const q = QS[p.q];
   const rows = [];
