@@ -40,7 +40,7 @@ Egasining talabi bo'yicha har bir agentga topshiriq tuzing ("buyruqlar"):
 - amal "reel": Senarist yangi reel senariysi tayyorlaydi (agent=senarist). Pul/resurs ketadi — egasi tasdiqlaydi.
 - amal "animatsiya": Montajchi yangi animatsiya (agent=montajchi). Egasi tasdiqlaydi.
 - amal "vazifa": boshqa har qanday topshiriq — vazifa ro'yxatiga yoziladi (agent: ${Object.keys(AGENT_NOM).join('/')}). "matn" — agentga aniq, qisqa topshiriq.
-Senariy tasdig'i Telegram botda (Senarist yuborgan xabardagi tugmalar), tayyor video tasdig'i ilovada Boshqaruv → Tayyor ishlar, reklama tasdig'i botda. Texnik xato yoki tizim nosozligi uchun vazifa YARATMANG — shunchaki egasiga ayting.
+Barcha tasdiqlar ilovada: Boshqaruv → Tasdiq (senariy, tayyor video, reklama, SEO loyiha). Botdagi tugmalar ham ishlaydi. Texnik xato yoki tizim nosozligi uchun vazifa YARATMANG — shunchaki egasiga ayting.
 Rasm yuklash (SEO) uchun egasi ilovadagi SEO agent bo'limidan rasm yuboradi — shuni ayting.
 Agar egasi shunchaki savol bersa, buyruqlar bo'sh bo'lsin. Pul sarflashni (reklama) o'zingiz boshlamaysiz.
 FAQAT JSON: {"javob":"...","buyruqlar":[{"agent":"senarist","amal":"reel","matn":"..."}]}
@@ -83,7 +83,7 @@ export async function direktorKuzat(env) {
   if (!media) A.push(['media', "⚠️ Doston, media-server (kompyuter) javob bermayapti. Video va rasm ishlari to'xtab turibdi — kompyuter yoqilganini tekshirsangiz."]);
   if (seoX.length) A.push(['seo:' + seoX.map((x) => x.id).join('.'), `⚠️ SEO agenti ${seoX.length} ta loyihani saytga joylay olmadi. /seo orqali qayta urinib ko'ring yoki menga yozing.`]);
   if (fotoX.length) A.push(['foto:' + fotoX.length, `⚠️ Xaritalarga rasm yuklashda ${fotoX.length} ta xato bor. Botda /foto → Holat, so'ng /foto_qayta. (Sessiya tugagan bo'lsa foto_kirish.bat)`]);
-  if (tay.length) A.push(['tayyor:' + tay.map((x) => x.id).join('.'), `🎬 ${tay.length} ta tayyor video sizning tasdig'ingizni kutmoqda. Ilovada Boshqaruv → Tayyor ishlar.`]);
+  if (tay.length) A.push(['tayyor:' + tay.map((x) => x.id).join('.'), `🎬 ${tay.length} ta tayyor video sizning tasdig'ingizni kutmoqda. Ilovada Boshqaruv → Tasdiq.`]);
   if (tk.length) A.push(['senariy:' + tk.map((x) => x.id).join('.'), `📝 ${tk.length} ta senariy tasdiq kutmoqda.`]);
   const now = Date.now(), yuborildi = [];
   for (const [k, t] of A) {

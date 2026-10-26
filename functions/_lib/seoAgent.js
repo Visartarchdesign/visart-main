@@ -106,6 +106,15 @@ export async function seoAvto(env, msg) {
   return true;
 }
 
+// Admin ilova uchun: faol qoralama holati (savol/ko'rish bosqichlari ilovada ham ko'rinadi)
+export async function seoHolatApp(env, chatId) {
+  const d = await aktiv(env, chatId); if (!d) return null;
+  const p = d.payload; const q = p.step === 'savol' ? QS[p.q] : null;
+  let nrasm = (p.rasmlar || []).length;
+  if (p.step === 'rasm') { const rr = await sb(env, `nashr_navbati?turi=eq.seo_rasm&holat=in.(seo_yig,seo_qabul)&payload->>draft=eq.${d.id}&select=id&limit=60`).catch(() => []); nrasm = (rr || []).length; }
+  return { id: d.id, step: p.step, n: p.n || {}, nrasm, papka: p.papka || '', savol: q ? { i: p.q, jami: QS.length, q: q.q, opt: (q.opt || []).map((o) => o[0]), text: !!q.text, skip: !!q.skip } : null, matn: p.step === 'korish' ? p.matn : null };
+}
+
 async function savolBer(env, chatId, p) {
   const q = QS[p.q];
   const rows = [];
