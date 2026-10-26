@@ -34,12 +34,26 @@ async function aktiv(env, chatId) {
   return r && r[0] ? r[0] : null;
 }
 
+const NISHON = { sayt: '🌐 Sayt (portfolio)', yandex: '🗺 Yandex', google: '🗺 Google', gis: '🗺 2GIS' };
+const nishonKb = (n) => ({ inline_keyboard: [Object.keys(NISHON).slice(0, 2).map((k) => ({ text: `${n[k] ? '✅' : '⬜️'} ${NISHON[k]}`, callback_data: `sg:n:${k}` })), Object.keys(NISHON).slice(2).map((k) => ({ text: `${n[k] ? '✅' : '⬜️'} ${NISHON[k]}`, callback_data: `sg:n:${k}` })), [{ text: '▶️ Davom etish', callback_data: 'sg:go' }]] });
+
 export async function seoYangi(env, chatId) {
   const old = await aktiv(env, chatId);
   if (old) await upd(env, old.id, 'seo_bekor');
-  await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, step: 'rasm', rasmlar: [], q: 0, j: {} } }]) });
-  await say(env, chatId, "🔎 <b>SEO agenti: yangi loyiha</b>\n\nLoyiha rasmlarini yuboring (albom yoki bittalab). Eng yaxshi sifat uchun rasmni <b>«Fayl» (siqmasdan)</b> qilib yuboring.\nBirinchi rasm sayt muqovasi bo'ladi. Tugagach «Rasm tugadi» tugmasini bosing.");
+  const ox = await sb(env, 'nashr_navbati?turi=eq.seo_oxirgi&limit=1&select=id,payload').catch(() => []);
+  const n = (ox && ox[0] && ox[0].payload && ox[0].payload.n) || { sayt: true };
+  await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, step: 'qayerga', n, rasmlar: [], q: 0, j: {} } }]) });
+  await say(env, chatId, "🔎 <b>SEO agenti</b>\n\nRasmlar qayerga joylansin? Tanlang (oxirgi tanlovingiz saqlanadi):", nishonKb(n));
 }
+
+async function xaritaNavbat(env, p, toifa) {
+  const maps = ['yandex', 'google', 'gis'].filter((k) => p.n && p.n[k]);
+  const rows = [];
+  for (const pl of maps) for (const fid of p.rasmlar) rows.push({ turi: 'foto_ish', holat: 'foto_navbat', nashr_vaqti: new Date().toISOString(), payload: { chatId: p.chatId, fileId: fid, toifa, platforma: pl, manba: 'seo' } });
+  if (rows.length) await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify(rows) });
+  return { maps, soni: rows.length };
+}
+const TOIFA_UCHUN = { interior: 'interior', architecture: 'exterior', drawings: 'xizmat' };
 
 export async function seoMedia(env, msg) {
   const d = await aktiv(env, msg.chat.id); if (!d || d.payload.step !== 'rasm') return false;
@@ -48,7 +62,7 @@ export async function seoMedia(env, msg) {
   // Albomdagi rasmlar bir vaqtda keladi -- poyga bo'lmasligi uchun har rasm alohida qator
   const mine = await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_rasm', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId: msg.chat.id, draft: d.id, fid, mid: msg.message_id } }]) });
   const first = await sb(env, `nashr_navbati?turi=eq.seo_rasm&holat=eq.seo_yig&payload->>draft=eq.${d.id}&order=id.asc&limit=1&select=id`).catch(() => []);
-  if (first && first[0] && mine && mine[0] && first[0].id === mine[0].id) await say(env, msg.chat.id, "✅ Rasm qabul qilinmoqda. Hammasini yuborib bo'lgach bosing:", { inline_keyboard: [[{ text: '✔️ Rasm tugadi', callback_data: 'sg:done' }]] });
+  if (first && first[0] && mine && mine[0] && first[0].id === mine[0].id) await say(env, msg.chat.id, "📷 Rasmlar qabul qilinmoqda. <b>Rasmlar tugadimi?</b> (hammasi bitta ish deb olinadi)", { inline_keyboard: [[{ text: '✅ Ha, tugadi', callback_data: 'sg:done' }, { text: "➕ Yo'q, yana bor", callback_data: 'sg:more' }]] });
   return true;
 }
 
@@ -153,14 +167,40 @@ export async function seoCb(env, cq) {
   await tgApi(env, 'editMessageReplyMarkup', { chat_id: chatId, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } });
   const d = await aktiv(env, chatId); if (!d) return say(env, chatId, 'Faol loyiha yo\'q. /seo dan boshlang.');
   const p = d.payload;
+  if (amal === 'n') { const k = p0[2]; if (!NISHON[k] || p.step !== 'qayerga') return; p.n = { ...(p.n || {}), [k]: !(p.n || {})[k] }; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) }); return tgApi(env, 'editMessageReplyMarkup', { chat_id: chatId, message_id: cq.message.message_id, reply_markup: nishonKb(p.n) }); }
+  if (amal === 'go') {
+    if (p.step !== 'qayerga') return;
+    if (!Object.values(p.n || {}).some(Boolean)) return say(env, chatId, 'Kamida bitta joyni tanlang.', nishonKb(p.n || {}));
+    p.step = 'rasm'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) });
+    const ox = await sb(env, 'nashr_navbati?turi=eq.seo_oxirgi&limit=1&select=id').catch(() => []);
+    if (ox && ox[0]) await sb(env, `nashr_navbati?id=eq.${ox[0].id}`, { method: 'PATCH', body: JSON.stringify({ payload: { n: p.n } }) }).catch(() => {});
+    else await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_oxirgi', holat: 'seo_sozlama', nashr_vaqti: new Date().toISOString(), payload: { n: p.n } }]) }).catch(() => {});
+    const qayer = Object.keys(NISHON).filter((k) => p.n[k]).map((k) => NISHON[k]).join(', ');
+    return say(env, chatId, `📍 Joylanadi: <b>${qayer}</b>\n\nRasmlarni yuboring (bir nechtasini birdan tashlashingiz mumkin). Eng yaxshi sifat uchun «Fayl» (siqmasdan) qilib yuboring.${p.n.sayt ? "\nBirinchi rasm sayt muqovasi bo'ladi." : ''}`);
+  }
+  if (amal === 'more') {
+    await sb(env, `nashr_navbati?turi=eq.seo_rasm&holat=eq.seo_yig&payload->>draft=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'seo_qabul' }) }).catch(() => {});
+    return say(env, chatId, "👍 Yana rasm yuboring. Tugagach yana so'rayman.");
+  }
   if (amal === 'done') {
-    const rr = await sb(env, `nashr_navbati?turi=eq.seo_rasm&holat=eq.seo_yig&payload->>draft=eq.${d.id}&select=id,payload&limit=40`).catch(() => []);
+    const rr = await sb(env, `nashr_navbati?turi=eq.seo_rasm&holat=in.(seo_yig,seo_qabul)&payload->>draft=eq.${d.id}&select=id,payload&limit=60`).catch(() => []);
     p.rasmlar = (rr || []).sort((x, y) => x.payload.mid - y.payload.mid).slice(0, 20).map((x) => x.payload.fid);
     if (!p.rasmlar.length) return say(env, chatId, 'Avval rasm yuboring.');
     await sb(env, `nashr_navbati?turi=eq.seo_rasm&payload->>draft=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'seo_arxiv' }) }).catch(() => {});
+    if (!(p.n && p.n.sayt)) {
+      // Faqat xaritalarga: SEO savollari kerak emas, faqat toifa
+      p.step = 'toifa'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) });
+      return say(env, chatId, `📷 ${p.rasmlar.length} ta rasm. Bu rasmlar qaysi toifaga tushsin?`, { inline_keyboard: [[{ text: "Ichki ko'rinish", callback_data: 'sg:t:interior' }, { text: "Tashqi ko'rinish", callback_data: 'sg:t:exterior' }], [{ text: 'Xizmatlar', callback_data: 'sg:t:xizmat' }]] });
+    }
     p.step = 'savol'; p.q = 0; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) });
     await say(env, chatId, `📷 ${p.rasmlar.length} ta rasm. Endi bir nechta savol beraman, siz faqat javob bering.`);
     return savolBer(env, chatId, p);
+  }
+  if (amal === 't') {
+    if (p.step !== 'toifa' || !['interior', 'exterior', 'xizmat'].includes(p0[2])) return;
+    const r = await xaritaNavbat(env, p, p0[2]);
+    await upd(env, d.id, 'seo_tayyor', { ...p, rasmlar: p.rasmlar.length });
+    return say(env, chatId, `📥 ${r.soni} ta yuklash navbatga qo'shildi (${r.maps.map((k) => NISHON[k]).join(', ')}). Saytga <b>joylanmaydi</b>. Holat: /foto → 📊`);
   }
   if (amal === 'o') { const qi = Number(p0[2]), oi = Number(p0[3]); if (qi !== p.q || p.step !== 'savol') return; const q = QS[qi]; return javobYoz(env, d, oi < 0 ? null : q.opt[oi][1]); }
   if (amal === 'ed') { p.step = 'tuzat'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) }); return say(env, chatId, "✏️ Nimani o'zgartiray? Yozing (masalan: «sarlavhada Yunusobodni qo'sh», «tavsifni qisqartir»)."); }
@@ -168,6 +208,8 @@ export async function seoCb(env, cq) {
   if (amal === 'ok' || amal === 'now') {
     const t = amal === 'now' ? new Date() : await slot(env);
     await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'seo_navbat', nashr_vaqti: t.toISOString() }) });
+    const xr = (p.n && (p.n.yandex || p.n.google || p.n.gis)) ? await xaritaNavbat(env, p, TOIFA_UCHUN[(p.j && p.j.category) || 'interior'] || 'interior').catch(() => null) : null;
+    if (xr && xr.soni) await say(env, chatId, `📥 Xaritalarga ham navbatga qo'shildi: ${xr.maps.map((k) => NISHON[k]).join(', ')} (${xr.soni} ta yuklash).`);
     return say(env, chatId, amal === 'now' ? '⚡ Hozir joylanadi (15 daqiqagacha). Tayyor bo\'lgach havolasini yuboraman.' : `🗓 Saytga joylanadi: <b>${tosh(t)}</b> (Toshkent). Tayyor bo'lgach havolasini yuboraman.`);
   }
 }

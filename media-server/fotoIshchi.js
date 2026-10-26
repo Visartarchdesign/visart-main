@@ -9,6 +9,8 @@ const KESH = path.join(path.dirname(fileURLToPath(import.meta.url)), '_env_kesh.
 const PROFIL = process.env.FOTO_PROFIL || path.join(os.homedir(), 'Documents', 'Visart_AI_Studio', 'brauzer_profil');
 const YANDEX_ID = process.env.YANDEX_BIZ_ID || '117014923073';
 const SAHIFA = `https://yandex.com/sprav/${YANDEX_ID}/p/edit/photos/`;
+const GOOGLE_ID = process.env.GOOGLE_BIZ_ID || '9540037886496646500';
+const GOOGLE_URL = `https://www.google.com/search?q=Visart+Design+Tashkent+arxitektura&hl=ru#mpd=~${GOOGLE_ID}/promote/photos/add`;
 const INPUT = { interior: 'interior', exterior: 'exterior', xizmat: 'services', kirish: 'enter', logo: 'logo' };
 
 function muhit() {
@@ -63,31 +65,45 @@ export async function fotoIshchiBajar() {
     fs.mkdirSync(PROFIL, { recursive: true });
     ctx = await chromium.launchPersistentContext(PROFIL, { channel: 'chrome', headless: true, viewport: { width: 1400, height: 900 }, args: ['--disable-blink-features=AutomationControlled'] });
     const page = ctx.pages()[0] || await ctx.newPage();
-    await page.goto(SAHIFA, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForTimeout(4000);
-    if (/passport\.yandex|\/auth/.test(page.url())) throw new Error("Yandex'ga kirilmagan. Kompyuterda foto_kirish.bat ni ishga tushirib, Yandex akkauntga kiring");
 
     for (const ish of ishlar) {
       const p = ish.payload || {};
       const claim = await sb(E, `nashr_navbati?id=eq.${ish.id}&holat=eq.foto_navbat`, { method: 'PATCH', body: JSON.stringify({ holat: 'foto_bajar' }) }).catch(() => []);
       if (!claim || !claim.length) continue; // boshqa nusxa oldi
       try {
-        const nom = INPUT[p.toifa]; if (!nom) throw new Error('noma\'lum toifa: ' + p.toifa);
+        const pl = p.platforma || 'yandex';
         const f = await faylOl(E, p, tmp);
-        await page.goto(SAHIFA, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForSelector(`input[name="${nom}"]`, { state: 'attached', timeout: 30000 });
-        await page.setInputFiles(`input[name="${nom}"]`, f);
-        await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
-        await page.waitForTimeout(6000);
-        // Saqlash tugmasi chiqsa bosiladi
-        const sakla = page.getByRole('button', { name: /^(Save|Save changes|Publish|Done|Сохранить|Готово)$/i }).first();
-        if (await sakla.isVisible().catch(() => false)) { await sakla.click().catch(() => {}); await page.waitForTimeout(4000); }
+        if (pl === 'yandex') {
+          const nom = INPUT[p.toifa]; if (!nom) throw new Error('noma\'lum toifa: ' + p.toifa);
+          await page.goto(SAHIFA, { waitUntil: 'domcontentloaded', timeout: 60000 });
+          if (/passport\.yandex|\/auth/.test(page.url())) throw new Error("Yandex'ga kirilmagan: foto_kirish.bat ni ishga tushiring");
+          await page.waitForSelector(`input[name="${nom}"]`, { state: 'attached', timeout: 30000 });
+          await page.setInputFiles(`input[name="${nom}"]`, f);
+          await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
+          await page.waitForTimeout(6000);
+          const sakla = page.getByRole('button', { name: /^(Save|Save changes|Publish|Done|Сохранить|Готово)$/i }).first();
+          if (await sakla.isVisible().catch(() => false)) { await sakla.click().catch(() => {}); await page.waitForTimeout(4000); }
+        } else if (pl === 'google') {
+          await page.goto('about:blank');
+          await page.goto(GOOGLE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+          await page.waitForTimeout(4000);
+          if (/accounts\.google\.com/.test(page.url())) throw new Error("Google'ga kirilmagan: foto_kirish.bat ni ishga tushiring");
+          await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+          await page.waitForTimeout(3000);
+          const inp = page.locator('input[type="file"][accept*="image/jpeg"]').first();
+          await inp.waitFor({ state: 'attached', timeout: 30000 });
+          await inp.setInputFiles(f);
+          await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
+          await page.waitForTimeout(8000);
+        } else if (pl === 'gis') {
+          throw new Error("2GIS hali ulanmagan (2GIS kabineti ma'lumotlari kerak)");
+        } else throw new Error('noma\'lum platforma: ' + pl);
         const shot = path.join(tmp, `shot_${ish.id}.png`);
         await page.screenshot({ path: shot }).catch(() => {});
         await sb(E, `nashr_navbati?id=eq.${ish.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'foto_tayyor', payload: { ...p, tugadi: new Date().toISOString() } }) });
         belgila(p.chatId, 'ok', `#${ish.id} ${p.toifa}${p.nom ? ' · ' + p.nom : ''}`);
         if (p.chatId && fs.existsSync(shot)) {
-          const fd = new FormData(); fd.append('chat_id', String(p.chatId)); fd.append('caption', `✅ #${ish.id} Yandex Business'ga yuborildi (${p.toifa}). Moderatsiya bir necha soat/kun olishi mumkin.`);
+          const fd = new FormData(); fd.append('chat_id', String(p.chatId)); fd.append('caption', `✅ #${ish.id} yuborildi (${(p.platforma || 'yandex')}, ${p.toifa}). Moderatsiya bir necha soat/kun olishi mumkin.`);
           fd.append('photo', new Blob([fs.readFileSync(shot)]), 'natija.png');
           await fetch(`https://api.telegram.org/bot${E.MIJOZ_BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd, signal: AbortSignal.timeout(30000) }).catch(() => {});
         }
@@ -131,7 +147,9 @@ if (process.argv[1] && process.argv[1].endsWith('fotoIshchi.js') && process.argv
   const ctx = await chromium.launchPersistentContext(PROFIL, { channel: 'chrome', headless: false, viewport: null });
   const page = ctx.pages()[0] || await ctx.newPage();
   await page.goto('https://passport.yandex.com/auth?retpath=' + encodeURIComponent(SAHIFA));
-  console.log("Yandex'ga kiring (kerakli akkaunt). Kirib bo'lgach oynani yoping.");
+  const g = await ctx.newPage();
+  await g.goto('https://accounts.google.com/ServiceLogin?continue=' + encodeURIComponent('https://business.google.com/locations'));
+  console.log("Ikkala tabda kiring: 1) Yandex (Doston Toxtaev), 2) Google (visartarchdesign@gmail.com). Tugagach oynani yoping.");
   await new Promise((r) => ctx.on('close', r));
   process.exit(0);
 }
