@@ -60,22 +60,53 @@ const sb = async (E, p, init = {}) => {
   const t = await r.text(); return t ? JSON.parse(t) : null;
 };
 
+const BAHO_URL = process.env.BAHO_URL || 'https://visartdesign.uz/api/loyiha-baho';
+
+// AI baholash: nomzod papkadagi eng yaxshi 24 ta rasm kichraytirilib yuboriladi, faqat 8+ ballilar qaytadi
+async function aiBaho(sharp, c) {
+  const havola = tanla24(c.im);
+  const rasmlar = [];
+  for (let i = 0; i < havola.length; i++) {
+    const buf = await sharp(havola[i].p).rotate().resize({ width: 1000, withoutEnlargement: true }).jpeg({ quality: 68 }).toBuffer().catch(() => null);
+    if (buf) rasmlar.push({ i, b64: buf.toString('base64') });
+  }
+  const r = await fetch(BAHO_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Media-Secret': process.env.MEDIA_SECRET || '' }, body: JSON.stringify({ nom: c.nom, rasmlar }), signal: AbortSignal.timeout(150000) });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || !j.ok) throw new Error('AI baholash: ' + ((j && j.error) || r.status));
+  return { yaxshi: j.yaxshi.map((i) => havola[i]).filter(Boolean), ballar: j.ballar, xulosa: j.xulosa, korildi: rasmlar.length };
+}
+
+function tanla24(im) {
+  const ball = (x) => (YAXSHI_NOM.test(x.nom) ? 2 : 0) + Math.min(x.size / 3e6, 2) + (x.mtime / 1e13);
+  const sorted = [...im].sort((a, b) => ball(b) - ball(a));
+  const per = new Map(), pick = [];
+  for (const x of sorted) { const k = path.dirname(x.p); if ((per.get(k) || 0) >= 12) continue; per.set(k, (per.get(k) || 0) + 1); pick.push(x); if (pick.length >= 24) break; }
+  return pick;
+}
+
 export async function loyihaTaklif({ env: E, adminChatId }) {
   const chatId = adminChatId || E.ADMIN_CHAT_ID;
   if (!chatId) return;
-  // faol qoralama bor bo'lsa, xalaqit bermaymiz
   const faol = await sb(E, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_yig&payload->>chatId=eq.${chatId}&select=id&limit=1`).catch(() => []);
   if (faol && faol.length) { await tg(E, 'sendMessage', { chat_id: chatId, text: "ℹ️ Kunlik taklif: ochiq SEO ish bor, avval uni tugating yoki /seo → bekor." }); return; }
   const t = tarixOl();
   const nom = nomzodlar();
   if (!nom.length) { await tg(E, 'sendMessage', { chat_id: chatId, text: "📁 Kompyuterda saytga mos yangi loyiha papkasi topilmadi (2024–2026, kamida 4 ta rasm)." }); return; }
-  const c = nom[0];
-  const pick = tanla(c.im);
   const sharp = (await import('sharp')).default;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'taklif_'));
   try {
+    let tanlangan = null, korilgan = [];
+    for (const c of nom.slice(0, 5)) {
+      let baho;
+      try { baho = await aiBaho(sharp, c); } catch (e) { throw e; }
+      t.used.push(c.dir); tarixYoz(t); // baholangan papka qayta ko'rsatilmaydi (yaxshi chiqsa ham, yomon chiqsa ham)
+      if (baho.yaxshi.length >= 4) { tanlangan = { c, baho }; break; }
+      korilgan.push(`${c.nom} (${baho.yaxshi.length}/${baho.korildi} munosib)`);
+    }
+    if (!tanlangan) { await tg(E, 'sendMessage', { chat_id: chatId, text: `🔍 Bugun AI saytga munosib (8+/10, kamida 4 ta) loyiha topmadi. Ko'rildi: ${korilgan.join('; ')}.\nNomzodlar saqlanib turibdi, ertaga yangi papkalar tekshiriladi.` }); return; }
+    const { c, baho } = tanlangan;
     const files = [];
-    for (let i = 0; i < pick.length; i++) { const f = path.join(tmp, `r${i + 1}.jpg`); await sharp(pick[i].p).rotate().resize({ width: 2400, withoutEnlargement: true }).jpeg({ quality: 88 }).toFile(f); files.push(f); }
+    for (let i = 0; i < baho.yaxshi.length; i++) { const f = path.join(tmp, `r${i + 1}.jpg`); await sharp(baho.yaxshi[i].p).rotate().resize({ width: 2400, withoutEnlargement: true }).jpeg({ quality: 88 }).toFile(f); files.push(f); }
     const fd = new FormData(); fd.append('chat_id', String(chatId));
     fd.append('media', JSON.stringify(files.map((f, i) => ({ type: 'document', media: `attach://f${i}`, ...(i === 0 ? { caption: `📁 ${c.nom} (${c.yil})` } : {}) }))));
     files.forEach((f, i) => fd.append(`f${i}`, new Blob([fs.readFileSync(f)]), `r${i + 1}.jpg`));
@@ -83,8 +114,7 @@ export async function loyihaTaklif({ env: E, adminChatId }) {
     if (!r || !r.ok) throw new Error('Telegram albom: ' + JSON.stringify(r).slice(0, 120));
     const fids = r.result.map((m) => m.document.file_id);
     await sb(E, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId: Number(chatId), step: 'taklif', n: { sayt: true }, rasmlar: fids, q: 0, j: {}, papka: c.nom } }]) });
-    t.used.push(c.dir); tarixYoz(t);
-    await tg(E, 'sendMessage', { chat_id: chatId, text: `📁 <b>Bugungi taklif</b>: ${c.nom} (${c.yil})\n${fids.length} ta rasm tanlandi (jami ${c.im.length} ta topildi).\n\nShuni saytga (portfolio) joylaymi? Tasdiqlasangiz, bir nechta savol beraman va premium SEO bilan avtomatik joylayman.`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Ha, joyla', callback_data: 'sg:tk:ha' }], [{ text: '🔄 Boshqasini top', callback_data: 'sg:tk:boshqa' }, { text: "🚫 Bugun yo'q", callback_data: 'sg:tk:yoq' }]] } });
+    await tg(E, 'sendMessage', { chat_id: chatId, text: `📁 <b>Bugungi taklif</b>: ${c.nom} (${c.yil})\n🤖 AI ${baho.korildi} ta rasmni ko'rib, <b>${fids.length} ta</b> sifatlisini (8+/10) tanladi.${baho.xulosa ? '\n💬 ' + baho.xulosa : ''}${korilgan.length ? `\n(Rad etilgan papkalar: ${korilgan.join('; ')})` : ''}\n\nShuni saytga (portfolio) joylaymi? Tasdiqlasangiz, bir nechta savol beraman va premium SEO bilan avtomatik joylayman.`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Ha, joyla', callback_data: 'sg:tk:ha' }], [{ text: '🔄 Boshqasini top', callback_data: 'sg:tk:boshqa' }, { text: "🚫 Bugun yo'q", callback_data: 'sg:tk:yoq' }]] } });
   } catch (e) {
     await tg(E, 'sendMessage', { chat_id: chatId, text: `⚠️ Kunlik taklif xatosi: ${String((e && e.message) || e).slice(0, 200)}` });
   } finally { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* vaqtinchalik */ } }
