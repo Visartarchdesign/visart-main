@@ -2411,6 +2411,7 @@ export async function onRequestPost({ request, env }) {
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) &&
         (msg.text === '/start' || msg.text === '/admin' || msg.text === '/start guruh')) {
+      fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setChatMenuButton`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, menu_button: { type: 'web_app', text: '📱 Admin', web_app: { url: 'https://visartdesign.uz/admin-ilova/' } } }) }).catch(() => {});
       await adminPanel(env, chatId, true);
       await bolimBosh(env, chatId).catch((e) => xatoYoz(env, 'bolim-bosh', e));
       return json({ ok: true });
