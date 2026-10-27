@@ -2414,7 +2414,7 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && msg.text) {
-      if (msg.text === '/kanal') { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📣 Kanal tekshirilmoqda…'); await kanalTekshir(env, true).catch((e) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Kanal xato: ' + String((e && e.message) || e).slice(0, 150))); return json({ ok: true }); }
+      if (msg.text === '/kanal' || msg.text === '/smm') { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📣 SMM: profillar tekshirilmoqda…'); await kanalTekshir(env, true).catch((e) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Kanal xato: ' + String((e && e.message) || e).slice(0, 150))); return json({ ok: true }); }
       if (msg.text === '/seo') { await seoYangi(env, chatId); return json({ ok: true }); }
       if (msg.text === '/foto') { await fotoMenu(env, chatId); return json({ ok: true }); }
       if (msg.text === '/foto_qayta') { await fotoQayta(env, chatId); return json({ ok: true }); }
