@@ -7,6 +7,7 @@
 <title>Visart Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="three.min.js"></script><script src="ofis3d.js"></script>
 <style>
 :root{--bg:#151412;--card:#201e1b;--line:#33302b;--tx:#f4efe6;--mut:#a39d93;--gold:#A9895A;--gold-l:#C4A876;--r:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -123,12 +124,12 @@ function person(id,h){const c=COL[id]||'#c4a876';return `<svg class="ag ${h}" vi
 <text class="zz" x="30" y="14" font-size="10" fill="#a39d93" font-family="Georgia">z</text><text class="ex" x="62" y="18" font-size="14" font-weight="700" fill="${h==='xato'?'#ff6b6b':'#e8c27a'}" font-family="Georgia">!</text></svg>`}
 async function agentlar(){if(!AG){const d=await api('agentlar');if(!d.ok)return null;AG=d}return AG}
 const denied=()=>`<div class="card err">Ruxsat yo'q yoki xato. Faqat adminlar uchun.</div>`;
-async function render(){cancelAnimationFrame(OT);const o=document.getElementById('sh');if(o)o.remove();nav();const m=$('#m');$('#ci').style.display='none';m.style.paddingBottom='';
+async function render(){cancelAnimationFrame(OT);if(window.Ofis3D)Ofis3D.stop();const o=document.getElementById('sh');if(o)o.remove();nav();const m=$('#m');$('#ci').style.display='none';m.style.paddingBottom='';
  if(!tg||!tg.initData){m.innerHTML='<div class="card">Bu sahifa faqat Telegram bot ichida ochiladi.</div>';return}
  m.innerHTML='<div class="card mut">Yuklanmoqda…</div>';
  if(tab==='ofis'){const [d,b]=await Promise.all([agentlar(),api('bosh')]);if(!d){m.innerHTML=denied();return}
   const ish=d.agentlar.filter(a=>a.h==='ishlayapti').length;
-  m.innerHTML=`<h2>Visart ofisi</h2><div class="mut" style="margin:-8px 0 12px">${ish} ta agent ishlayapti · Media-server: ${d.media?'<span class="ok">yoqilgan</span>':'<span class="err">o\'chiq</span>'}</div>${ofisSvg(d.agentlar)}<h2 style="font-size:19px;margin:18px 0 10px">Bugun e'tibor kerak</h2>${bugun(d,b)}`;ofisJon(d.agentlar)}
+  m.innerHTML=`<h2>Visart ofisi</h2><div class="mut" style="margin:-8px 0 12px">${ish} ta agent ishlayapti · Media-server: ${d.media?'<span class="ok">yoqilgan</span>':'<span class="err">o\'chiq</span>'}</div><div id="o3box"></div><h2 style="font-size:19px;margin:18px 0 10px">Bugun e'tibor kerak</h2>${bugun(d,b)}`;AG=d;if(!(window.Ofis3D&&Ofis3D.start($('#o3box'),d.agentlar))){$('#o3box').innerHTML=ofisSvg(d.agentlar);ofisJon(d.agentlar)}}
  else if(tab==='agent'){const d=await agentlar();if(!d){m.innerHTML=denied();return}
   m.innerHTML=`<h2>Agentlar</h2>`+d.agentlar.map(a=>`<div class="card"><div class="sheet">${person(a.id,a.h)}<div style="flex:1"><b>${esc(a.nom)}</b><div class="mut">${esc(a.rol)}</div><div style="margin-top:6px;font-size:13px"><span class="dot ${a.h}"></span>${HL[a.h]||''} · ${esc(a.i||'')}</div></div></div>${a.kutish?'':`<div style="margin-top:8px">${acts(a.id)}<button class="chip" onclick="go('chat','${a.id}')">${ic('chat')} Chat</button></div>`}</div>`).join('')}
  else if(tab==='boshq')boshq();
