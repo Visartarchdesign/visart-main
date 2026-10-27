@@ -1868,7 +1868,7 @@ async function takroriyUpdate(env, updateId) {
 
 const H = { tgSend, sbFetch, answerCq, upsertDialog, removeKb, getDialog };
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   let _upd = null;
   try {
     const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
@@ -2414,7 +2414,7 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && msg.text) {
-      if (msg.text === '/kanal' || msg.text === '/smm') { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📣 SMM: profillar tekshirilmoqda…'); await kanalTekshir(env, true).catch((e) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Kanal xato: ' + String((e && e.message) || e).slice(0, 150))); return json({ ok: true }); }
+      if (msg.text === '/kanal' || msg.text === '/smm') { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📣 SMM: profillar tekshirilmoqda… (1-2 daqiqa)'); const ish = kanalTekshir(env, true).catch((e) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Kanal xato: ' + String((e && e.message) || e).slice(0, 300))); if (waitUntil) waitUntil(ish); else await ish; return json({ ok: true }); }
       if (msg.text === '/seo') { await seoYangi(env, chatId); return json({ ok: true }); }
       if (msg.text === '/foto') { await fotoMenu(env, chatId); return json({ ok: true }); }
       if (msg.text === '/foto_qayta') { await fotoQayta(env, chatId); return json({ ok: true }); }
