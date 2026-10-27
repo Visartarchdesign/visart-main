@@ -4,6 +4,7 @@ import { haftalikNormaEslatma } from '../_lib/normaTasdiq.js';
 import { menejerIdlari } from '../_lib/botAvto.js';
 import { tizimNazorati } from '../_lib/nazorat.js';
 import { seoNashr, domenNazorat, seoAudit, seoKunlik } from '../_lib/seoAgent.js';
+import { kanalTekshir } from '../_lib/kanalAgent.js';
 import { direktorKuzat } from '../_lib/direktor.js';
 import { targetNazorat } from '../_lib/target.js';
 import { mediaUygot, mediaChaqir, animatsiyaBuyurtma, tgSend } from '../_lib/media.js';
@@ -362,7 +363,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   await tizimNazorati(env);
   {
     const n = new Date();
-    if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) fondaSeo(seoAudit(env)); }
+    if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) { fondaSeo(seoAudit(env)); fondaSeo(kanalTekshir(env)); } }
     if ([4, 8, 12].includes(n.getUTCHours()) && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
     fondaSeo(seoNashr(env));
     fondaSeo(direktorKuzat(env));

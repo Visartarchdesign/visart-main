@@ -52,6 +52,7 @@ import { xatoYoz } from '../_lib/xato.js';
 import { targetMenyu, targetCb } from '../_lib/target.js';
 import { bolimBosh, bolimCb } from '../_lib/bolimlar.js';
 import { seoYangi, seoMedia, seoAvto, seoMatn, seoCb, domenSet, domenKorsat } from '../_lib/seoAgent.js';
+import { kanalTekshir, kanalQollash, kanalRad } from '../_lib/kanalAgent.js';
 import { fotoMenu, fotoMedia, fotoCb, fotoQayta, fotoHolat } from '../_lib/fotoBot.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
@@ -2039,6 +2040,14 @@ export async function onRequestPost({ request, env }) {
         }
         return json({ ok: true });
       }
+      if (data.startsWith('kn:') && isAdmin(env, cq.from && cq.from.id)) {
+        const [, amal, kid] = data.split(':'); const cid = cq.message.chat.id;
+        await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/answerCallbackQuery`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ callback_query_id: cq.id }) }).catch(() => {});
+        await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/editMessageReplyMarkup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: cid, message_id: cq.message.message_id, reply_markup: { inline_keyboard: [] } }) }).catch(() => {});
+        const natija = amal === 'ok' ? await kanalQollash(env, kid).catch((e) => 'Xato: ' + String((e && e.message) || e).slice(0, 120)) : await kanalRad(env, kid);
+        await tgSend(env.MIJOZ_BOT_TOKEN, cid, natija);
+        return json({ ok: true });
+      }
       if (data.startsWith('tg:') && isAdmin(env, cq.from && cq.from.id)) { await targetCb(env, cq).catch((e) => xatoYoz(env, 'target-cb', e)); return json({ ok: true }); }
       if (data.startsWith('ap:')) { await adminPanelCb(env, cq, data); return json({ ok: true }); }
       if (data.startsWith('menu:')) { await handleMenu(env, H, cq, data); return json({ ok: true }); }
@@ -2405,6 +2414,7 @@ export async function onRequestPost({ request, env }) {
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && msg.text) {
+      if (msg.text === '/kanal') { await tgSend(env.MIJOZ_BOT_TOKEN, chatId, '📣 Kanal tekshirilmoqda…'); await kanalTekshir(env, true).catch((e) => tgSend(env.MIJOZ_BOT_TOKEN, chatId, 'Kanal xato: ' + String((e && e.message) || e).slice(0, 150))); return json({ ok: true }); }
       if (msg.text === '/seo') { await seoYangi(env, chatId); return json({ ok: true }); }
       if (msg.text === '/foto') { await fotoMenu(env, chatId); return json({ ok: true }); }
       if (msg.text === '/foto_qayta') { await fotoQayta(env, chatId); return json({ ok: true }); }

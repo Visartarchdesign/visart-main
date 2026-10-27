@@ -3,6 +3,7 @@
 import { mediaChaqir, animatsiyaBuyurtma } from '../_lib/media.js';
 import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { seoHolatApp } from '../_lib/seoAgent.js';
+import { kanalOchiq } from '../_lib/kanalAgent.js';
 import { direktorChat, direktorTarix, direktorYoz, vazifalarOchiq, vazifaTayyor } from '../_lib/direktor.js';
 
 const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
@@ -95,7 +96,7 @@ async function agentChat(env, agentId, text, holat) {
 }
 
 // Ilovadagi tasdiqlar botning o'sha callback/matn yo'llaridan o'tadi (bitta mantiq, ikki joy). Webhook'ga ichki chaqiruv; natija botga ham yoziladi.
-const RUXSAT = /^(stak:\d+:(ok|no)|tg:(ok:\d+:\d|on:\d+|off:\d+|x:\d+)|ap:(ms)|tg:(nw|ls|rp(:\d+)?)|yg:(ok|no)|gset:[mou]:-?\d+|gobj:[mu]:-?\d+:[\w.-]{1,40}|ld:(ok|no):\+?\d{7,15}|sg:(tk:(ha|boshqa|yoq)|done|more|go|ok|now|no|ed|o:\d+:-?\d+|n:[a-z0-9]+))$/;
+const RUXSAT = /^(stak:\d+:(ok|no)|tg:(ok:\d+:\d|on:\d+|off:\d+|x:\d+)|ap:(ms)|tg:(nw|ls|rp(:\d+)?)|yg:(ok|no)|gset:[mou]:-?\d+|gobj:[mu]:-?\d+:[\w.-]{1,40}|ld:(ok|no):\+?\d{7,15}|kn:(ok|no):\d+|sg:(tk:(ha|boshqa|yoq)|done|more|go|ok|now|no|ed|o:\d+:-?\d+|n:[a-z0-9]+))$/;
 function botYubor(env, request, waitUntil, adminId, tur, qiymat) {
   const uid = Date.now() * 100 + Math.floor(Math.random() * 100);
   const chat = { id: Number(adminId), type: 'private' }, from = { id: Number(adminId), is_bot: false, first_name: 'Admin' };
@@ -103,7 +104,7 @@ function botYubor(env, request, waitUntil, adminId, tur, qiymat) {
   const p = fetch(new URL('/api/mijoz-bot', request.url).href, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Telegram-Bot-Api-Secret-Token': env.MIJOZ_BOT_SECRET || '' }, body: JSON.stringify(upd), signal: AbortSignal.timeout(110000) }).catch(() => {});
   if (waitUntil) waitUntil(p);
 }
-const MATN_RUXSAT = /^\/(yangilik|holatlar|tuzat_tugma|foto_qayta|target|domen|muzlat [^\n]{1,60}|domen \d{4}-\d{2}-\d{2})$/;
+const MATN_RUXSAT = /^\/(yangilik|kanal|holatlar|tuzat_tugma|foto_qayta|target|domen|muzlat [^\n]{1,60}|domen \d{4}-\d{2}-\d{2})$/;
 const strip = (x) => String(x || '').replace(/<\/?[a-z][^>]*>/gi, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const isRootU = (env, id) => String(env.ROOT_ADMIN_IDS || '').split(',').map((x) => x.trim()).filter(Boolean).concat(String(env.ADMIN_TELEGRAM_IDS || '').split(',')[0].trim()).includes(String(id));
 async function amallarOpen(env, a, b, u) {
@@ -141,11 +142,12 @@ async function tasdiqRoyxat(env, adminId) {
     q(env, 'nashr_navbati?turi=eq.video_nashr&holat=eq.tasdiq_kutilmoqda&select=id,payload,created_at&order=id.desc&limit=10'),
     seoHolatApp(env, Number(adminId)).catch(() => null),
   ]);
+  const kanal = await kanalOchiq(env);
   return {
     senariy: sen.map((r) => ({ id: r.id, sarlavha: r.sarlavha || '', matn: String(r.post_matni || '').slice(0, 900) })),
     reklama: rek.map((r) => { const t = (r.payload && r.payload.taklif) || {}, v = r.payload && r.payload.tanlov; return { id: r.id, holat: r.holat, nom: t.nom || '', maqsad: t.maqsad || '', variantlar: (t.variantlar || []).map((x) => ({ kun: x.kun_usd, kunlar: x.kunlar })), tanlov: v ? { kun: v.kun_usd, kunlar: v.kunlar } : null }; }),
     video: vid.map((r) => ({ id: r.id, sarlavha: (r.payload && r.payload.sarlavha) || '', video: (r.payload && r.payload.video_url) || '' })),
-    seo,
+    seo, kanal,
   };
 }
 
