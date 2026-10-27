@@ -133,122 +133,109 @@ async function render(){cancelAnimationFrame(OT);const o=document.getElementById
   m.innerHTML=`<h2>Agentlar</h2>`+d.agentlar.map(a=>`<div class="card"><div class="sheet">${person(a.id,a.h)}<div style="flex:1"><b>${esc(a.nom)}</b><div class="mut">${esc(a.rol)}</div><div style="margin-top:6px;font-size:13px"><span class="dot ${a.h}"></span>${HL[a.h]||''} · ${esc(a.i||'')}</div></div></div>${a.kutish?'':`<div style="margin-top:8px">${acts(a.id)}<button class="chip" onclick="go('chat','${a.id}')">${ic('chat')} Chat</button></div>`}</div>`).join('')}
  else if(tab==='boshq')boshq();
  else chatView()}
-// ===== Izometrik ofis (3/4 ko'rinish, agentlar odamdek yuradi, eshiklar ochiladi) =====
-const IW=22,ID=14,K=11.2,CX=.866*K,CY=.5*K,ZK=14,WH=2.6,OX=ID*CX+8,OY=WH*ZK+8;
-const P=(x,y,z=0)=>[OX+(x-y)*CX,OY+(x+y)*CY-z*ZK];
-const pt=a=>a.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
-const poly=(a,f,x='')=>`<polygon points="${pt(a)}" fill="${f}" ${x}/>`;
-function sh(h,f){const n=parseInt(h.slice(1),16),r=Math.min(255,(n>>16&255)*f|0),g=Math.min(255,(n>>8&255)*f|0),b=Math.min(255,(n&255)*f|0);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
-const box=(x0,y0,x1,y1,h,z0,c)=>{const t=[sh(c,1.15),sh(c,.88),sh(c,.66)];return poly([P(x0,y1,z0),P(x1,y1,z0),P(x1,y1,z0+h),P(x0,y1,z0+h)],t[2])+poly([P(x1,y0,z0),P(x1,y1,z0),P(x1,y1,z0+h),P(x1,y0,z0+h)],t[1])+poly([P(x0,y0,z0+h),P(x1,y0,z0+h),P(x1,y1,z0+h),P(x0,y1,z0+h)],t[0])};
-const DK=i=>{const r=i<5?0:1,c=i%5;return {cx:9+2.8*c,y0:r?4.9:.3,y1:r?6.3:1.7,sy:r?7.1:2.5,ay:r?8.1:3.5,row:r}};
-const NODE={C1:[7.2,3.5],C2:[7.2,8.1],C3:[7.2,9.7],LO:[6.9,3.5],LD:[6,3.5],LI:[4.7,3.5],LS1:[1.2,1.9],LS2:[1.2,3.0],LS3:[1.2,4.1],LT:[3.2,4.9],WO:[5.3,9.7],WD:[4,9.7],WI:[2,9.7],H1:[10.5,10],H2:[14.5,10],H3:[14.5,12.3],K1:[17.6,10.2],KS:[19.2,11],KT:[17.2,12.4]};
-const EDGE=[['C1','C2'],['C2','C3'],['C1','LO'],['LO','LD'],['LD','LI'],['LI','LS1'],['LI','LS2'],['LI','LS3'],['LI','LT'],['C3','WO'],['WO','WD'],['WD','WI'],['C3','H1'],['H1','H2'],['H2','H3'],['H2','K1'],['K1','KS'],['K1','KT'],['H3','KT']];
-function graf(n){const g={nodes:{...NODE},adj:{}};for(let i=0;i<n;i++){const d=DK(i);g.nodes['S'+i]=[d.cx,d.sy];g.nodes['A'+i]=[d.cx,d.ay]}
- const E=[...EDGE];for(let i=0;i<n;i++){E.push(['S'+i,'A'+i]);const d=DK(i);if(i%5===0)E.push(['A'+i,d.row?'C2':'C1']);else E.push(['A'+i,'A'+(i-1)])}
- E.forEach(([a,b])=>{(g.adj[a]=g.adj[a]||[]).push(b);(g.adj[b]=g.adj[b]||[]).push(a)});return g}
-function yol(g,a,b){const D={[a]:0},Pv={},Q=[a],dist=(u,v)=>Math.hypot(g.nodes[u][0]-g.nodes[v][0],g.nodes[u][1]-g.nodes[v][1]),done={};
+// ===== Ofis: yon tomondan kesim (3 qavat), agentlar profilda yuradi, zinadan chiqadi, eshiklar ochiladi =====
+const OW=360,F3=130,F2=262,F1=394,OH=408,LN=6;
+const SLOT=[[F3,20],[F3,74],[F3,128],[F3,182],[F3,236],[F2,78],[F2,132],[F2,186],[F2,240],[F2,294]];
+const NN={U3:[292,F3+LN],D2:[346,F2+LN],U2:[66,F2+LN],D1:[16,F1+LN],SF1:[86,F1],SF1a:[86,F1+LN],SF2:[102,F1],SF2a:[102,F1+LN],H1:[132,F1+LN],H2:[162,F1+LN],KM:[190,F1+LN],KT1:[240,F1],KT1a:[240,F1+LN],KT2:[270,F1],KT2a:[270,F1+LN],WD:[282,F1+LN],WI:[320,F1+LN]};
+function graf(n){const g={nodes:{...NN},adj:{}},E=[];
+ for(let i=0;i<Math.min(n,10);i++){const [f,x]=SLOT[i];g.nodes['S'+i]=[x,f];g.nodes['A'+i]=[x,f+LN];E.push(['S'+i,'A'+i])}
+ const cnt=Math.min(n,10);for(let i=0;i<cnt-1;i++){if(i!==4)E.push(['A'+i,'A'+(i+1)])}
+ if(cnt>4){E.push(['A4','U3']);E.push(['U3','D2']);E.push(['D2','A9']);for(let i=5;i<9;i++)if(i+1<cnt)E.push(['A'+(i+1),'A'+i]);E.push(['A5','U2']);E.push(['U2','D1'])}
+ else if(cnt>0){E.push(['A'+(cnt-1),'U3']);E.push(['U3','D2']);E.push(['D2','U2']);E.push(['U2','D1'])}
+ [['D1','SF1a'],['SF1a','SF2a'],['SF2a','H1'],['H1','H2'],['H2','KM'],['KM','KT1a'],['KT1a','KT2a'],['KT2a','WD'],['WD','WI'],['SF1','SF1a'],['SF2','SF2a'],['KT1','KT1a'],['KT2','KT2a']].forEach(e=>E.push(e));
+ E.forEach(([a,b])=>{if(!g.nodes[a]||!g.nodes[b])return;(g.adj[a]=g.adj[a]||[]).push(b);(g.adj[b]=g.adj[b]||[]).push(a)});return g}
+function yol(g,a,b){const D={[a]:0},Pv={},Q=[a],done={},dist=(u,v)=>Math.hypot(g.nodes[u][0]-g.nodes[v][0],g.nodes[u][1]-g.nodes[v][1]);
  while(Q.length){Q.sort((x,y)=>D[x]-D[y]);const u=Q.shift();if(done[u])continue;done[u]=1;if(u===b)break;(g.adj[u]||[]).forEach(v=>{const nd=D[u]+dist(u,v);if(D[v]===undefined||nd<D[v]){D[v]=nd;Pv[v]=u;Q.push(v)}})}
  const r=[];let c=b;if(D[b]===undefined)return [];while(c!==a){r.unshift(c);c=Pv[c]}return r}
-const PL=(x,y,s=1,z=0)=>{const[X,Y]=P(x,y,z);return `<g transform="translate(${X.toFixed(1)} ${Y.toFixed(1)}) scale(${s})"><rect x="-3" y="-5" width="6" height="5" rx="1" fill="#6a4a30"/><ellipse cx="-3" cy="-9" rx="3.2" ry="5" fill="#3f8a4c" transform="rotate(-25 -3 -9)"/><ellipse cx="3" cy="-9" rx="3.2" ry="5" fill="#2f7a40" transform="rotate(25 3 -9)"/><ellipse cx="0" cy="-12" rx="3" ry="5.4" fill="#4a9a58"/><circle cx="-3.5" cy="-13" r="1.3" fill="#e86a8a"/><circle cx="3" cy="-11" r="1.2" fill="#f2c14e"/></g>`};
-function ofisSvg(L){const n=L.length,OB=[],add=(d,sv)=>OB.push([d,sv]);let base='';
- // pol
- base+=poly([P(0,0),P(IW,0),P(IW,ID),P(0,ID)],'#2b2218');
- for(let i=1;i<IW;i++)base+=`<line x1="${P(i,0)[0].toFixed(1)}" y1="${P(i,0)[1].toFixed(1)}" x2="${P(i,ID)[0].toFixed(1)}" y2="${P(i,ID)[1].toFixed(1)}" stroke="#ffffff09"/>`;
- for(let j=1;j<ID;j++)base+=`<line x1="${P(0,j)[0].toFixed(1)}" y1="${P(0,j)[1].toFixed(1)}" x2="${P(IW,j)[0].toFixed(1)}" y2="${P(IW,j)[1].toFixed(1)}" stroke="#ffffff09"/>`;
- base+=poly([P(8.4,8.6),P(17,8.6),P(17,13),P(8.4,13)],'#3a2c2c')+poly([P(8.9,9.1),P(16.5,9.1),P(16.5,12.5),P(8.9,12.5)],'none','stroke="#A9895A" stroke-width=".8" opacity=".6"');
- base+=poly([P(.3,.9),P(5.7,.9),P(5.7,5.6),P(.3,5.6)],'#3a3342');
- base+=poly([P(19.4,9.2),P(21.9,9.2),P(21.9,12.8),P(19.4,12.8)],'#3a2f24');
- // orqa devorlar
- base+=poly([P(0,0,0),P(IW,0,0),P(IW,0,WH),P(0,0,WH)],'#3a352d')+poly([P(0,0,0),P(0,ID,0),P(0,ID,WH),P(0,0,WH)],'#2e2a24')+poly([P(0,0,.18),P(IW,0,.18),P(IW,0,0),P(0,0,0)],'#241f19')+poly([P(0,0,.18),P(0,ID,.18),P(0,ID,0),P(0,0,0)],'#1d1a16');
- for(let c=0;c<5;c++){const x=9+2.8*c;base+=poly([P(x-1,0,1.3),P(x+1,0,1.3),P(x+1,0,2.3),P(x-1,0,2.3)],'#243a52','stroke="#A9895A" stroke-width=".8"')+poly([P(x-1,0,1.3),P(x,0,1.3),P(x-.2,0,2.3),P(x-1,0,2.3)],'#ffffff14')}
- base+=poly([P(0,12.1,1.1),P(0,13.5,1.1),P(0,13.5,2.1),P(0,12.1,2.1)],'#3b3128','stroke="#A9895A" stroke-width=".8"')+poly([P(0,5.4,1.2),P(0,6.8,1.2),P(0,6.8,2.2),P(0,5.4,2.2)],'#223a50','stroke="#A9895A" stroke-width=".8"');
- // qavat chizmalari: stol, stul, monitor
- L.forEach((a,i)=>{const d=DK(i),c=COL[a.id]||'#c4a876',dir=a.id==='direktor',wood=dir?'#4a3320':'#6a5535',act=a.h!=='dam';
-  let sv=box(d.cx-1.25,d.y0,d.cx+1.25,d.y1,.75,0,wood);
-  sv+=box(d.cx-.5,d.y0+.25,d.cx+.5,d.y0+.42,.55,.75,'#222226')+poly([P(d.cx-.42,d.y0+.42,.82),P(d.cx+.42,d.y0+.42,.82),P(d.cx+.42,d.y0+.42,1.25),P(d.cx-.42,d.y0+.42,1.25)],act?(a.h==='xato'?'#b33':c):'#15151a',`class="${a.h==='ishlayapti'?'gl':''}" opacity="${act?.92:.6}"`)+box(d.cx-.5,d.y1-.65,d.cx+.5,d.y1-.35,.05,.75,'#2a2a2e');
-  if(a.h==='ishlayapti'||dir)sv+=box(d.cx+.8,d.y1-.8,d.cx+1.1,d.y1-.5,.22,.75,'#f4efe6')+`<path class="st" d="M${P(d.cx+.95,d.y1-.65,1)[0].toFixed(1)} ${P(d.cx+.95,d.y1-.65,1)[1].toFixed(1)} q-2 -4 0 -7 t0 -6" stroke="#fff" stroke-width=".9" fill="none"/>`;
-  if(dir)sv+=PL(d.cx-.8,d.y1-.8,.7,.75);
-  const nm=P(d.cx-1.05,d.y1,.12);sv+=`<text transform="matrix(.866 .5 0 1 ${nm[0].toFixed(1)} ${nm[1].toFixed(1)})" font-size="5.6" fill="#e8dcc2">${esc(a.nom)}</text>`;
-  add(d.cx+(d.y0+d.y1)/2,sv);
-  add(d.cx+d.sy-.5,box(d.cx-.4,d.sy-.4,d.cx+.4,d.sy+.4,.42,0,'#2a2620')+box(d.cx-.4,d.sy+.28,d.cx+.4,d.sy+.4,.55,.42,'#2a2620'))});
+function sh(h,f){const n=parseInt(h.slice(1),16),r=Math.min(255,(n>>16&255)*f|0),g=Math.min(255,(n>>8&255)*f|0),b=Math.min(255,(n&255)*f|0);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}
+const R=(x,y,w,h,f,x2='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" ${x2}/>`;
+const plant=(x,y,k=1)=>`<g transform="translate(${x} ${y}) scale(${k})"><rect x="-4" y="-8" width="8" height="8" rx="1.5" fill="#6a4a30"/><ellipse cx="-4" cy="-14" rx="3.4" ry="7" fill="#3f8a4c" transform="rotate(-28 -4 -14)"/><ellipse cx="4" cy="-14" rx="3.4" ry="7" fill="#2f7a40" transform="rotate(28 4 -14)"/><ellipse cx="0" cy="-18" rx="3.2" ry="8" fill="#4a9a58"/><circle cx="-5" cy="-19" r="1.5" fill="#e86a8a"/><circle cx="4" cy="-16" r="1.4" fill="#f2c14e"/></g>`;
+function stairs(x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),nx=-dy/L*3,ny=dx/L*3;
+ return `<line x1="${x1}" y1="${y1+3}" x2="${x2}" y2="${y2+3}" stroke="#5a4a32" stroke-width="7"/><line x1="${x1}" y1="${y1+3}" x2="${x2}" y2="${y2+3}" stroke="#2a2218" stroke-width="7" stroke-dasharray="1.6 4.4"/>`}
+function ofisSvg(L){const n=L.length,cnt=Math.min(n,10);let bg='';
+ const wall=(f,c)=>R(8,f-116,344,116,c);
+ bg+=R(0,0,OW,OH,'#0d0c0b')+R(6,6,348,F3-6+6,'#000','opacity="0"');
+ bg+=wall(F3,'#2b2722')+wall(F2,'#2b2722')+wall(F1,'#232a31');
+ // oynalar, devor bezagi
+ [F3,F2].forEach(f=>{for(let k=0;k<5;k++){const x=36+k*60;bg+=R(x,f-96,34,38,'#1d3550','stroke="#A9895A" stroke-width="1"')+R(x+1,f-95,14,36,'#ffffff12')+R(x+16.5,f-96,1,38,'#A9895A')}});
+ for(let k=0;k<4;k++){bg+=R(86+k*34,F1-98,26,34,'#1d3550','stroke="#A9895A" stroke-width="1"')}
+ // pollar (qavat plitalari), zina ochiqliklari
+ const slab=(f,gx1,gx2)=>{let r='';const tops='#5a4a30',bot='#3a2f20';const seg=(a,b)=>R(a,f,b-a,8,bot)+R(a,f,b-a,2.5,'#8a7550');if(gx1===null)r+=seg(6,354);else{r+=seg(6,gx1)+seg(gx2,354)}return r};
+ bg+=slab(F3,296,352)+slab(F2,8,66)+slab(F1,null)+R(0,F1+8,OW,OH-F1-8,'#15130f')+R(6,0,348,8,'#3a3024')+R(0,0,6,OH,'#3a3024')+R(354,0,6,OH,'#3a3024');
+ bg+=stairs(NN.U3[0],NN.U3[1],NN.D2[0],NN.D2[1])+stairs(NN.U2[0],NN.U2[1],NN.D1[0],NN.D1[1]);
+ // ish stollari
+ for(let i=0;i<cnt;i++){const a=L[i],[f,x]=SLOT[i],c=COL[a.id]||'#c4a876',dir=a.id==='direktor',wood=dir?'#6b4a2a':'#6a5535',act=a.h!=='dam';
+  bg+=R(x-8,f-26,5,3,'#2a2620')+R(x-7,f-24,3,13,'#3a352d')+R(x-7,f-13,12,3,'#3a352d')+R(x-5,f-10,2,10,'#2a2620');
+  bg+=R(x+8,f-15,32,3,wood)+R(x+11,f-12,27,12,sh(wood,.7))+R(x+12,f-10,24,3,sh(wood,.5),'opacity=".6"')+R(x+34,f-12,1,12,sh(wood,.5));
+  bg+=R(x+21,f-17,6,2,'#2a2a2e')+R(x+24,f-30,3,13,'#1d1d22')+`<rect class="${a.h==='ishlayapti'?'gl':''}" x="${x+22.5}" y="${f-28.5}" width="1.8" height="10" fill="${act?(a.h==='xato'?'#d33':c):'#26262c'}" opacity="${act?.95:.7}"/>`+R(x+10,f-17,9,2,'#2a2a2e');
+  if(dir||a.h==='ishlayapti')bg+=R(x+30,f-19,3.4,4,'#f4efe6')+`<path class="st" d="M${x+31.7} ${f-20} q-2 -3 0 -6 t0 -5" stroke="#fff" stroke-width=".8" fill="none"/>`;
+  bg+=R(x+2,f-92,26,9,'#14120f','stroke="#6b5a3c" stroke-width=".7"')+`<text x="${x+15}" y="${f-85.3}" font-size="5.4" fill="#e8dcc2" text-anchor="middle">${esc(a.nom.split(' ')[0])}</text>`+R(x+4,f-90,2,5,c)}
+ // ish xonasi bezaklari
+ bg+=plant(278,F3,1)+plant(346,F2,.95)+plant(70,F2,.8)+R(120,F3-76,50,0,'#000')+plant(176,F3,0)+`<text x="180" y="${F3-103}" font-size="6.2" fill="#A9895A" text-anchor="middle" letter-spacing="2">VISART DESIGN</text>`;
  // dam olish
- add(3.4,box(.1,1,1.4,4.6,.5,0,'#56677a')+box(.1,1,.5,4.6,.65,.5,'#56677a'));
- add(4.4,box(2.4,2.6,3.6,3.8,.45,0,'#6b5a3c'));
- add(2.9,box(4.5,.1,5.9,.8,1.9,0,'#5a4630'));
- add(.6,poly([P(1.6,0,1.15),P(4.2,0,1.15),P(4.2,0,2.15),P(1.6,0,2.15)],'#0b0b0d','stroke="#6b645a" stroke-width=".8"')+poly([P(1.7,0,1.25),P(4.1,0,1.25),P(4.1,0,2.05),P(1.7,0,2.05)],'#3b6a96','class="gl" opacity=".75"'));
- add(9.7,box(0,5.9,6.1,6.15,1,0,'#4d453a')); add(5.9,box(5.9,0,6.15,2.8,1,0,'#4d453a')); add(11.1,box(5.9,4.2,6.15,6.15,1,0,'#4d453a'));
- // hojatxona (baland devorlar)
- add(7.6,box(0,7.5,4.1,7.75,2.4,0,'#4a443a')); add(13.4,box(0,11.5,4.15,11.75,2.4,0,'#4a443a')); add(10,box(3.9,7.5,4.15,8.9,2.4,0,'#4a443a')); add(13,box(3.9,10.3,4.15,11.75,2.4,0,'#4a443a'));
- add(14.2,box(3.9,8.9,4.15,10.3,.25,2.4,'#4a443a'));
- add(9,poly([P(4.15,8.9,2.4),P(4.15,10.3,2.4),P(4.15,10.3,2.15),P(4.15,8.9,2.15)],'#2d6a8a'));
- // qahva zonasi
- add(31,box(20.2,9.4,21.8,12.6,1,0,'#6b5a3c')+box(20.6,10.3,21.4,11.1,.7,1,'#2a2a2e')+box(21.2,10.5,21.4,10.7,.12,1.45,'#d33')+box(20.45,11.5,20.75,11.8,.2,1,'#f4efe6')+box(20.45,9.8,20.75,10.1,.2,1,'#f4efe6'));
- add(28,box(17,10.4,18.3,11.6,.9,0,'#6b5a3c')+box(17.3,10.7,17.7,11.1,.2,.9,'#f4efe6'));
- add(26.6,box(16.1,10.6,16.6,11.1,.5,0,'#3a352d')+box(18.9,10.6,19.4,11.1,.5,0,'#3a352d'));
- // gullar
- [[6.5,.7],[21.3,.7],[.7,13.2],[5.4,13.1],[10,13.3],[15,13.5],[21.2,13.3],[7,6.8],[4.8,.5],[6.6,11.4]].forEach(([x,y])=>add(x+y+.2,PL(x,y,1.1)));
- add(30,PL(21.3,9.3,1.2));
- // yozuvlar
- const T=(x,y,z,t,c)=>{const q=P(x,y,z);return `<text x="${q[0].toFixed(1)}" y="${q[1].toFixed(1)}" font-size="6.6" fill="${c||'#A9895A'}" text-anchor="middle" letter-spacing="1">${t}</text>`};
- add(99,T(3,6,1.7,'DAM OLISH')+T(2,9.7,2.9,'WC','#7ab8d8')+T(20.9,11,2.2,'KOFE','#e8c27a')+T(15,0,2.7,'VISART DESIGN','#c4a876'));
- OB.sort((p,q)=>p[0]-q[0]);
- return `<svg class="of" id="of" viewBox="0 0 ${Math.ceil(OX+IW*CX+8)} ${Math.ceil(OY+(IW+ID)*CY+8)}" aria-label="Ofis"><rect width="100%" height="100%" fill="#0e0d0c"/>${base}<g id="sc">${OB.map(([d,v])=>`<g data-d="${d}">${v}</g>`).join('')}</g></svg>`}
-function sprite(a){const c=COL[a.id]||'#c4a876',sk='#e9c9a6',hair=a.id==='nazorat'?'#8a5a2a':'#2b2118';
- return `<g class="fg" data-id="${a.id}" onclick="agSheet('${a.id}')"><ellipse cx="0" cy="0" rx="7" ry="2.5" fill="#0008"/>
-<g class="stn"><line class="l1" x1="-2" y1="-9" x2="-2" y2="0" stroke="#2b2a35" stroke-width="3" stroke-linecap="round"/><line class="l2" x1="2" y1="-9" x2="2" y2="0" stroke="#2b2a35" stroke-width="3" stroke-linecap="round"/><rect x="-4.6" y="-19" width="9.2" height="11" rx="3" fill="${c}"/><line class="a1" x1="-4.6" y1="-17" x2="-6" y2="-9.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><line class="a2" x1="4.6" y1="-17" x2="6" y2="-9.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><circle cy="-23" r="4.4" fill="${sk}"/><path d="M-4.5 -23.5a4.5 4.5 0 0 1 9 0c-2-1.3-7-1.3-9 0z" fill="${hair}"/></g>
-<g class="sit" display="none"><rect x="-4.8" y="-15" width="9.6" height="10" rx="3" fill="${c}"/><line class="b1" x1="-4.6" y1="-12" x2="-3" y2="-5.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><line class="b2" x1="4.6" y1="-12" x2="3" y2="-5.5" stroke="${sk}" stroke-width="2.6" stroke-linecap="round"/><circle cy="-19" r="4.4" fill="${sk}"/><path d="M-4.5 -19.5a4.5 4.5 0 0 1 9 0c-2-1.3-7-1.3-9 0z" fill="${hair}"/></g>
-<g class="cp" display="none"><rect x="5" y="-14" width="3.6" height="4" rx=".8" fill="#f4efe6"/><path d="M6.8 -15q-1.5-2 0-3.5" stroke="#fff" stroke-width=".8" fill="none" class="st"/></g>
-<g class="bb" display="none"><circle cy="-34" r="5.5" fill="#e8c27a"/><text y="-31" font-size="8" font-weight="700" text-anchor="middle" fill="#151412">!</text></g>
-<text class="nm" y="-29" font-size="5.8" text-anchor="middle" fill="#d9d0bf" opacity=".85">${esc(a.nom.split(' ')[0])}</text><circle cy="-12" r="13" fill="transparent"/></g>`}
-function ofisJon(L){const sc=document.getElementById('sc');if(!sc)return;const G=graf(L.length),T=[...sc.children].map(e=>{e._d=+e.dataset.d;return e});
- const ns='http://www.w3.org/2000/svg',mk=(t,att)=>{const e=document.createElementNS(ns,t);for(const k in att)e.setAttribute(k,att[k]);return e};
- const dr=[{x:6,ya:2.8,yb:4.2,h:1,cx:6,cy:3.5,o:0,hy:2.8,sg:1,d:9.6,f:'#8a6a3c'},{x:4,ya:8.9,yb:10.3,h:2.15,cx:4,cy:9.6,o:0,hy:8.9,sg:1,d:13.7,f:'#8a6a3c'}];
- dr.forEach(o=>{o.el=mk('polygon',{fill:o.f,stroke:'#c4a876','stroke-width':.8});o.el._d=o.d;sc.appendChild(o.el);T.push(o.el)});
- const wcOcc=()=>0;
- const A=L.map((a,i)=>{const e=document.createElementNS(ns,'g');e.innerHTML=sprite(a);const el=e.firstChild;sc.appendChild(el);el._d=0;T.push(el);const d=DK(i);
-  const g={a,i,el,x:d.cx,y:d.sy,node:'S'+i,path:[],wait:2+Math.random()*6,ph:Math.random()*6,mode:'sit',cup:false,tgt:null,
-   q:{st:el.querySelector('.stn'),si:el.querySelector('.sit'),cp:el.querySelector('.cp'),bb:el.querySelector('.bb'),l1:el.querySelector('.l1'),l2:el.querySelector('.l2'),a1:el.querySelector('.a1'),a2:el.querySelector('.a2'),b1:el.querySelector('.b1'),b2:el.querySelector('.b2')}};
-  if(a.h==='dam'){const s=['LS1','LS2','LT','KS','H2','H1','LS3'][i%7];g.node=s;g.x=G.nodes[s][0];g.y=G.nodes[s][1];g.mode=s[0]==='L'&&s!=='LT'?'sit':'stand'}
-  if(a.h!=='ishlayapti'&&a.h!=='dam')g.wait=999;
+ bg+=R(70,F1-14,48,14,'#4b5d72')+R(66,F1-34,8,34,'#586b82')+R(76,F1-20,40,6,'#5d7088')+R(118,F1-9,6,9,'#3a2f20')+R(124,F1-10,22,2,'#6b5a3c')+R(128,F1-8,2,8,'#4a3d2a')+R(140,F1-8,2,8,'#4a3d2a');
+ bg+=R(158,F1-64,36,22,'#0b0b0d','stroke="#6b645a" stroke-width="1"')+`<rect class="gl" x="160" y="${F1-62}" width="32" height="18" fill="#3b6a96" opacity=".75"/>`+R(172,F1-42,8,2,'#3a352d')+R(170,F1-40,12,3,'#3a352d')+plant(52,F1,.9)+plant(112+0,F1-0,0);
+ bg+=`<text x="118" y="${F1-92}" font-size="6" fill="#A9895A" text-anchor="middle" letter-spacing="1.5">DAM OLISH</text>`;
+ // oshxona
+ bg+=R(198,F1-24,34,24,'#6b5a3c')+R(198,F1-26,34,3,'#8a7550')+R(204,F1-40,10,14,'#2a2a2e')+R(206,F1-38,6,4,'#d33')+R(220,F1-31,5,5,'#f4efe6')+R(198,F1-62,34,10,'#3a352d')+R(200,F1-60,30,6,'#2a2620')+R(248,F1-17,12,3,'#6b5a3c')+R(253,F1-14,2,14,'#4a3d2a')+R(236,F1-9,6,2,'#3a352d')+R(238,F1-7,2,7,'#2a2620')+R(266,F1-9,6,2,'#3a352d')+R(268,F1-7,2,7,'#2a2620')+R(252,F1-20,4,3,'#f4efe6')+plant(278,F1,.8);
+ bg+=`<text x="237" y="${F1-92}" font-size="6" fill="#e8c27a" text-anchor="middle" letter-spacing="1.5">OSHXONA</text>`;
+ // yuqori burchak chiroqlari
+ bg+=`<line x1="90" y1="${F3-116+6}" x2="90" y2="${F3-100}" stroke="#555"/>`;
+ const fr=`<g id="wc"><rect x="284" y="${F1-92}" width="68" height="${92}" fill="#2a2621" stroke="#575046" stroke-width="1.2"/><rect x="284" y="${F1-92}" width="68" height="4" fill="#3a352d"/><text x="330" y="${F1-72}" font-size="6.4" fill="#7ab8d8" text-anchor="middle" letter-spacing="1.5">WC</text><rect x="292" y="${F1-58}" width="14" height="14" rx="1" fill="#cfd4d8" opacity=".5"/><rect x="312" y="${F1-40}" width="34" height="2" fill="#4a443a"/></g><g id="dr" style="transform-box:fill-box"><rect id="drp" x="286" y="${F1-44}" width="12" height="44" fill="#8a6a3c" stroke="#c4a876" stroke-width=".8"/><circle cx="295" cy="${F1-20}" r="1.2" fill="#e8c27a"/></g>`;
+ return `<svg class="of" id="of" viewBox="0 0 ${OW} ${OH}" preserveAspectRatio="xMidYMid meet" aria-label="Ofis"><g>${bg}</g><g id="ag"></g><g>${fr}</g></svg>`}
+function sprite(a){const c=COL[a.id]||'#c4a876',sk='#e9c9a6',hair=a.id==='nazorat'?'#8a5a2a':a.id==='smm'?'#5a2a3a':'#2b2118';
+ return `<g class="fg" data-id="${a.id}" onclick="agSheet('${a.id}')"><ellipse cx="0" cy="0.5" rx="7" ry="1.8" fill="#0007"/>
+<g class="fl"><g class="stn"><line class="l1" x1="0" y1="-13" x2="0" y2="0" stroke="#2b2a35" stroke-width="3.2" stroke-linecap="round"/><line class="l2" x1="0" y1="-13" x2="0" y2="0" stroke="#3a3946" stroke-width="3.2" stroke-linecap="round"/><rect x="-4.5" y="-27" width="9" height="15" rx="3.4" fill="${c}"/><line class="a1" x1="0" y1="-24" x2="1" y2="-14" stroke="${sk}" stroke-width="2.8" stroke-linecap="round"/></g>
+<g class="sit" display="none"><line x1="-1" y1="-12" x2="9" y2="-12" stroke="#2b2a35" stroke-width="3.4" stroke-linecap="round"/><line x1="9" y1="-12" x2="9" y2="-1" stroke="#3a3946" stroke-width="3.2" stroke-linecap="round"/><rect x="-5" y="-27" width="9.6" height="16" rx="3.4" fill="${c}"/><line class="b1" x1="0" y1="-23" x2="10" y2="-16" stroke="${sk}" stroke-width="2.8" stroke-linecap="round"/></g>
+<circle cx="0.6" cy="-32" r="5" fill="${sk}"/><path d="M-4.4 -32.5a5 5 0 0 1 9.8 -.6c-1.5 -2 -2.5 -2.6 -5 -2.6 -2 0 -3.6 1 -4.8 3.2z" fill="${hair}"/><circle cx="5.4" cy="-31" r="1" fill="${sk}"/><circle cx="2.8" cy="-32.6" r=".7" fill="#222"/>
+<g class="cp" display="none"><rect x="9" y="-20" width="3.4" height="4.2" rx=".7" fill="#f4efe6"/></g></g>
+<g class="bb" display="none"><circle cy="-45" r="5.5" fill="#e8c27a"/><text y="-42" font-size="8" font-weight="700" text-anchor="middle" fill="#151412">!</text></g>
+<text class="nm" y="-39" font-size="5" text-anchor="middle" fill="#d9d0bf" opacity=".9">${esc(a.nom.split(' ')[0])}</text><rect x="-10" y="-40" width="20" height="42" fill="transparent"/></g>`}
+function ofisJon(L){const ag=document.getElementById('ag');if(!ag)return;const G=graf(L.length),cnt=Math.min(L.length,10);
+ const ns='http://www.w3.org/2000/svg',drp=document.getElementById('drp');let dop=0;
+ const REST=['SF1','SF2','KT1','KT2','H1','H2','KM'];
+ const A=L.map((a,i)=>{const e=document.createElementNS(ns,'g');e.innerHTML=sprite(a);const el=e.firstChild;ag.appendChild(el);
+  const g={a,i,el,home:i<cnt?'S'+i:null,node:null,path:[],wait:2+Math.random()*6,ph:Math.random()*6,mode:'stand',cup:false,tgt:null,dir:1,x:0,y:0,
+   q:{st:el.querySelector('.stn'),si:el.querySelector('.sit'),cp:el.querySelector('.cp'),bb:el.querySelector('.bb'),fl:el.querySelector('.fl'),nm:el.querySelector('.nm'),l1:el.querySelector('.l1'),l2:el.querySelector('.l2'),a1:el.querySelector('.a1'),b1:el.querySelector('.b1')}};
+  let s0=g.home;if(a.h==='dam'||!s0)s0=REST[i%REST.length];g.node=s0;g.x=G.nodes[s0][0];g.y=G.nodes[s0][1];g.mode=/^(S|SF|KT)/.test(s0)?'sit':'stand';g.cup=(s0==='S'+i&&a.h==='ishlayapti');if(s0==='S'+i)g.wait=14+Math.random()*20;
   return g});
- const sofa=n=>n==='LS1'||n==='LS2'||n==='LS3';
+ const sitN=n=>/^(S\d|SF\d$|KT\d$)/.test(n);
  function git(g,dst){const p=yol(G,g.node,dst);if(!p.length)return false;g.path=p.map(id=>({id,xy:G.nodes[id]}));g.tgt=dst;return true}
+ const busy=(g,n)=>A.some(o=>o!==g&&(o.tgt===n||o.node===n&&!o.path.length));
  function decide(g){const a=g.a;
-  if(a.h!=='dam'){const home='S'+g.i;
-   if(g.node!==home){g.cup=false;if(git(g,home)){}return}
-   if(a.h==='ishlayapti'&&Math.random()<.5){git(g,'KS');g.after='kofe';return}
-   g.wait=18+Math.random()*25;return}
-  const r=Math.random(),busy=n=>A.some(o=>o!==g&&(o.tgt===n||o.node===n&&!o.path.length));
-  let dst;
-  if(r<.3){dst=['LS1','LS2','LS3'].find(n=>!busy(n))||'LT'}else if(r<.5)dst='WI';else if(r<.78)dst='KS';else dst=['H1','H2','H3','LT','KT'][Math.floor(Math.random()*5)];
-  if(dst===g.node){g.wait=3;return}
-  git(g,dst);g.after=dst}
- function arrive(g){g.node=g.tgt;const n=g.node;
-  if(n==='S'+g.i){g.mode='sit';g.wait=14+Math.random()*20;g.cup=false}
-  else if(sofa(n)){g.mode='sit';g.wait=9+Math.random()*8}
-  else if(n==='KS'){g.mode='stand';g.cup=true;g.wait=4.5+Math.random()*3}
+  if(g.home&&a.h!=='dam'){if(g.node!==g.home){g.cup=false;git(g,g.home);return}
+   if(a.h==='ishlayapti'&&Math.random()<.18){git(g,'KM');return}
+   g.wait=16+Math.random()*24;return}
+  if(g.home&&a.h==='dam'&&g.node===g.home){const o=['SF1','SF2','KT1','KT2','H1','H2','KM','WI'].filter(n=>!busy(g,n));git(g,o[Math.floor(Math.random()*o.length)]);return}
+  const o=['SF1','SF2','KT1','KT2','H1','H2','KM','WI','WI'].filter(n=>n!==g.node&&!busy(g,n));if(!o.length){g.wait=3;return}git(g,o[Math.floor(Math.random()*o.length)])}
+ function arrive(g){g.node=g.tgt;const n=g.node;g.tgt=null;
+  if(g.home&&n===g.home){g.mode='sit';g.dir=1;g.cup=g.a.h==='ishlayapti';g.wait=16+Math.random()*24}
+  else if(n==='SF1'||n==='SF2'){g.mode='sit';g.dir=1;g.wait=9+Math.random()*9}
+  else if(n==='KT1'){g.mode='sit';g.dir=1;g.cup=true;g.wait=8+Math.random()*6}
+  else if(n==='KT2'){g.mode='sit';g.dir=-1;g.cup=true;g.wait=8+Math.random()*6}
+  else if(n==='KM'){g.mode='stand';g.dir=-1;g.cup=true;g.wait=4+Math.random()*3}
   else if(n==='WI'){g.mode='stand';g.wait=5+Math.random()*4}
-  else{g.mode='stand';g.wait=3+Math.random()*4}}
+  else{g.mode='stand';g.dir=1;g.wait=3+Math.random()*5}}
  let last=performance.now(),k=0;
- function frame(t){OT=requestAnimationFrame(frame);if(!document.getElementById('sc'))return;const dt=Math.min(.1,(t-last)/1000);last=t;k++;
+ function frame(t){OT=requestAnimationFrame(frame);if(!document.getElementById('ag'))return;const dt=Math.min(.1,(t-last)/1000);last=t;k++;
   A.forEach(g=>{
-   if(g.path.length){const tg=g.path[0].xy,dx=tg[0]-g.x,dy=tg[1]-g.y,dd=Math.hypot(dx,dy),sp=2.6*dt;
-    if(dd<=sp){g.x=tg[0];g.y=tg[1];g.node=g.path[0].id;g.path.shift();if(!g.path.length)arrive(g)}else{g.x+=dx/dd*sp;g.y+=dy/dd*sp}
-    g.mode='walk';g.ph+=dt*10}
+   if(g.path.length){const tg=g.path[0].xy,dx=tg[0]-g.x,dy=tg[1]-g.y,dd=Math.hypot(dx,dy),sp=36*dt;
+    if(dd<=sp){g.x=tg[0];g.y=tg[1];g.node=g.path[0].id;g.path.shift();if(!g.path.length)arrive(g)}else{g.x+=dx/dd*sp;g.y+=dy/dd*sp;if(Math.abs(dx)>.5)g.dir=dx>0?1:-1}
+    g.mode='walk';g.ph+=dt*11}
    else{g.wait-=dt;if(g.wait<=0)decide(g)}
-   const sit=g.mode==='sit',walk=g.mode==='walk',z=sit?(sofa(g.node)?.3:.34):0,q=g.q;
-   const[X,Y]=P(g.x,g.y,z);g.el.setAttribute('transform',`translate(${X.toFixed(1)} ${Y.toFixed(1)}) scale(.86)`);g.el._d=g.x+g.y+.05;
-   const inWC=g.x<3.95&&g.y>7.6&&g.y<11.5;g.el.setAttribute('opacity',inWC?0:1);g.el.style.pointerEvents=inWC?'none':'auto';
+   const sit=g.mode==='sit',walk=g.mode==='walk',q=g.q;
+   g.el.setAttribute('transform',`translate(${g.x.toFixed(1)} ${g.y.toFixed(1)})`);
+   q.fl.setAttribute('transform',`scale(${g.dir} 1)`);
+   const inWC=g.x>296;g.el.setAttribute('opacity',inWC?0:1);g.el.style.pointerEvents=inWC?'none':'auto';
    q.st.setAttribute('display',sit?'none':'inline');q.si.setAttribute('display',sit?'inline':'none');
-   if(walk){const s=Math.sin(g.ph)*5;q.l1.setAttribute('x2',-2+s);q.l2.setAttribute('x2',2-s);q.a1.setAttribute('x2',-6-s*.5);q.a2.setAttribute('x2',6+s*.5)}
-   else if(!sit){q.l1.setAttribute('x2',-2);q.l2.setAttribute('x2',2);q.a1.setAttribute('x2',-6);q.a2.setAttribute('x2',6)}
-   if(sit){const w=(g.a.h==='ishlayapti'&&g.node==='S'+g.i);const s=w?Math.sin(t/90+g.i)*1.6:0;q.b1.setAttribute('y2',-5.5+s);q.b2.setAttribute('y2',-5.5-s);q.b1.setAttribute('x2',-3);q.b2.setAttribute('x2',3)}
-   g.nm=g.nm||g.el.querySelector('.nm');g.nm.setAttribute('display',sit?'none':'inline');q.cp.setAttribute('display',g.cup?'inline':'none');
-   const bw=g.a.h==='kutmoqda'||g.a.h==='xato';q.bb.setAttribute('display',bw&&sit&&g.node==='S'+g.i?'inline':'none');if(bw)q.bb.firstChild.nextSibling&&0;q.bb.firstElementChild.setAttribute('fill',g.a.h==='xato'?'#ff6b6b':'#e8c27a')});
-  dr.forEach(o=>{const near=A.some(g=>Math.hypot(g.x-o.cx,g.y-o.cy)<1.9&&g.el.getAttribute('opacity')!=='0');o.o+=((near?1:0)-o.o)*Math.min(1,dt*7);
-   const th=o.o*1.48,L2=o.yb-o.ya,ex=o.x+L2*Math.sin(th),ey=o.ya+L2*Math.cos(th);
-   o.el.setAttribute('points',pt([P(o.x,o.ya,0),P(ex,ey,0),P(ex,ey,o.h),P(o.x,o.ya,o.h)]));o.el._d=o.d+o.o*.8});
-  if(k%2===0){const ord=T.slice().sort((a,b)=>a._d-b._d);let ch=false;for(let i=0;i<ord.length;i++)if(sc.children[i]!==ord[i]){ch=true;break}if(ch)ord.forEach(e=>sc.appendChild(e))}}
+   if(walk){const s=Math.sin(g.ph)*5;q.l1.setAttribute('x2',s);q.l2.setAttribute('x2',-s);q.a1.setAttribute('x2',-s*.6)}
+   else if(!sit){q.l1.setAttribute('x2',0);q.l2.setAttribute('x2',0);q.a1.setAttribute('x2',1)}
+   if(sit){const w=(g.a.h==='ishlayapti'&&g.node===g.home);q.b1.setAttribute('y2',-16+(w?Math.sin(t/80+g.i)*1.8:0))}
+   q.cp.setAttribute('display',g.cup&&!(sit&&g.node===g.home)?'inline':'none');
+   q.nm.setAttribute('display',sit&&g.node===g.home?'none':'inline');
+   const bw=(g.a.h==='kutmoqda'||g.a.h==='xato')&&sit&&g.node===g.home;q.bb.setAttribute('display',bw?'inline':'none');q.bb.firstElementChild.setAttribute('fill',g.a.h==='xato'?'#ff6b6b':'#e8c27a')});
+  const near=A.some(g=>Math.abs(g.x-284)<22&&Math.abs(g.y-(F1+LN))<4);dop+=((near?1:0)-dop)*Math.min(1,dt*8);drp.setAttribute('transform',`translate(286 0) scale(${(1-dop*.8).toFixed(2)} 1) translate(-286 0)`);
+  if(k%3===0){const ord=[...ag.children].sort((a,b)=>(+a.getAttribute('transform').split(' ')[1].replace(')',''))-(+b.getAttribute('transform').split(' ')[1].replace(')','')));let ch=false;for(let i=0;i<ord.length;i++)if(ag.children[i]!==ord[i]){ch=true;break}if(ch)ord.forEach(e=>ag.appendChild(e))}}
  OT=requestAnimationFrame(frame)}
 function agSheet(id){const a=((AG&&AG.agentlar)||[]).find(x=>x.id===id);if(!a)return;const o=document.getElementById('sh');if(o)o.remove();
  const e=document.createElement('div');e.id='sh';e.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start"><div><b style="font-size:17px;font-family:'Playfair Display',Georgia,serif">${esc(a.nom)}</b><div class="mut">${esc(a.rol)}</div></div><button class="lg" onclick="document.getElementById('sh').remove()">Yopish</button></div><div style="margin:10px 0;font-size:14px"><span class="dot ${a.h}"></span>${HL[a.h]||''} · ${esc(a.i||'')}</div><div>${acts(a.id)}${a.kutish?'':`<button class="chip" onclick="cur='${a.id}';go('chat')">Chat</button>`}</div>`;document.body.appendChild(e)}
