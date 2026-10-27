@@ -13,16 +13,30 @@ const adminId = (env) => String(env.ADMIN_TELEGRAM_IDS || '').split(',')[0].trim
 const LOGO_URL = 'https://visartdesign.uz/assets/kanal-logo.png';
 
 const gj = async (url, init) => { const r = await fetch(url, { ...init, signal: AbortSignal.timeout(12000) }); const d = await r.json().catch(() => ({})); return d; };
+async function ytToken(env) {
+  const t = await gj('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: env.YOUTUBE_CLIENT_ID, client_secret: env.YOUTUBE_CLIENT_SECRET, refresh_token: env.YOUTUBE_REFRESH_TOKEN, grant_type: 'refresh_token' }) });
+  return t.access_token || null;
+}
+const YT = 'https://www.googleapis.com/youtube/v3';
 async function platformalar(env) {
   const T = env.INSTAGRAM_ACCESS_TOKEN, o = {};
   const ig = env.INSTAGRAM_BUSINESS_ACCOUNT_ID && T ? gj(`https://graph.facebook.com/v21.0/${env.INSTAGRAM_BUSINESS_ACCOUNT_ID}?fields=username,name,biography,followers_count,media_count,website&access_token=${T}`).then((d) => d.error ? { xato: d.error.message } : { username: d.username, nom: d.name, bio: d.biography || '', obunachi: d.followers_count, postlar: d.media_count, sayt: d.website || '' }).catch((e) => ({ xato: String(e.message || e) })) : Promise.resolve(null);
   const fb = env.FACEBOOK_PAGE_ID && T ? gj(`https://graph.facebook.com/v21.0/${env.FACEBOOK_PAGE_ID}?fields=name,about,description,fan_count,website,category&access_token=${T}`).then((d) => d.error ? { xato: d.error.message } : { nom: d.name, about: d.about || '', tavsif: d.description || '', obunachi: d.fan_count, sayt: d.website || '', turkum: d.category }).catch((e) => ({ xato: String(e.message || e) })) : Promise.resolve(null);
   const yt = env.YOUTUBE_REFRESH_TOKEN ? (async () => {
-    const t = await gj('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: env.YOUTUBE_CLIENT_ID, client_secret: env.YOUTUBE_CLIENT_SECRET, refresh_token: env.YOUTUBE_REFRESH_TOKEN, grant_type: 'refresh_token' }) });
-    if (!t.access_token) return { xato: 'token olinmadi' };
-    const d = await gj('https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', { headers: { Authorization: `Bearer ${t.access_token}` } });
-    if (d.error) return { xato: 'o\'qish ruxsati yo\'q (' + (d.error.message || '').slice(0, 60) + ')' };
-    const c = d.items && d.items[0]; return c ? { nom: c.snippet.title, tavsif: c.snippet.description || '', obunachi: c.statistics.subscriberCount, videolar: c.statistics.videoCount } : { xato: 'kanal topilmadi' };
+    const tk = await ytToken(env); if (!tk) return { xato: 'token olinmadi' };
+    const H = { Authorization: `Bearer ${tk}` };
+    const d = await gj(`${YT}/channels?part=snippet,statistics,brandingSettings,contentDetails&mine=true`, { headers: H });
+    if (d.error) return { xato: "o'qish ruxsati yo'q (" + (d.error.message || '').slice(0, 60) + ')' };
+    const c = d.items && d.items[0]; if (!c) return { xato: 'kanal topilmadi' };
+    let videolar = [];
+    const up = c.contentDetails && c.contentDetails.relatedPlaylists && c.contentDetails.relatedPlaylists.uploads;
+    if (up) {
+      const pl = await gj(`${YT}/playlistItems?part=contentDetails&maxResults=10&playlistId=${up}`, { headers: H });
+      const ids = ((pl.items) || []).map((x) => x.contentDetails.videoId).join(',');
+      if (ids) { const v = await gj(`${YT}/videos?part=snippet,statistics&id=${ids}`, { headers: H }); videolar = ((v.items) || []).map((x) => ({ id: x.id, title: x.snippet.title, tavsif: (x.snippet.description || '').slice(0, 250), tags: (x.snippet.tags || []).slice(0, 12), korish: x.statistics && x.statistics.viewCount })); }
+    }
+    const br = (c.brandingSettings && c.brandingSettings.channel) || {};
+    return { nom: c.snippet.title, tavsif: c.snippet.description || '', kalitlar: br.keywords || '', banner: !!(c.brandingSettings && c.brandingSettings.image && c.brandingSettings.image.bannerExternalUrl), obunachi: c.statistics.subscriberCount, videolar_soni: c.statistics.videoCount, videolar };
   })().catch((e) => ({ xato: String(e.message || e) })) : Promise.resolve(null);
   [o.ig, o.fb, o.yt] = await Promise.all([ig, fb, yt]); return o;
 }
@@ -54,8 +68,8 @@ Telegram kanal holati:
 Instagram: ${JSON.stringify(h.ig || "ulanmagan")}
 Facebook: ${JSON.stringify(h.fb || 'ulanmagan')}
 YouTube: ${JSON.stringify(h.yt || 'ulanmagan')}
-Qoidalar: faqat berilgan faktlarga tayaning; raqam, mukofot, tajriba yillari, manzil o'ylab topmang. Tavsif ≤255 belgi, o'zbekcha (lotin) + qisqa ruscha satr, kalit so'zlar (dizayn interyer Toshkent, ta'mirlash), sayt va bot havolasi bilan. Pin post: qisqa, xizmatlar, murojaat (sayt + @visart_design_bot), HTML emas oddiy matn, ≤600 belgi. Instagram bio, Facebook about va YouTube tavsifi ham shu qoidalarda; ulanmagan yoki xato platformani null qoldiring. Agar hozirgi tavsif/pin allaqachon yaxshi bo'lsa, o'sha maydonni null qoldiring. Kanal nomini faqat jiddiy sabab bo'lsa taklif qiling (aks holda null).
-FAQAT JSON: {"baho":1-10,"muammolar":["..."],"tavsif":"...|null","pin":"...|null","nom":"...|null","logo":true|false,"ig_bio":"≤150 belgi|null","fb_about":"≤255 belgi|null","yt_tavsif":"...|null","haftalik":["kontent/SEO bo'yicha 2-4 aniq maslahat"]}`;
+Qoidalar: faqat berilgan faktlarga tayaning; raqam, mukofot, tajriba yillari, manzil o'ylab topmang. Tavsif ≤255 belgi, o'zbekcha (lotin) + qisqa ruscha satr, kalit so'zlar (dizayn interyer Toshkent, ta'mirlash), sayt va bot havolasi bilan. Pin post: qisqa, xizmatlar, murojaat (sayt + @visart_design_bot), HTML emas oddiy matn, ≤600 belgi. Instagram bio, Facebook about va YouTube tavsifi ham shu qoidalarda; ulanmagan yoki xato platformani null qoldiring. YouTube: faqat haqiqatan zaif (sarlavha/tavsif/teglar SEO jihatdan yomon) videolar uchun, eng ko'pi 5 ta, yt_video ni to'ldiring — mazmunni o'zgartirmang, faqat sarlavha/tavsif/teglarni SEO ga moslang; yt_banner faqat banner yo'q bo'lsa true. Agar hozirgi tavsif/pin allaqachon yaxshi bo'lsa, o'sha maydonni null qoldiring. Kanal nomini faqat jiddiy sabab bo'lsa taklif qiling (aks holda null).
+FAQAT JSON: {"baho":1-10,"muammolar":["..."],"tavsif":"...|null","pin":"...|null","nom":"...|null","logo":true|false,"ig_bio":"≤150 belgi|null","fb_about":"≤255 belgi|null","yt_tavsif":"...|null","yt_kalit":"vergul bilan 8-12 kalit so'z|null","yt_banner":true|false,"yt_video":[{"id":"...","title":"≤70 belgi","description":"...","tags":["..."]}],"haftalik":["kontent/SEO bo'yicha 2-4 aniq maslahat"]}`;
   const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(50000) });
   if (!r.ok) throw new Error(`claude ${r.status}`);
   const d = await r.json(); const raw = ((d.content || []).find((x) => x.type === 'text') || {}).text || '';
@@ -72,8 +86,8 @@ export async function kanalTekshir(env, qolda = false) {
   const h = await kanalHolat(env);
   if (h.xato) { await tg(env, 'sendMessage', { chat_id: admin, text: `📣 Kanal agenti: ${h.xato}. Botni kanalga ADMIN qilib qo'shing (Xabar yuborish, Pin, Kanal ma'lumotini o'zgartirish huquqlari bilan).` }); return; }
   const j = await kengash(env, h);
-  const t = { tavsif: bosh(j.tavsif) && String(j.tavsif).slice(0, 255), pin: bosh(j.pin) && String(j.pin).slice(0, 900), nom: bosh(j.nom) && String(j.nom).slice(0, 128), logo: !!j.logo, ig_bio: bosh(j.ig_bio) && String(j.ig_bio).slice(0, 150), fb_about: bosh(j.fb_about) && String(j.fb_about).slice(0, 255), yt_tavsif: bosh(j.yt_tavsif) && String(j.yt_tavsif).slice(0, 1000) };
-  const bor = t.tavsif || t.pin || t.nom || t.logo || t.ig_bio || t.fb_about || t.yt_tavsif;
+  const t = { tavsif: bosh(j.tavsif) && String(j.tavsif).slice(0, 255), pin: bosh(j.pin) && String(j.pin).slice(0, 900), nom: bosh(j.nom) && String(j.nom).slice(0, 128), logo: !!j.logo, ig_bio: bosh(j.ig_bio) && String(j.ig_bio).slice(0, 150), fb_about: bosh(j.fb_about) && String(j.fb_about).slice(0, 255), yt_tavsif: bosh(j.yt_tavsif) && String(j.yt_tavsif).slice(0, 1000), yt_kalit: bosh(j.yt_kalit) && String(j.yt_kalit).slice(0, 400), yt_banner: !!j.yt_banner && !(h.yt && h.yt.banner), yt_video: (Array.isArray(j.yt_video) ? j.yt_video : []).filter((v) => v && /^[\w-]{11}$/.test(v.id || '') && v.title).slice(0, 5).map((v) => ({ id: v.id, title: String(v.title).slice(0, 100), description: String(v.description || '').slice(0, 4000), tags: (v.tags || []).slice(0, 15).map((x) => String(x).slice(0, 30)) })) };
+  const bor = t.tavsif || t.pin || t.nom || t.logo || t.ig_bio || t.fb_about || t.yt_tavsif || t.yt_kalit || t.yt_banner || (t.yt_video && t.yt_video.length);
   const baho = Number(j.baho) || 0;
   const maslahat = (j.haftalik || []).slice(0, 4).map((x) => '• ' + x).join('\n');
   const muam = (j.muammolar || []).slice(0, 5).map((x) => '• ' + x).join('\n');
@@ -89,8 +103,43 @@ export async function kanalTekshir(env, qolda = false) {
   if (t.ig_bio) s += `\n\n📷 Instagram bio:\n${t.ig_bio}`;
   if (t.fb_about) s += `\n\n📘 Facebook haqida:\n${t.fb_about}`;
   if (t.yt_tavsif) s += `\n\n▶️ YouTube tavsif:\n${t.yt_tavsif}`;
+  if (t.yt_kalit) s += `\n▶️ YouTube kalit so'zlar: ${t.yt_kalit}`;
+  if (t.yt_banner) s += `\n▶️ YouTube banner o'rnatiladi`;
+  if (t.yt_video && t.yt_video.length) s += `\n▶️ ${t.yt_video.length} ta video SEO: ` + t.yt_video.map((v) => v.title).join(' | ');
   if (maslahat) s += `\n\nMaslahat:\n${maslahat}`;
   await tg(env, 'sendMessage', { chat_id: admin, text: s.slice(0, 3900), reply_markup: { inline_keyboard: [[{ text: '✅ Qo\'llash', callback_data: `kn:ok:${id}` }, { text: '❌ Rad', callback_data: `kn:no:${id}` }]] } });
+}
+
+async function ytQollash(env, t) {
+  const tk = await ytToken(env); if (!tk) return ['❌ YouTube: token olinmadi'];
+  const H = { Authorization: `Bearer ${tk}` }, J = { ...H, 'Content-Type': 'application/json' }, out = [];
+  const ch = await gj(`${YT}/channels?part=brandingSettings&mine=true`, { headers: H });
+  const c = ch.items && ch.items[0]; if (!c) return ['❌ YouTube: kanal topilmadi'];
+  const bs = c.brandingSettings || {}; bs.channel = bs.channel || {}; bs.image = bs.image || {};
+  if (t.yt_tavsif) bs.channel.description = t.yt_tavsif;
+  if (t.yt_kalit) bs.channel.keywords = t.yt_kalit.split(',').map((x) => '"' + x.trim().replace(/"/g, '') + '"').join(' ');
+  if (t.yt_banner) {
+    try {
+      const img = await fetch('https://visartdesign.uz/assets/yt-banner.png', { signal: AbortSignal.timeout(15000) });
+      const up = await gj('https://www.googleapis.com/upload/youtube/v3/channelBanners/insert?uploadType=media', { method: 'POST', headers: { ...H, 'Content-Type': 'image/png' }, body: await img.arrayBuffer() });
+      if (up.url) bs.image.bannerExternalUrl = up.url; else out.push('❌ Banner: ' + ((up.error && up.error.message) || 'yuklanmadi').slice(0, 80));
+    } catch (e) { out.push('❌ Banner: ' + String((e && e.message) || e).slice(0, 80)); }
+  }
+  if (t.yt_tavsif || t.yt_kalit || bs.image.bannerExternalUrl) {
+    const d = await gj(`${YT}/channels?part=brandingSettings`, { method: 'PUT', headers: J, body: JSON.stringify({ id: c.id, brandingSettings: bs }) });
+    out.push(d.error ? '❌ YouTube kanal: ' + (d.error.message || '').slice(0, 100) : `✅ YouTube kanal (${[t.yt_tavsif && 'tavsif', t.yt_kalit && 'kalit', t.yt_banner && 'banner'].filter(Boolean).join(', ')})`);
+  }
+  let ok = 0, xs = [];
+  for (const v of t.yt_video || []) {
+    const cur = await gj(`${YT}/videos?part=snippet&id=${v.id}`, { headers: H }); const sn = cur.items && cur.items[0] && cur.items[0].snippet;
+    if (!sn) { xs.push(v.id); continue; }
+    const body = { id: v.id, snippet: { title: v.title, description: v.description || sn.description, tags: v.tags && v.tags.length ? v.tags : sn.tags, categoryId: sn.categoryId, defaultLanguage: sn.defaultLanguage } };
+    const d = await gj(`${YT}/videos?part=snippet`, { method: 'PUT', headers: J, body: JSON.stringify(body) });
+    if (d.error) xs.push(v.id); else ok++;
+  }
+  if (t.yt_video && t.yt_video.length) out.push(`${xs.length ? '⚠️' : '✅'} YouTube video SEO: ${ok} ta yangilandi${xs.length ? ', xato: ' + xs.length : ''}`);
+  out.push("ℹ️ YouTube kanal rasmi (avatar) API orqali o'zgarmaydi: Studio → Sozlash → Brending, fayl: visartdesign.uz/assets/kanal-logo.png");
+  return out;
 }
 
 export async function kanalQollash(env, id) {
@@ -117,7 +166,7 @@ export async function kanalQollash(env, id) {
     out.push(`${d.success ? '✅' : '❌'} Facebook haqida${d.success ? '' : ': ' + ((d.error && d.error.message) || 'xato').slice(0, 100) + " — qo'lda qo'ying:\n" + t.fb_about}`);
   }
   if (t.ig_bio) out.push("📷 Instagram bio (API orqali o'zgarmaydi — profilni tahrirlashda qo'ying):\n" + t.ig_bio);
-  if (t.yt_tavsif) out.push("▶️ YouTube tavsif (YouTube Studio → Sozlash → Asosiy ma'lumot):\n" + t.yt_tavsif);
+  if (t.yt_tavsif || t.yt_kalit || t.yt_banner || (t.yt_video && t.yt_video.length)) out.push(...await ytQollash(env, t).catch((e) => ['❌ YouTube: ' + String((e && e.message) || e).slice(0, 100)]));
   await q(env, `nashr_navbati?id=eq.${Number(id)}`, { method: 'PATCH', body: JSON.stringify({ holat: 'qollandi' }) }).catch(() => {});
   return '📣 SMM:\n' + out.join('\n');
 }
