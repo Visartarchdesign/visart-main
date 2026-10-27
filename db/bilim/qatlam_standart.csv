@@ -12,7 +12,7 @@ GP_ASOS,GP_KVARTAL,ГП кварталы,Kvartal chegarasi,1,Continuous,loyiha
 GP_ASOS,GP_CHEGARA_LOYIHA,Граница проектируемая,Loyiha hududi chegarasi,7,Continuous,loyiha
 GP_ASOS,GP_CHEGARA_MAVJUD,Граница существующая,Mavjud hudud chegarasi,8,Continuous,loyiha
 QURILISH,BINO_KONTUR,10-здания,Bino konturi,7,Continuous,loyiha
-QURILISH,MAYDONCHA,18-площадки,Maydonchalar (bolalar, sport, avtoturargoh),3,Continuous,loyiha
+QURILISH,MAYDONCHA,18-площадки,Maydonchalar: bolalar - sport - avtoturargoh,3,Continuous,loyiha
 QURILISH,HUDUD_BIZNES,деловая зона,Biznes/ish zonasi,4,Continuous,loyiha
 QURILISH,HUDUD_BOG,территория сада,Bog' (sad) hududi,3,Continuous,loyiha
 QURILISH,TOLDIRISH_GARAJ,Заливка гаражи,Garajlar shtrixi (toldirish),8,Continuous,loyiha
@@ -27,7 +27,7 @@ MUHANDISLIK,MUH_UMUMIY,ГП инженерия,Muhandislik tarmoqlari (umumiy),5
 MUHANDISLIK,MUH_TP_YOZUV,ИНЖ Подписи к ТП,TP / ЦТП / KNS yozuvlari,2,Continuous,loyiha
 CHEKLOV,CHEKLOV_SANITAR,Зона санитарная,Sanitar himoya zonasi,30,Dashed,loyiha
 HUJJAT,HUJ_EKSPLIKATSIYA,ЭСПЛИКАЦИЯ,Eksplikatsiya (bino/obyekt raqamlari),2,Continuous,hujjat
-HUJ,HUJ_MAYDON_JADVAL,ПЛОЩАДИ,Maydon yozuvlari,2,Continuous,hujjat
-HUJ,HUJ_KOORDINATA,КООРДИНАТЫ,Koordinatalar,2,Continuous,hujjat
-HUJ,HUJ_RAMKA,РАМКА,Chizma ramkasi,7,Continuous,hujjat
-HUJ,HUJ_KOCHA_NOM,с-Названия улиц,Ko'cha nomlari,2,Continuous,hujjat
+HUJJAT,HUJ_MAYDON_JADVAL,ПЛОЩАДИ,Maydon yozuvlari,2,Continuous,hujjat
+HUJJAT,HUJ_KOORDINATA,КООРДИНАТЫ,Koordinatalar,2,Continuous,hujjat
+HUJJAT,HUJ_RAMKA,РАМКА,Chizma ramkasi,7,Continuous,hujjat
+HUJJAT,HUJ_KOCHA_NOM,с-Названия улиц,Ko'cha nomlari,2,Continuous,hujjat
