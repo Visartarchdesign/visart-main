@@ -108,13 +108,13 @@ export async function loyihaTaklif({ env: E, adminChatId }) {
     const files = [];
     for (let i = 0; i < baho.yaxshi.length; i++) { const f = path.join(tmp, `r${i + 1}.jpg`); await sharp(baho.yaxshi[i].p).rotate().resize({ width: 2400, withoutEnlargement: true }).jpeg({ quality: 88 }).toFile(f); files.push(f); }
     const fd = new FormData(); fd.append('chat_id', String(chatId));
-    fd.append('media', JSON.stringify(files.map((f, i) => ({ type: 'document', media: `attach://f${i}`, ...(i === 0 ? { caption: `📁 ${c.nom} (${c.yil})` } : {}) }))));
+    fd.append('media', JSON.stringify(files.map((f, i) => ({ type: 'document', media: `attach://f${i}`, caption: i === 0 ? `1 · 📁 ${c.nom} (${c.yil})` : String(i + 1) }))));
     files.forEach((f, i) => fd.append(`f${i}`, new Blob([fs.readFileSync(f)]), `r${i + 1}.jpg`));
     const r = await tg(E, 'sendMediaGroup', null, fd);
     if (!r || !r.ok) throw new Error('Telegram albom: ' + JSON.stringify(r).slice(0, 120));
     const fids = r.result.map((m) => m.document.file_id);
     await sb(E, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId: Number(chatId), step: 'taklif', n: { sayt: true }, rasmlar: fids, q: 0, j: {}, papka: c.nom } }]) });
-    await tg(E, 'sendMessage', { chat_id: chatId, text: `📁 <b>Bugungi taklif</b>: ${c.nom} (${c.yil})\n🤖 AI ${baho.korildi} ta rasmni ko'rib, <b>${fids.length} ta</b> sifatlisini (8+/10) tanladi.${baho.xulosa ? '\n💬 ' + baho.xulosa : ''}${korilgan.length ? `\n(Rad etilgan papkalar: ${korilgan.join('; ')})` : ''}\n\nShuni saytga (portfolio) joylaymi? Tasdiqlasangiz, bir nechta savol beraman va premium SEO bilan avtomatik joylayman.`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Ha, joyla', callback_data: 'sg:tk:ha' }], [{ text: '🔄 Boshqasini top', callback_data: 'sg:tk:boshqa' }, { text: "🚫 Bugun yo'q", callback_data: 'sg:tk:yoq' }]] } });
+    await tg(E, 'sendMessage', { chat_id: chatId, text: `📁 <b>Bugungi taklif</b>: ${c.nom} (${c.yil})\n🤖 AI ${baho.korildi} ta rasmni ko'rib, <b>${fids.length} ta</b> sifatlisini (8+/10) tanladi.${baho.xulosa ? '\n💬 ' + baho.xulosa : ''}${korilgan.length ? `\n(Rad etilgan papkalar: ${korilgan.join('; ')})` : ''}\n\nRasmlar raqamlangan. Keraksizini yozing (masalan: «2 va 5-rasm bu ishga aloqasi yo'q», «3-rasmni muqova qil»).\n\nShuni saytga (portfolio) joylaymi? Tasdiqlasangiz, bir nechta savol beraman va premium SEO bilan avtomatik joylayman.`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: '✅ Ha, joyla', callback_data: 'sg:tk:ha' }], [{ text: '🔄 Boshqasini top', callback_data: 'sg:tk:boshqa' }, { text: "🚫 Bugun yo'q", callback_data: 'sg:tk:yoq' }]] } });
   } catch (e) {
     await tg(E, 'sendMessage', { chat_id: chatId, text: `⚠️ Kunlik taklif xatosi: ${String((e && e.message) || e).slice(0, 200)}` });
   } finally { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* vaqtinchalik */ } }

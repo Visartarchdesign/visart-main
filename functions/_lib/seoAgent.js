@@ -173,7 +173,7 @@ async function yarat(env, id, p, tuzat) {
     const blocks = [];
     for (const i of idx) { const u8 = await tgFayl(env, p.rasmlar[i]); const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
     const j = p.j;
-    const malumot = `kategoriya: ${j.category}; holat: ${j.status === 'done' ? 'qurilgan/topshirilgan' : 'faqat 3D loyiha'}; joy: ${j.joy || '-'}; maydon: ${j.maydon || '-'} m2; yil: ${j.yil || '-'}; muddat: ${j.muddat || '-'}; uslub: ${j.uslub || '-'}; mijoz vazifasi/yechim: ${j.vazifa || '-'}`;
+    const malumot = `kategoriya: ${j.category}; holat: ${j.status === 'done' ? 'qurilgan/topshirilgan' : 'faqat 3D loyiha'}; joy: ${j.joy || '-'}; maydon: ${j.maydon || '-'} m2; yil: ${j.yil || '-'}; muddat: ${j.muddat || '-'}; uslub: ${j.uslub || '-'}; mijoz vazifasi/yechim: ${j.vazifa || '-'}${p.eslatma ? '; EGASI ESLATMASI (albatta hisobga ol): ' + p.eslatma : ''}`;
     const prompt = (tuzat ? `Avvalgi matn:\n${JSON.stringify(p.matn)}\n\nEgasi tuzatish so'radi: "${tuzat}". Faqat shuni hisobga olib, butun JSON'ni qaytar.\n\n` : '') + `Siz Visart Design (Toshkent) saytiga yangi loyiha uchun SEO matn yozuvchisiz. Ilova qilingan rasmlar shu loyihaniki (jami ${n} ta, ko'rsatilgani ${idx.length} ta).\nEgasi bergan ma'lumot: ${malumot}\n\n${QOIDA}\n\nFAQAT JSON: {"title_uz":"","title_ru":"","type_uz":"<2-4 so'z, masalan 'Kvartira interyeri'>","type_ru":"","desc_uz":"","desc_ru":"","task_uz":"<mijoz vazifasi 1-2 gap yoki bo'sh>","task_ru":"","style_uz":"","style_ru":"","location_uz":"","location_ru":"","duration_uz":"","duration_ru":"","alts":[{"uz":"","ru":""}]}  — alts uzunligi aniq ${n} ta bo'lsin.`;
     const out = await claude(env, [...blocks, { type: 'text', text: prompt }], 4000);
     if (!out.title_uz || !out.desc_uz) throw new Error("AI to'liq matn bermadi");
@@ -198,11 +198,35 @@ async function slot(env) {
 }
 const tosh = (d) => new Date(d.getTime() + 5 * 3600e3).toISOString().replace('T', ' ').slice(0, 16);
 
+// Rasmlar haqida erkin buyruq ("2-rasm bu ishga aloqasi yo'q", "oxirgisini olib tashla", "3-rasmni muqova qil")
+const RASM_GAP = /(rasm|surat|kadr|foto|render|muqova|cover|\d\s*-?\s*(chi|nchi|inchi|ta)\b|birinchi|ikkinchi|uchinchi|to'rtinchi|tortinchi|beshinchi|oxirgi|aloqasi yo|olib tashla|o'chir)/i;
+async function rasmBuyruq(env, d, t) {
+  const p = d.payload, n = p.rasmlar.length;
+  let o;
+  try {
+    o = await claude(env, [{ type: 'text', text: `Egasi saytga joylanadigan loyiha uchun ${n} ta rasm yubordi (raqamlar 1..${n}, yuborilgan tartibda). Egasining gapi: "${t}"\nUni rasmlar ustidagi buyruq sifatida tushun. Mumkin amallar: {"op":"remove","idx":[raqamlar]} (rasm bu loyihaga aloqasi yo'q yoki kerak emas), {"op":"cover","idx":raqam} (muqova/birinchi qilish), {"op":"move","from":a,"to":b}, {"op":"note","text":"..."} (matn yozishda hisobga olinadigan qisqa eslatma, masalan "2-rasm — boshqa xona" yoki "bu mehmonxona emas, turar joy"). Faqat aniq aytilganini bajar. Noaniq bo'lsa ops bo'sh, javobda BITTA aniqlashtiruvchi savol ber. Raqamlar 1..${n} oralig'ida bo'lsin, hammasini o'chirma (kamida 1 ta qolsin).\nFAQAT JSON: {"ops":[],"javob":"o'zbekcha 1 gap: nima qilding"}` }], 700);
+  } catch (e) { await say(env, p.chatId, "⚠️ Buyruqni tushunolmadim, qayta yozing (masalan: «2-rasm kerak emas»)."); return; }
+  let arr = p.rasmlar.map((f, i) => ({ f, i: i + 1 })), keyin = false;
+  for (const x of (o.ops || []).slice(0, 8)) {
+    if (x.op === 'remove') { const set = new Set((x.idx || []).map(Number)); if (arr.length - arr.filter((a) => set.has(a.i)).length >= 1) { arr = arr.filter((a) => !set.has(a.i)); keyin = true; } }
+    else if (x.op === 'cover') { const k = arr.findIndex((a) => a.i === Number(x.idx)); if (k > 0) { arr.unshift(...arr.splice(k, 1)); keyin = true; } }
+    else if (x.op === 'move') { const a = arr.findIndex((q) => q.i === Number(x.from)), b = Math.max(0, Math.min(arr.length - 1, Number(x.to) - 1)); if (a >= 0 && !isNaN(b)) { arr.splice(b, 0, ...arr.splice(a, 1)); keyin = true; } }
+    else if (x.op === 'note' && x.text) p.eslatma = ((p.eslatma ? p.eslatma + '; ' : '') + String(x.text).slice(0, 200)).slice(0, 500);
+  }
+  p.rasmlar = arr.map((a) => a.f);
+  const matnQayta = p.step === 'korish' && (keyin || (o.ops || []).some((x) => x.op === 'note'));
+  if (matnQayta) p.step = 'yozish';
+  await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) });
+  await say(env, p.chatId, `✅ ${esc(String(o.javob || 'Tayyor').slice(0, 200))}\n🖼 Qoldi: <b>${p.rasmlar.length}</b> ta rasm${matnQayta ? '\n⏳ Matn qayta yozilmoqda…' : ''}`);
+  if (matnQayta) await yarat(env, d.id, p);
+}
+
 export async function seoMatn(env, msg) {
   const chatId = msg.chat.id;
   const r = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_yig&payload->>chatId=eq.${chatId}&order=id.desc&limit=1&select=id,payload`).catch(() => []);
   const d = r && r[0]; if (!d) return false;
   const p = d.payload, t = (msg.text || '').trim(); if (!t) return false;
+  if (['taklif', 'savol', 'korish'].includes(p.step) && (p.rasmlar || []).length && RASM_GAP.test(t) && !(p.step === 'savol' && QS[p.q].k === 'maydon' && /^\d+$/.test(t))) { await rasmBuyruq(env, d, t); return true; }
   if (p.step === 'savol') { const q = QS[p.q]; if (!q.text) return false; await javobYoz(env, d, q.k === 'maydon' ? (t.replace(/[^\d]/g, '') || t) : t); return true; }
   if (p.step === 'tuzat') { p.step = 'yozish'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) }); await say(env, chatId, '⏳ Tuzatilmoqda…'); await yarat(env, d.id, p, t); return true; }
   return false;
