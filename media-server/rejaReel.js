@@ -46,13 +46,24 @@ export async function rejaSegment(q, tmp, out) {
       hl = `<g opacity="${a}"><rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="14" fill="${GOLD}" fill-opacity="${0.04 + 0.03 * pulse}" stroke="${GOLD}" stroke-width="5"/>
         <rect x="${x0}" y="${Math.max(6, y0 - 64)}" width="${w}" height="50" rx="12" fill="#d9b365"/><text x="${x0 + w / 2}" y="${Math.max(6, y0 - 64) + 34}" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="25" font-weight="700" fill="#2a1d08" letter-spacing="1.5">${esc((q.zonaNom || '').toUpperCase())}</text></g>`;
     }
+    let bl = '';
+    (q.belgilar || []).forEach((o, j) => {
+      const pr = ease(clamp((p - (0.42 + j * 0.16)) / 0.22)); if (pr <= 0) return;
+      const X = (f) => (px0 + f * PW - left) * s, Y = (f) => (py0 + f * PH - top) * s;
+      const ax = X(o.a[0]), ay = Y(o.a[1]), bx = X(o.b[0]), by = Y(o.b[1]);
+      const ex = ax + (bx - ax) * pr, ey = ay + (by - ay) * pr, dx = bx - ax, dy = by - ay, Ln = Math.hypot(dx, dy) || 1, nx = -dy / Ln, ny = dx / Ln;
+      const cap = (x, y) => `<line x1="${x - nx * 26}" y1="${y - ny * 26}" x2="${x + nx * 26}" y2="${y + ny * 26}" stroke="#0c0a08" stroke-width="14" stroke-linecap="round"/><line x1="${x - nx * 26}" y1="${y - ny * 26}" x2="${x + nx * 26}" y2="${y + ny * 26}" stroke="${GOLD}" stroke-width="7" stroke-linecap="round"/>`;
+      const lb = ease(clamp((pr - 0.6) / 0.4)), txt = esc(String(o.yozuv || '').slice(0, 22)), cw = 50 + txt.length * 21, mx = (ax + bx) / 2 + nx * 64, my = (ay + by) / 2 + ny * 64;
+      bl += `<g><line x1="${ax}" y1="${ay}" x2="${ex}" y2="${ey}" stroke="#0c0a08" stroke-width="14" stroke-linecap="round"/><line x1="${ax}" y1="${ay}" x2="${ex}" y2="${ey}" stroke="${GOLD}" stroke-width="7" stroke-linecap="round"/>${cap(ax, ay)}${pr > 0.97 ? cap(bx, by) : ''}` +
+        (txt ? `<g opacity="${lb}" transform="translate(0,${(1 - lb) * 10})"><rect x="${mx - cw / 2}" y="${my - 30}" width="${cw}" height="60" rx="14" fill="#d9b365"/><text x="${mx}" y="${my + 11}" text-anchor="middle" font-family="Liberation Sans, Arial, sans-serif" font-size="32" font-weight="800" fill="#2a1d08">${txt}</text></g>` : '') + '</g>';
+    });
     const a = ease(clamp(p / 0.12)), sub = ease(clamp((p - 0.15) / 0.15));
     const ust = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
       ${LOGO}
       <g opacity="${a}" transform="translate(0,${(1 - a) * -16})"><circle cx="${W / 2}" cy="170" r="36" fill="${GOLD}"/><text x="${W / 2}" y="184" text-anchor="middle" font-family="${SERIF}" font-size="40" font-weight="700" fill="#2a1d08">${q.n}</text>
       <text x="${W / 2}" y="300" text-anchor="middle" font-family="${SERIF}" font-size="92" font-weight="700" fill="${GOLD}">${esc(q.sarlavha)}</text></g>
       <text x="${W / 2}" y="372" opacity="${sub}" text-anchor="middle" font-family="${SERIF}" font-style="italic" font-size="40" fill="${CREAM}">${esc(q.tag)}</text>
-      <g transform="translate(0,${IT})">${hl}</g>${dots}</svg>`);
+      <g transform="translate(0,${IT})">${hl}${bl}</g>${dots}</svg>`);
     await sharp(baza).composite([{ input: rasm, left: 0, top: IT }, { input: ust, left: 0, top: 0 }]).jpeg({ quality: 90 }).toFile(path.join(tmp, `f${String(k).padStart(4, '0')}.jpg`));
   };
   for (let k = 0; k < n; k += 4) await Promise.all([0, 1, 2, 3].filter((d) => k + d < n).map((d) => kadr(k + d)));

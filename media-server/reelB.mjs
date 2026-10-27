@@ -41,6 +41,8 @@ async function geminiObj(env, parts, temperature = 0.3) {
 
 // 1-bosqich: rejadan faktlar. 2-bosqich: faktlar + renderlardan senariy (faqat faktlarga tayanib).
 import { QONUN, tekshir } from './senariyQoida.js';
+import { senariyV2 } from './senariyV2.js';
+import { raqamSegment } from './izohReel.js';
 import { USLUB } from './strategist.js';
 export async function senariyYoz(env, dir, nom = '') {
   const kesh = path.join(dir, 'senariy.json');
@@ -52,6 +54,19 @@ export async function senariyYoz(env, dir, nom = '') {
   const faktlar = await geminiObj(env, [{ text:
     `Birinchi rasm -- AutoCAD reja (tepadan). Faqat rasmda HAQIQATAN ko'ringan narsalarni yozing, o'ylab topmang. Ruscha yozuvlarni o'zbekchaga tarjima qiling (СТОЛ=stol, ДИВАН=divan, ШКАФ=shkaf, ТВ=televizor, СЕРВАНТ=servant, САНУЗЕЛ=sanuzel, Холодильник=muzlatgich, Мойка=moyka, Плита=plita). JSON: {"xonalar":[{"nom":"xona nomi","box":[ymin,xmin,ymax,xmax] (0-1000),"olchamlar":["rejada yozilgan raqamlar va nimaga tegishli"],"mebel":["..."],"qoshni":["..."],"eshik_deraza":"..."}],"umumiy":"tartib haqida 1-2 gap"}` },
     rejaB], 0.1);
+  // 1b: o'lchanadigan elementlar (animatsiya chiziqlari uchun nuqtalar)
+  try {
+    const el = await geminiObj(env, [{ text: `Birinchi rasm -- AutoCAD reja (tepadan). FAKTLAR: ${JSON.stringify(faktlar)}\nReja ustida o'lchami yozilgan yoki aniq o'lchab bo'ladigan 5-9 ta element ro'yxati (yo'lak kengligi, eshik, stol va devor oralig'i, oshxona ish zonasi tomoni, divan va devor orasi kabi). Faqat rasmda HAQIQATAN ko'ringanlarni yozing. JSON: {"elementlar":[{"id":"e1","xona":"FAKTLARdagi xona nomi","nom":"qisqa nom","olcham":"rejada yozilgan qiymat masalan '90 sm' yoki '1250' (bo'lmasa null)","a":[y,x],"b":[y,x]}]} -- a va b o'lchanayotgan oraliqning ikki uchi, 0-1000 koordinata [y,x].` }, rejaB], 0.1);
+    faktlar.elementlar = (el.elementlar || []).filter((e) => e && e.id && Array.isArray(e.a) && Array.isArray(e.b) && [...e.a, ...e.b].every((v) => Number(v) >= 0 && Number(v) <= 1000)).slice(0, 10);
+  } catch (e) { console.log('elementlar xato:', e.message); faktlar.elementlar = []; }
+  if (process.env.MEDIA_SECRET && process.env.SENARIY_V1 !== '1' && (faktlar.elementlar || []).length) {
+    try {
+      const e2 = await senariyV2({ faktlar, renderlar: renders.length });
+      const S2 = { ...e2.S, v2: true, ball: e2.ball, faktlar };
+      fs.writeFileSync(kesh, JSON.stringify(S2, null, 2));
+      return S2;
+    } catch (e) { console.log("Senariy v2 ishlamadi, eski usulga qaytildi:", e.message); }
+  }
   let S = await geminiObj(env, [{
     text: `Siz arxitektura/interyer dizayn Reels senaristisiz. Auditoriya: kvartira/uy egalari va dizayn sevuvchilar. Quyida rejadan olingan FAKTLAR va renderlar (tartib raqami 1..${renders.length}).\nFAKTLAR: ${JSON.stringify(faktlar)}\n` +
       `Vazifa: 3 ta eng qiziqarli va FOYDALI dizayn qarorini tanlang. Har biri uchun odamga o'zi uyida qo'llay oladigan umumiy ergonomika qoidasini (aniq raqam bilan, odatda qabul qilingan me'yor) ayting va shu qaror bu rejada qanday ishlaganini FAKTLARdagi o'lchamga bog'lang. Renderni faqat shu xona/qaror ROSTDAN ko'rinsa tanlang (rasmga qarang). Faqat JSON obyekt:\n` +
@@ -82,15 +97,19 @@ export async function senariyYoz(env, dir, nom = '') {
 export async function reelB(env, { dir, out, variant = 'uzun', nom = '' }) {
   const S = await senariyYoz(env, dir, nom);
   const teaser = variant === 'teaser';
-  const Q = teaser ? S.zonalar.slice(0, 1) : S.zonalar, jami = Q.length;
+  const V2 = !!S.v2;
+  const B = V2 ? (teaser ? S.bolimlar.filter((q) => q.rol === 'qoida').slice(0, 1) : S.bolimlar) : [];
+  const Q = V2 ? [] : (teaser ? S.zonalar.slice(0, 1) : S.zonalar), jami = V2 ? B.length + 2 : Q.length;
   let HOOK = S.hook, OXIR = teaser ? "Visart Design, loyiha uchun Direct'ga yozing." : S.oxir;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'reelB-'));
   const imgs = (i) => path.join(dir, `${i}.jpg`), reja = path.join(dir, 'reja.png'), hero = S.hero || 1;
   {
-    const arr = [{ sarlavha: 'hook', ovoz: HOOK }, ...Q.flatMap((q) => [{ sarlavha: q.sar, ovoz: q.sabab }, { sarlavha: q.sar, ovoz: q.boshqa }]), { sarlavha: 'oxir', ovoz: OXIR }];
+    const arr = V2 ? [{ sarlavha: 'hook', ovoz: HOOK }, ...B.map((q) => ({ sarlavha: q.rol, ovoz: q.ovoz })), { sarlavha: 'oxir', ovoz: OXIR }]
+      : [{ sarlavha: 'hook', ovoz: HOOK }, ...Q.flatMap((q) => [{ sarlavha: q.sar, ovoz: q.sabab }, { sarlavha: q.sar, ovoz: q.boshqa }]), { sarlavha: 'oxir', ovoz: OXIR }];
     const tuz = await ovozTahrir(env, arr, true, false);
-    HOOK = tuz[0].ovoz; Q.forEach((q, i) => { q.sabab = tuz[1 + 2 * i].ovoz; q.boshqa = tuz[2 + 2 * i].ovoz; }); OXIR = tuz[tuz.length - 1].ovoz;
-    fs.writeFileSync(out.replace(/\.mp4$/, '_matn.txt'), [HOOK, ...Q.flatMap((q) => [q.sabab, q.boshqa]), OXIR].join('\n'));
+    HOOK = tuz[0].ovoz; OXIR = tuz[tuz.length - 1].ovoz;
+    if (V2) B.forEach((q, i) => { q.ovoz = tuz[1 + i].ovoz; }); else Q.forEach((q, i) => { q.sabab = tuz[1 + 2 * i].ovoz; q.boshqa = tuz[2 + 2 * i].ovoz; });
+    fs.writeFileSync(out.replace(/\.mp4$/, '_matn.txt'), (V2 ? [HOOK, ...B.map((q) => q.ovoz), OXIR] : [HOOK, ...Q.flatMap((q) => [q.sabab, q.boshqa]), OXIR]).join('\n'));
   }
   const segs = [], sub = []; let t = 0, id = 0;
   const W = (tt = 0, v = 0.3) => ({ k: 'whoosh__short', t: tt, v });
@@ -106,6 +125,29 @@ export async function reelB(env, { dir, out, variant = 'uzun', nom = '' }) {
     t += dur; console.log('segment', id, 'tayyor');
   }
   await qosh(HOOK, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(hero), n: 1, jami, bolim: '', sarlavha: 'nega shunday?', tag: 'har bir mebelning sababi bor', parallaks: true, yon: -1, mp3, dur }, fd, seg), '[confident, energetic, fast-paced, intriguing]', { fx: [W(0, 0.35), { k: 'qurilish__tape', t: 0.4, v: 0.35 }] });
+  if (V2) {
+    const TEG = { muammo: '[serious, firm, clear]', qoida: '[confident, energetic, clear]', xato: '[serious, firm, confident]', yechim: '[confident, warm, clear]', tekshiruv: '[friendly, clear, upbeat]' };
+    const EL = (S.faktlar && S.faktlar.elementlar) || [];
+    for (let i = 0; i < B.length; i++) {
+      const q = B[i], k = q.kadr || {}, nn = i + 2, teg = TEG[q.rol] || '[confident, clear]';
+      const baz = { n: nn, jami, sarlavha: q.sar || q.rol, tag: q.tag || '' };
+      if (k.tur === 'reja') {
+        const els = (k.elementlar || []).map((id) => EL.find((e) => e.id === id)).filter(Boolean);
+        let zona = null, belgilar = [];
+        if (els.length) {
+          const xs = els.flatMap((e) => [e.a[1], e.b[1]]).map((v) => v / 1000), ys = els.flatMap((e) => [e.a[0], e.b[0]]).map((v) => v / 1000);
+          const px = Math.max(0.1, 0.5 * (0.2 - (Math.max(...xs) - Math.min(...xs)))), py = Math.max(0.1, 0.5 * (0.2 - (Math.max(...ys) - Math.min(...ys))));
+          zona = [Math.max(0, Math.min(...xs) - px - 0.05), Math.max(0, Math.min(...ys) - py - 0.05), Math.min(1, Math.max(...xs) + px + 0.05), Math.min(1, Math.max(...ys) + py + 0.05)];
+          belgilar = els.map((e) => ({ tur: 'olcham', a: [e.a[1] / 1000, e.a[0] / 1000], b: [e.b[1] / 1000, e.b[0] / 1000], yozuv: String(e.olcham || e.nom || '').slice(0, 20) }));
+        } else { const x = (S.faktlar.xonalar || []).find((r) => String(r.nom).toLowerCase() === String(k.xona || '').toLowerCase()); if (x && x.box) zona = [x.box[1] / 1000, x.box[0] / 1000, x.box[3] / 1000, x.box[2] / 1000]; }
+        await qosh(q.ovoz, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona, zonaNom: k.xona || '', belgilar, ...baz, bolim: '', mp3, dur }, fd, seg), teg, { fx: [W(), { k: 'klik__select', t: 0.7, v: 0.35 }] });
+      } else if (k.tur === 'raqam') {
+        await qosh(q.ovoz, (mp3, dur, seg, fd) => raqamSegment({ a: k.a, b: k.b, birlik: k.birlik || '', ...baz, mp3, dur }, fd, seg), teg, { fx: [W(), { k: 'klik__select', t: 0.5, v: 0.3 }] });
+      } else {
+        await qosh(q.ovoz, (mp3, dur, seg, fd) => qadamSegment({ img: imgs(Number(k.rasm) || hero), ...baz, bolim: '', belgi: k.belgi, belgiJoy: k.joy, parallaks: true, yon: i % 2 ? -1 : 1, mp3, dur }, fd, seg), teg, { fx: [W()] });
+      }
+    }
+  }
   for (let i = 0; i < Q.length; i++) {
     const q = Q[i], sf = SFX[q.sfx] || {};
     await qosh(q.sabab, (mp3, dur, seg, fd) => rejaSegment({ plan: reja, zona: q.zona, zonaNom: q.nom, n: i + 1, jami, bolim: '', sarlavha: q.sar, tag: q.tag, mp3, dur }, fd, seg), '[confident, energetic, clear]', { fx: [W(), { k: 'klik__select', t: 0.7, v: 0.35 }] });

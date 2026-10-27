@@ -2,6 +2,7 @@
 import fs from 'fs'; import os from 'os'; import path from 'path';
 import { fileURLToPath } from 'url';
 import { senariyYoz, reelB } from './reelB.mjs';
+import { tajribaYoz } from './senariyV2.js';
 import { supabaseVideoUpload, supabaseRasmUpload } from './montaj.js';
 
 const ILDIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), 'loyihalar');
@@ -25,11 +26,14 @@ export async function bajarReelSenariy({ env, adminChatId, loyiha, qayta = false
   if (!nom) { await tg(env, 'sendMessage', { chat_id: adminChatId, text: "Ishlatilmagan loyiha qolmadi. loyihalar\\ ga yangi loyiha (reja.png + 1.jpg...) qo'shing." }); return; }
   const dir = path.join(ILDIZ, nom);
   if (!fs.existsSync(path.join(dir, 'reja.png'))) throw new Error(`${nom}: reja.png topilmadi`);
-  if (qayta) fs.rmSync(path.join(dir, 'senariy.json'), { force: true });
+  if (qayta) { try { tajribaYoz('rad', JSON.parse(fs.readFileSync(path.join(dir, 'senariy.json'), 'utf8'))); } catch { /* ixtiyoriy */ } fs.rmSync(path.join(dir, 'senariy.json'), { force: true }); }
   await tg(env, 'sendMessage', { chat_id: adminChatId, text: `🧠 "${nom}" rejasi o'qilmoqda, senariy yozilmoqda (1–2 daqiqa)...` });
   const S = await senariyYoz(env, dir, nom);
-  const matn = [`🎬 B seriya senariysi: ${nom}`, '', `🪝 Hook: ${S.hook}`, `🖼 Oblojka: ${S.oblojka}`, '',
-    ...S.zonalar.map((z, i) => `${i + 1}) ${z.sar} (${z.xona})\n📏 ${z.qoida}\n✅ ${z.sabab}\n❌ ${z.boshqa}`), '', `📣 ${S.oxir}`].join('\n');
+  const KT = { raqam: '📊 animatsion taqqoslash', reja: "📐 reja ustida o'lchamlar", render: '🖼 render' };
+  const matn = S.v2
+    ? [`🎬 B seriya senariysi: ${nom}`, `🎯 Mavzu: ${S.mavzu}  (tanqidchi: ${S.ball}/10)`, '', `🪝 ${S.hook}`, '', ...S.bolimlar.map((b, i) => `${i + 1}) ${String(b.rol).toUpperCase()} — ${b.sar}\n${b.ovoz}\n🎞 ${KT[(b.kadr || {}).tur] || ''}`), '', `📣 ${S.oxir}`, '', `🖼 Oblojka: ${S.oblojka}`].join('\n')
+    : [`🎬 B seriya senariysi: ${nom}`, '', `🪝 Hook: ${S.hook}`, `🖼 Oblojka: ${S.oblojka}`, '',
+      ...S.zonalar.map((z, i) => `${i + 1}) ${z.sar} (${z.xona})\n📏 ${z.qoida}\n✅ ${z.sabab}\n❌ ${z.boshqa}`), '', `📣 ${S.oxir}`].join('\n');
   await tg(env, 'sendMessage', { chat_id: adminChatId, text: matn.slice(0, 3900), reply_markup: { inline_keyboard: [
     [{ text: '✅ Video yaratish (~40 s)', callback_data: `rb:uzun:${nom}` }, { text: '⚡ Teaser (~18 s)', callback_data: `rb:teaser:${nom}` }],
     [{ text: '🔄 Senariyni qayta yozish', callback_data: `rb:qayta:${nom}` }]] } });
@@ -41,6 +45,7 @@ export async function bajarReelYarat({ env, adminChatId, loyiha, variant = 'uzun
   try {
     const dir = path.join(ILDIZ, loyiha);
     if (!fs.existsSync(path.join(dir, 'reja.png'))) throw new Error(`${loyiha}: papka topilmadi`);
+    try { tajribaYoz('yoqdi', JSON.parse(fs.readFileSync(path.join(dir, 'senariy.json'), 'utf8'))); } catch { /* ixtiyoriy */ }
     await tg(env, 'sendMessage', { chat_id: adminChatId, text: `🎙 Ovoz va video tayyorlanmoqda (${variant === 'teaser' ? 'teaser' : 'to\'liq'}), 4–8 daqiqa...` });
     const out = path.join(os.tmpdir(), `reelB_${loyiha.replace(/\W+/g, '_')}_${variant}_${Date.now()}.mp4`);
     await reelB(env, { dir, out, variant, nom: loyiha });
