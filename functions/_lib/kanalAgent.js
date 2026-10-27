@@ -71,14 +71,14 @@ YouTube: ${JSON.stringify(h.yt || 'ulanmagan')}
 Qoidalar: faqat berilgan faktlarga tayaning; raqam, mukofot, tajriba yillari, manzil o'ylab topmang. Tavsif ≤255 belgi, o'zbekcha (lotin) + qisqa ruscha satr, kalit so'zlar (dizayn interyer Toshkent, ta'mirlash), sayt va bot havolasi bilan. Pin post: qisqa, xizmatlar, murojaat (sayt + @visart_design_bot), HTML emas oddiy matn, ≤600 belgi. Instagram bio, Facebook about va YouTube tavsifi ham shu qoidalarda; ulanmagan yoki xato platformani null qoldiring. YouTube: faqat haqiqatan zaif (sarlavha/tavsif/teglar SEO jihatdan yomon) videolar uchun, eng ko'pi 5 ta, yt_video ni to'ldiring — mazmunni o'zgartirmang, faqat sarlavha/tavsif/teglarni SEO ga moslang; yt_banner faqat banner yo'q bo'lsa true. Agar hozirgi tavsif/pin allaqachon yaxshi bo'lsa, o'sha maydonni null qoldiring. Kanal nomini faqat jiddiy sabab bo'lsa taklif qiling (aks holda null).
 FAQAT JSON: {"baho":1-10,"muammolar":["..."],"tavsif":"...|null","pin":"...|null","nom":"...|null","logo":true|false,"ig_bio":"≤150 belgi|null","fb_about":"≤255 belgi|null","yt_tavsif":"...|null","yt_kalit":"vergul bilan 8-12 kalit so'z|null","yt_banner":true|false,"yt_video":[{"id":"...","title":"≤70 belgi","description":"...","tags":["..."]}],"haftalik":["kontent/SEO bo'yicha 2-4 aniq maslahat"]}`;
   let raw = '', xato = '';
-  for (const model of ['claude-sonnet-5', 'claude-sonnet-4-5']) {
+  for (const model of ['claude-sonnet-5', 'claude-sonnet-5-5', 'claude-opus-5-5']) {
     try {
       const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(50000) });
       const d = await r.json();
       raw = ((d.content || []).find((x) => x.type === 'text') || {}).text || '';
       if (raw.includes('{')) break;
-      xato = `${model}: ${r.status} ${JSON.stringify(d.error || d.stop_reason || d).slice(0, 160)}`;
-    } catch (e) { xato = `${model}: ${e && e.message}`; }
+      xato += ` | ${model}: ${r.status} ${JSON.stringify(d.error || d.stop_reason || d).slice(0, 160)}`;
+    } catch (e) { xato += ` | ${model}: ${e && e.message}`; }
   }
   const m = raw.match(/\{[\s\S]*\}/); if (!m) throw new Error('claude json: ' + xato);
   try { return JSON.parse(m[0]); } catch (e) { throw new Error('claude json parse: ' + raw.length + ' belgi, oxiri: ' + raw.slice(-80)); }
