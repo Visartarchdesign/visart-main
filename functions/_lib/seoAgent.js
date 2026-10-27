@@ -291,6 +291,7 @@ export async function seoCb(env, cq) {
     await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'seo_navbat', nashr_vaqti: t.toISOString() }) });
     const xr = (p.n && (p.n.yandex || p.n.google || p.n.gis)) ? await xaritaNavbat(env, p, TOIFA_UCHUN[(p.j && p.j.category) || 'interior'] || 'interior').catch(() => null) : null;
     if (xr && xr.soni) await say(env, chatId, `📥 Xaritalarga ham navbatga qo'shildi: ${xr.maps.map((k) => NISHON[k]).join(', ')} (${xr.soni} ta yuklash).`);
+    if (p.papka) seoKunlik(env).catch(() => {});
     return say(env, chatId, amal === 'now' ? '⚡ Hozir joylanadi (15 daqiqagacha). Tayyor bo\'lgach havolasini yuboraman.' : `🗓 Saytga joylanadi: <b>${tosh(t)}</b> (Toshkent). Tayyor bo'lgach havolasini yuboraman.`);
   }
 }
@@ -388,9 +389,13 @@ export async function seoAudit(env) {
 }
 
 // Kunlik taklif (cron, 05:00 UTC = 10:00 Toshkent): bugun SEO ish bo'lmagan bo'lsa, kompyuterdan loyiha topishni so'raydi
+const KUNLIK_MAKS = 4;
+// Kompyuterdan yangi loyiha taklif qilish: ochiq ish bo'lmasa va bugungi limit (4 ta) to'lmagan bo'lsa
 export async function seoKunlik(env) {
   const admin = String(env.ADMIN_TELEGRAM_IDS || '').split(',')[0].trim(); if (!admin) return;
-  const oxirgi = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&nashr_vaqti=gte.${encodeURIComponent(new Date(Date.now() - 20 * 3600e3).toISOString())}&select=id&limit=1`).catch(() => []);
-  if (oxirgi && oxirgi.length) return;
+  const ochiq = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_yig&payload->>chatId=eq.${admin}&select=id&limit=1`).catch(() => []);
+  if (ochiq && ochiq.length) return;
+  const son = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&payload->>papka=not.is.null&created_at=gte.${encodeURIComponent(new Date(Date.now() - 24 * 3600e3).toISOString())}&select=id&limit=20`).catch(() => []);
+  if (son && son.length >= KUNLIK_MAKS) return;
   await mediaChaqir(env, '/loyiha-taklif', { adminChatId: admin }, null).catch(() => {});
 }

@@ -363,7 +363,7 @@ export async function onRequestGet({ request, env, waitUntil }) {
   {
     const n = new Date();
     if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) fondaSeo(seoAudit(env)); }
-    if (n.getUTCHours() === 5 && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
+    if ([4, 8, 12].includes(n.getUTCHours()) && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
     fondaSeo(seoNashr(env));
     fondaSeo(direktorKuzat(env));
   }
