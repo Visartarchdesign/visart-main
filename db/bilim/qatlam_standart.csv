@@ -3,7 +3,7 @@ MAVJUD,MAV_SURATGA,съемка,Mavjud holat topografik syomka,8,Continuous,xref
 MAVJUD,MAV_BALANDLIK,с_высотные отметки,Balandlik belgilari (nuqtalar),8,Continuous,xref
 MAVJUD,MAV_OSIMLIK,с_РАСТИТЕЛЬНОСТЬ,Mavjud daraxt va o'simlik,3,Continuous,xref
 MAVJUD,MAV_KADASTR,с_КАДАСТР,Kadastr chegaralari,9,Continuous,xref
-MAVJUD,MAV_TOG_O'RMON,с_лес,O'rmon va daraxtzor konturi,3,Continuous,xref
+MAVJUD,MAV_TOG_ORMON,с_лес,O'rmon va daraxtzor konturi,3,Continuous,xref
 MAVJUD,MAV_CHEGARA_YER,межевание,Yer uchastkalari chegarasi (mejevaniye),9,Continuous,xref
 GP_ASOS,GP_OQ,ГП оси,Ko'cha o'qlari,5,Center,loyiha
 GP_ASOS,GP_QIZIL_CHIZIQ,ГП красные линии,Qizil chiziqlar,1,Continuous,loyiha
