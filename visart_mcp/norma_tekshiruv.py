@@ -106,7 +106,8 @@ PARAM_MAP = [
     (r"^(oshxona_eni_bir_qatorli|xona_eni_bir_qatorli|xona_eni_bir_qator_jihoz)$", "eni", ("oshxona_joylashuv", "bir_qator")),
     (r"^(oshxona_eni_burchakli_yoki_ikki_tomonli|xona_eni_burchakli|xona_eni_burchakli_yoki_ikki_tomonlama)$", "eni", ("oshxona_joylashuv", "burchakli")),
     (r"^ikki_qatorli_joylash_oshxona_eni$", "eni", ("oshxona_joylashuv", "ikki_qator")),
-    (r"^(xona_balandligi_janubiy_iqlim|qavat_balandligi.*|xizmat_xodimlari_joyi_sof_balandligi)$", "balandlik", None),
+    (r"^(xona_balandligi_janubiy_iqlim|xizmat_xodimlari_joyi_sof_balandligi)$", "balandlik", None),
+    (r"^qavat_balandligi.*$", "qavat_balandligi", None),
     (r"^deraza_balandligi$", "deraza_balandligi", None),
     (r"^deraza_kengligi$", "deraza_kengligi", None),
     (r"^(deraza_yuzasi/pol_yuzasi|deraza_pol_nisbati.*)$", "deraza_pol_nisbati", None),
@@ -259,7 +260,26 @@ def _solishtir(op, qiymat, mn, mx):
 
 
 # --------------------------------------------------------------- tekshir
-def tekshir_xona(x, qoidalar=None, ruxsat_buzish=None):
+def _guruh(lst):
+    g = {}
+    for t in set(lst):
+        b = t.split(":")[0]
+        g[b] = g.get(b, 0) + 1
+    return dict(sorted(g.items()))
+
+
+def parametrlar(band_prefiks=""):
+    """Berish mumkin bo'lgan faktlar: {band: [[parametr, operator, min, max, birlik]]}.
+    Xona dict'idagi "faktlar" ichida aynan parametr nomi bilan qiymat (mm / m2) beriladi."""
+    out = {}
+    for q in yukla():
+        if q["operator"] in ("bor", "yoq") or not q["band"].startswith(band_prefiks):
+            continue
+        out.setdefault(q["band"], []).append([q["parametr"], q["operator"], q.get("min_n"), q.get("max_n"), q.get("birlik_n")])
+    return out
+
+
+def tekshir_xona(x, qoidalar=None, ruxsat_buzish=None, batafsil=False):
     """Bitta xonani tekshiradi. ruxsat_buzish: {"parametr": "sababi"} -- arxitektor ruxsati."""
     qoidalar = qoidalar if qoidalar is not None else yukla()
     ruxsat_buzish = ruxsat_buzish or {}
@@ -274,6 +294,8 @@ def tekshir_xona(x, qoidalar=None, ruxsat_buzish=None):
         if qol is False:
             continue
         fakt, shart = _param(q["parametr"])
+        if (fakt is None or fakt not in f) and q["parametr"] in f:
+            fakt, shart = q["parametr"], None  # fakt aynan parametr nomi bilan berilgan
         if fakt is None:
             if qol is True and ctx["xona"] and _n(q.get("xona_turi")) not in ("", "umumiy", "interyer"):
                 tekshirilmadi.append(f'{q["band"]}:{q["parametr"]} (parametr xaritada yo\'q)')
@@ -312,12 +334,14 @@ def tekshir_xona(x, qoidalar=None, ruxsat_buzish=None):
     daraj = {d["daraja"] for d in topildi}
     holat = "XATO" if "XATO" in daraj else ("OGOHLANTIRISH" if "OGOHLANTIRISH" in daraj else "OK")
     return {"nom": x.get("nom"), "holat": holat, "topildi": topildi,
-            "tekshirildi_soni": ok + len(topildi), "tekshirilmadi": sorted(set(tekshirilmadi))}
+            "tekshirildi_soni": ok + len(topildi),
+            "tekshirilmadi_soni": len(set(tekshirilmadi)), "tekshirilmadi_guruh": _guruh(tekshirilmadi),
+            "tekshirilmadi": sorted(set(tekshirilmadi)) if batafsil else []}
 
 
-def tekshir(xonalar, ruxsat_buzish=None):
+def tekshir(xonalar, ruxsat_buzish=None, batafsil=False):
     q = yukla()
-    return [tekshir_xona(x, q, (ruxsat_buzish or {}).get(x.get("nom"))) for x in xonalar]
+    return [tekshir_xona(x, q, (ruxsat_buzish or {}).get(x.get("nom")), batafsil) for x in xonalar]
 
 
 def bloklash_kerakmi(natijalar):

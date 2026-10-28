@@ -217,10 +217,17 @@ def loyihalash_bosqich(xonalar: list, height_mm: float = 2800.0,
 
 
 @mcp.tool()
-def norma_tekshir(xonalar: list, ruxsat_buzish: dict = None) -> list:
+def norma_tekshir(xonalar: list, ruxsat_buzish: dict = None, batafsil: bool = False) -> list:
     """Xonalarni Supabase norma_qoidalari (GOST/ShNQ/NKBA) bo'yicha tekshiradi -- chizmasiz.
     Holat: OK / OGOHLANTIRISH / XATO. 'tekshirilmadi' -- tekshirib bo'lmagan qoidalar (jim o'tkazilmaydi)."""
-    return norma_tekshiruv.tekshir(xonalar, ruxsat_buzish)
+    return norma_tekshiruv.tekshir(xonalar, ruxsat_buzish, batafsil)
+
+
+@mcp.tool()
+def norma_parametrlar(band_prefiks: str = "") -> dict:
+    """Berish mumkin bo'lgan faktlar (parametr, operator, min, max, birlik). Xona dict'idagi "faktlar"
+    ichida aynan shu parametr nomi bilan qiymat (mm / m2) bering -- tekshiriladi."""
+    return norma_tekshiruv.parametrlar(band_prefiks)
 
 
 @mcp.tool()
