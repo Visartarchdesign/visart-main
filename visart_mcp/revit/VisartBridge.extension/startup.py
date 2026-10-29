@@ -14,6 +14,18 @@ def ping():
                                       "hujjat": revit.doc.Title})
 
 
+@API.route("/diag", methods=["GET"])
+def diag(doc):
+    ui = revit.HOST_APP.uiapp
+    ad = ui.ActiveUIDocument.Document if ui.ActiveUIDocument else None
+    d = doc
+    return routes.make_response(data={
+        "revit_doc": None if d is None else {"title": d.Title, "readonly": d.IsReadOnly, "modifiable": d.IsModifiable,
+                                              "family": d.IsFamilyDocument, "linked": d.IsLinked, "detached": d.IsDetached},
+        "active_doc": None if ad is None else {"title": ad.Title, "readonly": ad.IsReadOnly, "modifiable": ad.IsModifiable},
+        "ochiq_hujjatlar": [x.Title for x in ui.Application.Documents]})
+
+
 @API.route("/levels", methods=["GET"])
 def levels():
     col = DB.FilteredElementCollector(revit.doc).OfClass(DB.Level)
@@ -21,11 +33,12 @@ def levels():
 
 
 @API.route("/walls", methods=["POST"])
-def walls(request):
+def walls(request, doc):
     """Body: {"daraja": "Level 1", "balandlik_mm": 2800, "devor_turi": "<WallType nomi>" (ixtiyoriy),
               "kontur": [[x1,y1],[x2,y2],...] (yopiq), "yopiq": true}"""
     d = request.data
-    doc = revit.doc
+    if doc is None:
+        return routes.make_response(data={"status": "xato", "sabab": "hujjat yoq"}, status=409)
     lvl = None
     for l in DB.FilteredElementCollector(doc).OfClass(DB.Level):
         if l.Name == d.get("daraja"):
@@ -41,11 +54,19 @@ def walls(request):
     n = len(pts)
     h = d.get("balandlik_mm", 2800) * MM
     ids = []
-    with revit.Transaction("Visart: devorlar"):
+    t = DB.Transaction(doc, "Visart: devorlar")
+    st = t.Start()
+    if st != DB.TransactionStatus.Started:
+        return routes.make_response(data={"status": "xato", "sabab": "transaction boshlanmadi: %s; readonly=%s" % (st, doc.IsReadOnly)}, status=409)
+    try:
         rng = range(n) if d.get("yopiq", True) else range(n - 1)
         for i in rng:
             a, b = pts[i], pts[(i + 1) % n]
             ln = DB.Line.CreateBound(DB.XYZ(a[0] * MM, a[1] * MM, 0), DB.XYZ(b[0] * MM, b[1] * MM, 0))
             w = DB.Wall.Create(doc, ln, wt.Id, lvl.Id, h, 0, False, False)
             ids.append(w.Id.IntegerValue)
+        t.Commit()
+    except Exception as ex:
+        t.RollBack()
+        return routes.make_response(data={"status": "xato", "sabab": str(ex)}, status=500)
     return routes.make_response(data={"status": "ok", "devorlar": ids})

@@ -33,6 +33,7 @@ from autocad_bridge import AutoCADBridge
 from max_bridge_client import MaxBridge
 import loyihalash_orchestrator
 import norma_tekshiruv
+import revit_bridge_client
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -245,6 +246,28 @@ def lugat_tekshir(qatlamlar: list = None, atamalar: list = None) -> dict:
     """Qatlam nomlari va atamalar Visart o'zbekcha lug'atiga mosligini tekshiradi."""
     return {"qatlam": norma_tekshiruv.qatlam_tekshir(qatlamlar) if qatlamlar else None,
             "atama": norma_tekshiruv.atama_tekshir(atamalar) if atamalar else None}
+
+
+# ---------------- Revit (pyRevit Routes, VisartBridge.extension) ----------------
+
+@mcp.tool()
+def revit_ping() -> dict:
+    """Revit 2024 ulanishini tekshiradi (Revit ochiq, hujjat ochiq, pyRevit Routes yoqilgan bo'lishi kerak)."""
+    return revit_bridge_client.ping()
+
+
+@mcp.tool()
+def revit_darajalar() -> list:
+    """Revit hujjatidagi darajalar (Level): nom va balandlik (mm)."""
+    return revit_bridge_client.levels()
+
+
+@mcp.tool()
+def revit_devorlar(kontur: list, daraja: str, balandlik_mm: float = 2800.0,
+                   devor_turi: str = None, yopiq: bool = True) -> dict:
+    """Revit'da kontur bo'ylab devor yaratadi. kontur: [[x,y],...] mm. daraja: Level nomi (revit_darajalar).
+    Revit'da hech qanday asbob faol bo'lmasligi kerak (Esc)."""
+    return revit_bridge_client.walls(kontur, daraja, balandlik_mm, devor_turi, yopiq)
 
 
 if __name__ == "__main__":
