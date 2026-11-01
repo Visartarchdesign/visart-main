@@ -94,7 +94,7 @@ export async function bolimCb(env, cq, eskiPanel) {
     for (const r of rows) {
       const p = r.payload || {};
       const cap = `🎞 #${r.id} — ${String(p.sarlavha || '').slice(0, 120)}\n${String(r.created_at).slice(0, 10)}`;
-      const markup = { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${r.id}:ok` }, { text: '❌ Bekor', callback_data: `vnash:${r.id}:no` }]] };
+      const markup = { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${r.id}:ok` }, { text: '⏫ Birinchi', callback_data: `vnash:${r.id}:first` }], [{ text: '🔢 O‘rin tanlash', callback_data: `vnash:${r.id}:pos` }, { text: '❌ Bekor', callback_data: `vnash:${r.id}:no` }]] };
       const ok = p.video_url && await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendVideo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, video: p.video_url, caption: cap, reply_markup: markup }), signal: AbortSignal.timeout(20000) }).then((x) => x.ok).catch(() => false);
       if (!ok) await tg(env, chatId, `${cap}\n${p.video_url || ''}`, markup);
     }

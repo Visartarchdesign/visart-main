@@ -20,6 +20,7 @@ app.use(express.json({ limit: '20mb' }));
 import { keshYoz, xomKuzatuvchi } from './xomKuzatuvchi.js';
 import { tgYukla } from './tgBuyuk.js';
 import { fotoIshchi } from './fotoIshchi.js';
+import { animatsiyaKuzatuvchi } from './animatsiyaKuzatuvchi.js';
 import { loyihaTaklif } from './loyihaTopuvchi.js';
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
@@ -124,10 +125,10 @@ app.post('/nashr-ig-tg', (req, res) => {
 // POST /nashr -- admin "✅ Joylash" bosganda (Cloudflare bot chaqiradi)
 app.post('/nashr', (req, res) => {
   if (!tekshirSecret(req, res)) return;
-  const { id, adminChatId } = req.body || {};
+  const { id, adminChatId, orin } = req.body || {};
   if (!id || !adminChatId) return res.status(400).json({ ok: false, error: 'id va adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
-  ish('Nashr', req, (env) => bajarNashr({ env, id, adminChatId }));
+  ish('Nashr', req, (env) => bajarNashr({ env, id, adminChatId, orin: orin ? Number(orin) : undefined }));
 });
 
 // POST /story-variant -- admin Story kartasini ❌ qilganda yangi variant
@@ -188,4 +189,4 @@ app.get('/montaj-test', (req, res) => {
 
 const port = process.env.PORT || 10000;
 app.listen(port, () => console.log(`Visart media-server ${port}-portda ishga tushdi`));
-if (process.platform === 'win32' || process.env.XOM_KUZAT) { xomKuzatuvchi(); fotoIshchi(); }
+if (process.platform === 'win32' || process.env.XOM_KUZAT) { xomKuzatuvchi(); fotoIshchi(); animatsiyaKuzatuvchi(); }
