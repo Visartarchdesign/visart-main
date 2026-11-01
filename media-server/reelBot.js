@@ -65,7 +65,7 @@ export async function bajarReelYarat({ env, adminChatId, loyiha, variant = 'uzun
       const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, { method: 'POST', headers: sb, body: JSON.stringify({ turi: 'video_nashr', holat: 'tasdiq_kutilmoqda', payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, taklifId: null }, nashr_vaqti: new Date().toISOString() }) });
       if (!resp.ok) throw new Error(`navbat ${resp.status}`);
       const nid = (await resp.json())[0].id;
-      await tg(env, 'sendMessage', { chat_id: adminChatId, text: `✅ Tayyor. Instagram, Facebook, Telegram kanal va YouTube'ga joylaymizmi?\n\n"${sarlavha}"`, reply_markup: { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${nid}:ok` }, { text: '❌ Bekor', callback_data: `vnash:${nid}:no` }]] } });
+      await tg(env, 'sendMessage', { chat_id: adminChatId, text: `✅ Tayyor. Instagram, Facebook, Telegram kanal va YouTube'ga joylaymizmi?\n\n"${sarlavha}"`, reply_markup: { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${nid}:ok` }, { text: '⏫ Birinchi', callback_data: `vnash:${nid}:first` }], [{ text: '🔢 O‘rin tanlash', callback_data: `vnash:${nid}:pos` }, { text: '❌ Bekor', callback_data: `vnash:${nid}:no` }]] } });
     } catch (e) { await tg(env, 'sendMessage', { chat_id: adminChatId, text: `⚠️ Joylashga tayyorlashda xato: ${String((e && e.message) || e).slice(0, 300)}` }); }
     const ishl = oqi(); if (!ishl.includes(loyiha)) { ishl.push(loyiha); fs.writeFileSync(REG, JSON.stringify(ishl, null, 2)); }
     for (const f of [out, cover, matnF]) fs.rmSync(f, { force: true });
