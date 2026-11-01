@@ -265,7 +265,16 @@ async function tozalash(env) {
   return hisobot;
 }
 
-export async function onRequestGet({ request, env, waitUntil }) {
+export async function onRequestGet(ctx) {
+  // Har qanday xato: bot_xatolar'ga yoziladi, cron 503 olmaydi (cron-job.org vazifani o'chirib qo'ymasin)
+  try { return await navbatIsh(ctx); } catch (e) {
+    await xatoYoz(ctx.env, 'nashr-navbati:umumiy', e).catch(() => {});
+    return json({ ok: false, xato: String((e && e.message) || e).slice(0, 300) }, 200);
+  }
+}
+
+async function navbatIsh({ request, env, waitUntil }) {
+  const t0 = Date.now();
   const fondaSeo = (p) => { const q = p.catch((e) => xatoYoz(env, 'seo-agent', e)); if (waitUntil) waitUntil(q); };
   const url = new URL(request.url);
   if (!env.NASHR_NAVBATI_SECRET || url.searchParams.get('secret') !== env.NASHR_NAVBATI_SECRET) {
@@ -360,34 +369,40 @@ export async function onRequestGet({ request, env, waitUntil }) {
     }
   }
 
-  await tizimNazorati(env);
-  {
-    const n = new Date();
-    if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) { fondaSeo(seoAudit(env)); fondaSeo(kanalTekshir(env)); } }
-    if ([4, 8, 12].includes(n.getUTCHours()) && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
-    fondaSeo(seoNashr(env));
-    fondaSeo(direktorKuzat(env));
-  }
-  await targetNazorat(env).catch((e) => xatoYoz(env, 'target-nazorat', e));
-  // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz.
-  // Fonda (cron javobini kechiktirmaydi -- cron-job.org 30 soniyada uzadi va keyingi qadamlar kesilib qoladi)
+  // Render bepul tarifi 15 daqiqa jim tursa uxlaydi -- har cron'da uyg'otib turamiz (fonda: cron javobini kechiktirmaydi)
   const fonda = (p) => { const q = p.catch(() => {}); if (waitUntil) waitUntil(q); };
   if (env.MEDIA_SERVER_URL) fonda(mediaUygot(env, 20000));
-  // Kunlik kafolat: Toshkent 11:00 gacha (11:00-11:14 oynasi) bugun video taklifi/nashri yo'q bo'lsa -- animatsion video buyurtma qilinadi.
-  fonda(kunlikAnimatsiya(env));
-  const kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
   await navbatniYubor(env).catch((e) => xatoYoz(env, 'xabar-navbati', e));
-  await haftalikNormaEslatma(env, menejerIdlari(env)).catch((e) => xatoYoz(env, 'norma-eslatma', e));
-  await balansEslatma(env).catch((e) => xatoYoz(env, 'balans-eslatma', e));
-  await xulosaNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'xulosa-navbati', e));
-  await maslahatNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'maslahat-navbati', e));
 
-  let tozalashNatijasi = null;
-  if (url.searchParams.get('tozalash') === '1' || new Date().getUTCMinutes() < 15) {
-    tozalashNatijasi = await tozalash(env);
+  // QISM: asosiy (standart) = faqat navbat + xabarlar (yengil, 503 bermasligi uchun). nazorat = nazorat = agentlar nazorati (alohida cron, har 15 daq).
+  // eslatma = eslatmalar/xulosalar/tozalash (alohida cron, har 15-30 daq; bitta chaqiruv ~50 subrequest chegarasidan oshmasin). hammasi = eski xatti-harakat. Cloudflare Pages bitta chaqiruvga ~50 subrequest/CPU chegarasi qo'yadi -- hammasini birga yuritish 503 sababi bo'lgan.
+  const qism = url.searchParams.get('qism') || 'asosiy';
+  let kuzatuv = null, tozalashNatijasi = null;
+  if (qism === 'nazorat' || qism === 'hammasi') {
+    const qadam = (nom, p) => Promise.resolve(p).catch((e) => xatoYoz(env, nom, e));
+    await qadam('tizim-nazorat', tizimNazorati(env));
+    {
+      const n = new Date();
+      if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) { fondaSeo(seoAudit(env)); fondaSeo(kanalTekshir(env)); } }
+      if ([4, 8, 12].includes(n.getUTCHours()) && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
+      fondaSeo(seoNashr(env));
+      fondaSeo(direktorKuzat(env));
+    }
+    await qadam('target-nazorat', targetNazorat(env));
+    fonda(kunlikAnimatsiya(env));   // Kunlik kafolat: Toshkent 11:00 gacha bugun video taklifi/nashri yo'q bo'lsa -- animatsion video buyurtma
+    kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
+  }
+  if (qism === 'eslatma' || qism === 'hammasi') {
+    await haftalikNormaEslatma(env, menejerIdlari(env)).catch((e) => xatoYoz(env, 'norma-eslatma', e));
+    await balansEslatma(env).catch((e) => xatoYoz(env, 'balans-eslatma', e));
+    await xulosaNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'xulosa-navbati', e));
+    await maslahatNavbatiniTekshir(env).catch((e) => xatoYoz(env, 'maslahat-navbati', e));
+    if (url.searchParams.get('tozalash') === '1' || new Date().getUTCMinutes() < 15) {
+      tozalashNatijasi = await tozalash(env);
+    }
   }
 
-  return json({ ok: true, bajarildi: natijalar.length, natijalar, kuzatuv, tozalash: tozalashNatijasi });
+  return json({ ok: true, qism, bajarildi: natijalar.length, natijalar, kuzatuv, tozalash: tozalashNatijasi, ms: Date.now() - t0 });
 }
 
 async function kunlikAnimatsiya(env) {
