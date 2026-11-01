@@ -184,7 +184,7 @@ async function yarat(env, id, p, tuzat) {
     await say(env, p.chatId, `<b>UZ:</b> ${esc(out.title_uz)}\n${esc(out.desc_uz)}\n\n<b>RU:</b> ${esc(out.title_ru)}\n${esc(out.desc_ru)}\n\n🖼 ${n} ta rasm, har biriga alt matn yozildi.\n🔗 <i>${SAYT}/loyihalar/${slugifyUz(out.title_uz)}</i>`, { inline_keyboard: [[{ text: '✅ Qulay vaqtda joylash', callback_data: 'sg:ok' }, { text: '⚡ Hozir', callback_data: 'sg:now' }], [{ text: '✏️ Tuzatish', callback_data: 'sg:ed' }, { text: '❌ Bekor', callback_data: 'sg:no' }]] });
   } catch (e) {
     await say(env, p.chatId, `⚠️ Matn yozishda xato: ${esc(e.message)}\nQayta urinish: /seo`);
-    await upd(env, id, 'seo_xato');
+    await upd(env, id, 'seo_xato', { ...p, xato: String(e.message).slice(0, 300) }).catch(() => {});
   }
 }
 
@@ -305,13 +305,16 @@ export async function seoNashr(env) {
   const p = d.payload;
   try {
     if (!env.UPLOADS || !env.DB) throw new Error('R2 (UPLOADS) yoki D1 (DB) ulanmagan');
-    const urls = [];
-    for (let i = 0; i < p.rasmlar.length; i++) {
+    // Cloudflare ~50 so'rov chegarasi: rasmlar bo'laklab yuklanadi (har chaqiruvda 5 tadan), tayyor URL'lar payload'da saqlanadi.
+    const urls = p.urls || [];
+    const oxir = Math.min(p.rasmlar.length, urls.length + 5);
+    for (let i = urls.length; i < oxir; i++) {
       const u8 = await tgFayl(env, p.rasmlar[i]); const t = tur(u8); if (!t) throw new Error(`${i + 1}-rasm formati qo'llanmaydi (JPG/PNG/WebP)`);
       const key = `uploads/${Date.now()}-${crypto.randomUUID()}.${t[0]}`;
       await env.UPLOADS.put(key, u8, { httpMetadata: { contentType: t[1] } });
       urls.push(env.R2_PUBLIC_BASE ? `${env.R2_PUBLIC_BASE.replace(/\/$/, '')}/${key}` : `/r2/${key}`);
     }
+    if (urls.length < p.rasmlar.length) { await upd(env, d.id, 'seo_navbat', { ...p, urls }); return; }
     const m = p.matn, j = p.j, alts = {};
     urls.forEach((u, i) => { alts[u] = (m.alts && m.alts[i]) || { uz: m.title_uz, ru: m.title_ru }; });
     const v = buildValues({ category: j.category || 'interior', status: j.status || 'render', title_uz: m.title_uz, title_ru: m.title_ru, type_uz: m.type_uz, type_ru: m.type_ru, desc_uz: m.desc_uz, desc_ru: m.desc_ru, task_uz: m.task_uz, task_ru: m.task_ru, style_uz: m.style_uz || j.uslub, style_ru: m.style_ru, location_uz: m.location_uz || j.joy, location_ru: m.location_ru, duration_uz: m.duration_uz || j.muddat, duration_ru: m.duration_ru, thumb_url: urls[0], hero_url: urls[0], gallery_urls: urls.slice(1), area_m2: j.maydon, year: j.yil, alts });
@@ -324,7 +327,7 @@ export async function seoNashr(env) {
     await upd(env, d.id, 'seo_tayyor', { ...p, rasmlar: p.rasmlar.length, loyiha_id: res.meta.last_row_id, slug: v.slug });
     await say(env, p.chatId, `✅ <b>Saytga joylandi</b>\n${esc(m.title_uz)}\n\n🔗 ${link}\n🔗 ${linkRu}\n\nYandex/Bing'ga yangi sahifa haqida xabar berildi (IndexNow). Google sitemap orqali o'zi oladi.`);
   } catch (e) {
-    await upd(env, d.id, 'seo_xato', p).catch(() => {});
+    await upd(env, d.id, 'seo_xato', { ...p, xato: String(e.message).slice(0, 300) }).catch(() => {});
     await say(env, p.chatId, `⚠️ Saytga joylashda xato: ${esc(e.message)}\nRasmlar saqlanib turibdi; /seo orqali qayta yuborishingiz mumkin.`);
   }
 }

@@ -24,7 +24,12 @@ async function baza(env) {
   try {
     const xato = await sb(env, `nashr_navbati?holat=eq.xato&created_at=gte.${new Date(Date.now() - 3600e3).toISOString()}&select=id`);
     if (xato.length >= 5) await xatoYoz(env, 'nazorat:navbat-xatolar', `So'nggi 1 soatda navbatda ${xato.length} ta xato.`);
-    const qotgan = await sb(env, `nashr_navbati?holat=eq.bajarilmoqda&created_at=lt.${new Date(Date.now() - 20 * 60e3).toISOString()}&select=id,turi`);
+    // O'z-o'zini tuzatish: 2 soatdan oshgan "bajarilmoqda" -> xato; 30 daqiqadan oshgan "seo_ish" -> seo_xato (qayta yuborilmaydi, dublikat bo'lmasin).
+    const oldi = await sb(env, `nashr_navbati?holat=eq.bajarilmoqda&created_at=lt.${new Date(Date.now() - 2 * 3600e3).toISOString()}&select=id`).catch(() => []);
+    for (const x of oldi) await sb(env, `nashr_navbati?id=eq.${x.id}&holat=eq.bajarilmoqda`, { method: 'PATCH', body: JSON.stringify({ holat: 'xato' }) }).catch(() => {});
+    const seoQ = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_ish&created_at=lt.${new Date(Date.now() - 30 * 60e3).toISOString()}&select=id`).catch(() => []);
+    for (const x of seoQ) await sb(env, `nashr_navbati?id=eq.${x.id}&holat=eq.seo_ish`, { method: 'PATCH', body: JSON.stringify({ holat: 'seo_xato' }) }).catch(() => {});
+    const qotgan = (await sb(env, `nashr_navbati?holat=eq.bajarilmoqda&created_at=lt.${new Date(Date.now() - 20 * 60e3).toISOString()}&select=id,turi`)).filter((q) => !oldi.some((o) => o.id === q.id));
     if (qotgan.length) await xatoYoz(env, 'nazorat:navbat-qotgan', `${qotgan.length} ta qator 20 daqiqadan beri "bajarilmoqda" holatida qotib qoldi (${qotgan.map((q) => q.turi).join(', ')}).`);
     const hujum = await sb(env, `bot_xatolar?manba=like.cron-401*&created_at=gte.${new Date(Date.now() - 3600e3).toISOString()}&select=id`);
     if (hujum.length >= 10) await xatoYoz(env, 'nazorat:hujum', `HUJUM EHTIMOLI: so'nggi 1 soatda ${hujum.length} marta noto'g'ri secret bilan kirishga urinildi.`);
