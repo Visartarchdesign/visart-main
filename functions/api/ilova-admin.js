@@ -4,6 +4,7 @@ import { mediaChaqir, animatsiyaBuyurtma } from '../_lib/media.js';
 import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { seoHolatApp } from '../_lib/seoAgent.js';
 import { kanalOchiq } from '../_lib/kanalAgent.js';
+import { navbatOl, qaytaSlotla } from '../_lib/navbat.js';
 import { direktorChat, direktorTarix, direktorYoz, vazifalarOchiq, vazifaTayyor } from '../_lib/direktor.js';
 
 const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
@@ -196,8 +197,22 @@ export async function onRequestPost({ request, env, waitUntil }) {
   }
   if (a === 'navbat') return J({ ok: true, rows: (await q(env, 'nashr_navbati?turi=neq.media_holat&turi=neq.target&select=id,turi,holat,nashr_vaqti,payload&order=id.desc&limit=40')).map((r) => ({ id: r.id, turi: r.turi, holat: r.holat, vaqt: r.nashr_vaqti, sarlavha: (r.payload && (r.payload.sarlavha || r.payload.matn || '')).toString().slice(0, 90) })) });
   if (a === 'tayyor') return J({ ok: true, rows: (await q(env, 'nashr_navbati?turi=eq.video_nashr&holat=eq.tasdiq_kutilmoqda&select=id,payload,created_at&order=id.desc&limit=20')).map((r) => ({ id: r.id, sarlavha: (r.payload && r.payload.sarlavha) || '', video: (r.payload && r.payload.video_url) || '', sana: String(r.created_at).slice(0, 10) })) });
-  if (a === 'joylash' && b.id) { const r = await mediaChaqir(env, '/nashr', { id: String(b.id), adminChatId: u.id }, u.id); return J({ ok: !!(r && r.ok), sabab: r && r.sabab }); }
+  if (a === 'joylash' && b.id) { const orin = Number(b.orin) > 0 ? Number(b.orin) : undefined; const r = await mediaChaqir(env, '/nashr', { id: String(b.id), adminChatId: u.id, ...(orin ? { orin } : {}) }, u.id); return J({ ok: !!(r && r.ok), sabab: r && r.sabab }); }
   if (a === 'bekor' && b.id) { await sb(env, `nashr_navbati?id=eq.${Number(b.id)}&turi=eq.video_nashr`, { method: 'PATCH', body: JSON.stringify({ holat: 'bekor' }) }); return J({ ok: true }); }
+  const nsb = (p, init) => sb(env, p, init);
+  if (a === 'reels') { const it = await navbatOl(nsb).catch(() => []); return J({ ok: true, rows: it.map((x) => ({ id: x.ig.id, vaqt: x.ig.nashr_vaqti, sarlavha: String((x.ig.payload || {}).sarlavha || 'video').slice(0, 60) })) }); }
+  if (a === 'reels_amal' && b.id && ['up', 'dn', 'to', 'rm'].includes(b.op)) {
+    const it = await navbatOl(nsb); const i = it.findIndex((x) => String(x.ig.id) === String(b.id));
+    if (i < 0) return J({ ok: false, sabab: 'topilmadi' });
+    const pt = (id, body) => sb(env, `nashr_navbati?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    if (b.op === 'rm') { await pt(it[i].ig.id, { holat: 'bekor' }); if (it[i].tg) await pt(it[i].tg.id, { holat: 'bekor' }); it.splice(i, 1); }
+    else {
+      const j = b.op === 'up' ? i - 1 : b.op === 'dn' ? i + 1 : Math.min(Math.max(Number(b.orin) || 1, 1), it.length) - 1;
+      if (j < 0 || j >= it.length) return J({ ok: false, sabab: "bu yerga ko'chirib bo'lmaydi" });
+      const [x] = it.splice(i, 1); it.splice(j, 0, x);
+    }
+    await qaytaSlotla(nsb, it); return J({ ok: true });
+  }
   if (a === 'lidlar') {
     const bot = await q(env, 'lidlar?select=ism,telefon,xizmat_turi,maydon_m2,manba,created_at&order=created_at.desc&limit=30');
     let sayt = []; try { sayt = ((await env.DB.prepare('SELECT name, phone, service, created_at FROM leads ORDER BY id DESC LIMIT 30').all()).results) || []; } catch {}
