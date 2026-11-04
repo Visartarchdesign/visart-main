@@ -1,12 +1,13 @@
 // Instagram Reels navbati: ko'rish va tartibni o'zgartirish (Telegram admin tugmalari). Slotlar media-server `IG_REJA` bilan bir xil.
-const IG_REJA = { 2: [20, 0], 5: [14, 0], 0: [20, 30] };   // Sesh 20:00, Juma 14:00, Yak 20:30 (Toshkent, UTC+5)
+import { rejaOl } from './reja.js';
+const IG_REJA = { 2: [20, 0], 4: [20, 30], 6: [20, 0], 0: [20, 30] };   // zaxira (bazada reja bo'lmasa); asl manba: /reja
 const TOSH = 5 * 3600e3, KUN = ['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Juma', 'Shan'];
 const p2 = (n) => String(n).padStart(2, '0');
 export const fmt = (d) => { const t = new Date(new Date(d).getTime() + TOSH); return `${KUN[t.getUTCDay()]} ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}`; };
-export function keyingiSlot(dan) {
+export function keyingiSlot(dan, reja = IG_REJA) {
   for (let i = 0; i < 15; i++) {
     const t = new Date(dan.getTime() + TOSH); t.setUTCDate(t.getUTCDate() + i);
-    const v = IG_REJA[t.getUTCDay()]; if (!v) continue;
+    const v = reja[t.getUTCDay()]; if (!v) continue;
     t.setUTCHours(v[0], v[1], 0, 0);
     const utc = new Date(t.getTime() - TOSH); if (utc > dan) return utc;
   }
@@ -22,8 +23,9 @@ export async function navbatOl(sb) {
 const patch = (sb, id, body) => sb(`nashr_navbati?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export async function qaytaSlotla(sb, items) {      // tartib bo'yicha ketma-ket IG slotlar, Telegram = +30 daq
   let prev = new Date(Date.now() + 30 * 60e3);
+  const { reja } = await rejaOl(sb);   // /reja da sozlangan Reels slotlari
   for (const it of items) {
-    const t = keyingiSlot(prev); prev = t; it.ig.nashr_vaqti = t.toISOString();
+    const t = keyingiSlot(prev, reja.reel); prev = t; it.ig.nashr_vaqti = t.toISOString();
     await patch(sb, it.ig.id, { nashr_vaqti: t.toISOString() });
     if (it.tg) await patch(sb, it.tg.id, { nashr_vaqti: new Date(t.getTime() + 30 * 60e3).toISOString() });
   }

@@ -47,6 +47,7 @@
 // Supabase SQL Editor'da bir marta ishga tushiring. `mijoz_dialog` jadvali ham YANGI.
 
 import { navbatOl, navbatMatn, navbatTugma, orinTugma, navbatTugmaBajar } from '../_lib/navbat.js';
+import { rejaOl, rejaMatn, rejaTugma, rejaTugmaBajar } from '../_lib/reja.js';
 import { normaKorsat, normaBelgila } from '../_lib/normaTasdiq.js';
 import { keyingiToshkent, guruhgaXabarVaHisobot, MUZLATISH_MATN } from '../_lib/botAvto.js';
 import { xatoYoz } from '../_lib/xato.js';
@@ -1014,11 +1015,11 @@ async function tezkorIshlat(env, chatId, arxivId, turi, korsatma) {
   }
 }
 
-async function tgSendMessageKb(env, chatId, text, kb) {
+async function tgSendMessageKb(env, chatId, text, kb, extra = {}) {
   await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, reply_markup: kb }),
+    body: JSON.stringify({ chat_id: chatId, text, reply_markup: kb, ...extra }),
     signal: AbortSignal.timeout(10000),
   }).catch(() => {});
 }
@@ -2070,6 +2071,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
         await navbatTugmaBajar({ sb, tg: tgApi, data, chatId, mid: cq.message.message_id, cqId: cq.id }).catch(() => answerCq(env, cq.id, { text: 'Xato' }));
         return json({ ok: true });
       }
+      if (data.startsWith('rj:')) {
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
+        const sb = (p, init) => sbFetch(env, p, init);
+        const tgApi = (method, body) => fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10000) }).catch(() => {});
+        await rejaTugmaBajar({ sb, tg: tgApi, data, chatId, mid: cq.message.message_id, cqId: cq.id }).catch(() => answerCq(env, cq.id, { text: 'Xato' }));
+        return json({ ok: true });
+      }
       if (data.startsWith('vnash:')) {
         const [, nid, qaror] = data.split(':');
         if (!isAdmin(env, cq.from && cq.from.id)) {
@@ -2210,6 +2218,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
       const mavzu = (msg.text || '').replace(/^\s*\/?animatsiya(@\w+)?\s*/i, '').trim();
       await tgSend(env.MIJOZ_BOT_TOKEN, msg.chat.id, `⏳ Animatsion video buyurtmasi qabul qilindi${mavzu ? ` (mavzu: ${escH(mavzu)})` : ' (mavzuni AI tanlaydi)'}. 3–6 daqiqada tasdiqqa keladi.`);
       await animatsiyaBuyurtma(env, msg.chat.id, mavzu || undefined);
+      return json({ ok: true });
+    }
+    if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/reja\b/i.test(msg.text || '')) {
+      const { reja } = await rejaOl((p, init) => sbFetch(env, p, init));
+      await tgSendMessageKb(env, msg.chat.id, rejaMatn(reja), rejaTugma(), { parse_mode: 'HTML' });
       return json({ ok: true });
     }
     if (msg.chat.type === 'private' && isAdmin(env, msg.from && msg.from.id) && /^\s*\/navbat\b/i.test(msg.text || '')) {

@@ -882,23 +882,15 @@ async function instagramStoryPost(env, mediaUrl, rasm = false) {
 // KUNI 21:30, aks holda ertangi ertalabki 08:15 oynasiga o'tkaziladi --
 // O'zbekiston auditoriyasi Story faolligi tadqiqotiga asoslangan ikkita
 // kuchli kunlik nuqta.
-function keyingiStoryVaqt() {
-  const TOSHKENT_OFFSET_MS = 5 * 60 * 60 * 1000;
-  const hozirToshkent = new Date(Date.now() + TOSHKENT_OFFSET_MS);
-  const hozirDaqiqa = hozirToshkent.getUTCHours() * 60 + hozirToshkent.getUTCMinutes();
-  const kechqurunOyna = 21 * 60 + 30;
-  const ertalabOyna = 8 * 60 + 15;
-
-  const sana = new Date(hozirToshkent);
-  let daqiqa;
-  if (hozirDaqiqa < kechqurunOyna) {
-    daqiqa = kechqurunOyna;
-  } else {
-    sana.setUTCDate(sana.getUTCDate() + 1);
-    daqiqa = ertalabOyna;
-  }
-  sana.setUTCHours(0, daqiqa, 0, 0);
-  return new Date(sana.getTime() - TOSHKENT_OFFSET_MS);
+function keyingiStoryVaqt(royxat = STORY_REJA) {
+  const TOSH = 5 * 3600e3, hozir = new Date(Date.now() + TOSH);
+  const m = hozir.getUTCHours() * 60 + hozir.getUTCMinutes();
+  const t = [...royxat].sort((a, b) => a[0] * 60 + a[1] - (b[0] * 60 + b[1]));
+  const sana = new Date(hozir);
+  let v = t.find((x) => x[0] * 60 + x[1] > m);
+  if (!v) { sana.setUTCDate(sana.getUTCDate() + 1); v = t[0]; }
+  sana.setUTCHours(v[0], v[1], 0, 0);
+  return new Date(sana.getTime() - TOSH);
 }
 
 // Bir xil videoni QO'SHIMCHA Story bosqichi sifatida (darhol chiqqan asosiy
@@ -1223,7 +1215,17 @@ export async function bajarMontaj({ env, aslFileId, adminChatId, title, taklifId
 // (navbat) va YouTube Shorts'ga chiqaradi.
 
 // ===== Haftalik nashr jadvali (Toshkent, UTC+5) =====
-const IG_REJA = { vaqt: { 2: [20, 0], 5: [14, 0], 0: [20, 30] } };   // Sesh 20:00, Juma 14:00 (Juma namozidan keyin), Yak 20:30 (Reel); Telegram video = IG +30 daqiqa
+const IG_REJA = { vaqt: { 2: [20, 0], 4: [20, 30], 6: [20, 0], 0: [20, 30] } };   // zaxira jadval; asl manba: bazadagi nashr_reja (Telegram /reja). Telegram video = IG +30 daqiqa
+const STORY_REJA = [[9, 0], [13, 30], [21, 0]];
+// Telegram /reja da sozlangan jadvalni bazadan oladi (xato bo'lsa zaxira jadval)
+async function rejaYukla(env) {
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?turi=eq.nashr_reja&select=payload&limit=1`, { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` } });
+    const p = ((await r.json()) || [])[0]?.payload;
+    if (p) return { ig: { vaqt: p.reel || IG_REJA.vaqt }, story: Array.isArray(p.story) && p.story.length ? p.story : STORY_REJA };
+  } catch (e) { /* zaxira */ }
+  return { ig: IG_REJA, story: STORY_REJA };
+}
 const YT_REJA = { vaqt: { 1: [18, 30], 4: [18, 30], 6: [11, 0] } };  // Dush 18:30, Pay 18:30, Shan 11:00 (Shorts)
 const tosh = (d) => { const t = new Date(d.getTime() + 5 * 3600e3), p = (n) => String(n).padStart(2, '0'); return `${['Yak', 'Dush', 'Sesh', 'Chor', 'Pay', 'Juma', 'Shan'][t.getUTCDay()]} ${p(t.getUTCDate())}.${p(t.getUTCMonth() + 1)} ${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`; };
 export function keyingiSlot(reja, dan) {
@@ -1249,7 +1251,8 @@ async function slotlarHisobla(env) {
       if (a > oxirIg) oxirIg = a; if (b && b > oxirYt) oxirYt = b;
     }
   } catch (e) { /* jadval bo'sh -- eng yaqin slot */ }
-  return { ig: keyingiSlot(IG_REJA, oxirIg), yt: keyingiSlot(YT_REJA, oxirYt) };
+  const reja = await rejaYukla(env);
+  return { ig: keyingiSlot(reja.ig, oxirIg), yt: keyingiSlot(YT_REJA, oxirYt) };
 }
 
 
@@ -1265,8 +1268,9 @@ export async function navbatKochir(env, videoUrl, orin) {
   const [it] = items.splice(i, 1); items.splice(Math.min(Number(orin), items.length + 1) - 1, 0, it);
   const patch = (id, body) => fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?id=eq.${id}`, { method: 'PATCH', headers: H, body: JSON.stringify(body) });
   let prev = new Date(Date.now() + 30 * 60e3), mening = null;
+  const rj = await rejaYukla(env);
   for (const x of items) {
-    const t = keyingiSlot(IG_REJA, prev); prev = t;
+    const t = keyingiSlot(rj.ig, prev); prev = t;
     await patch(x.ig.id, { nashr_vaqti: t.toISOString() });
     if (x.tg) await patch(x.tg.id, { nashr_vaqti: new Date(t.getTime() + 30 * 60e3).toISOString() });
     if (x === it) mening = t;
@@ -1286,7 +1290,7 @@ export async function igTgNashr(env, p, adminChatId) {
       try {
         const kartalar = await storyKartalarYarat({ env, videoUrl, sarlavha });
         const t1 = new Date();
-        const t2 = keyingiStoryVaqt();
+        const t2 = keyingiStoryVaqt((await rejaYukla(env)).story);
         const vaqtlar = [t1, t2, new Date(t2.getTime() + 11 * 3600 * 1000)];
         const nom = { teaser: 'Teaser', savol: 'Savol kartasi', maslahat: 'Maslahat/AI-rasm' };
         for (let i = 0; i < kartalar.length; i++) {
