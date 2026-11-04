@@ -31,8 +31,11 @@ const QS = [
 ];
 
 async function aktiv(env, chatId) {
-  const r = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_yig&payload->>chatId=eq.${chatId}&order=id.desc&limit=1&select=id,payload`).catch(() => []);
-  return r && r[0] ? r[0] : null;
+  const r = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&holat=eq.seo_yig&payload->>chatId=eq.${chatId}&order=id.desc&limit=1&select=id,payload,created_at`).catch(() => []);
+  const d = r && r[0] ? r[0] : null;
+  // 6 soatdan eski qoralama yopiladi: aks holda yangi rasm va kunlik taklif jimgina to'siladi
+  if (d && Date.now() - new Date(d.created_at).getTime() > 6 * 3600e3) { await upd(env, d.id, 'seo_bekor').catch(() => {}); return null; }
+  return d;
 }
 
 const NISHON = { sayt: '🌐 Sayt (portfolio)', yandex: '🗺 Yandex', google: '🗺 Google', gis: '🗺 2GIS' };
@@ -57,7 +60,9 @@ async function xaritaNavbat(env, p, toifa) {
 const TOIFA_UCHUN = { interior: 'interior', architecture: 'exterior', drawings: 'xizmat' };
 
 export async function seoMedia(env, msg) {
-  const d = await aktiv(env, msg.chat.id); if (!d || d.payload.step !== 'rasm') return false;
+  const d = await aktiv(env, msg.chat.id); if (!d) return false;
+  if (d.payload.step === 'qayerga') { d.payload.step = 'rasm'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: d.payload }) }).catch(() => {}); }
+  if (d.payload.step !== 'rasm') { await say(env, msg.chat.id, `ℹ️ Ochiq SEO ish bor (bosqich: ${d.payload.step}). Uni tugating yoki /seo → yangisini boshlang; shunda rasmlar qabul qilinadi.`); return true; }
   const fid = msg.photo ? msg.photo[msg.photo.length - 1].file_id : (msg.document && /^image\//.test(msg.document.mime_type || '') ? msg.document.file_id : null);
   if (!fid) return false;
   // Albomdagi rasmlar bir vaqtda keladi -- poyga bo'lmasligi uchun har rasm alohida qator
@@ -85,7 +90,6 @@ export async function seoIlovadan(env, chatId, n, fayllar) {
 // Faol ish yo'q, admin rasmni (forward) to'g'ridan-to'g'ri botga yubordi: oxirgi tanlangan joylar bilan qoralama ochiladi.
 export async function seoAvto(env, msg) {
   const chatId = msg.chat.id;
-  if (!(msg.forward_origin || msg.forward_date)) return false;
   if (await aktiv(env, chatId)) return false;
   const fid = msg.photo ? msg.photo[msg.photo.length - 1].file_id : (msg.document && /^image\//.test(msg.document.mime_type || '') ? msg.document.file_id : null);
   if (!fid) return false;
@@ -101,7 +105,7 @@ export async function seoAvto(env, msg) {
   await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_rasm', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, draft: d.id, fid, mid: msg.message_id } }]) });
   if (bosh === mine) {
     const qayer = Object.keys(NISHON).filter((k) => n[k]).map((k) => NISHON[k]).join(', ');
-    await say(env, chatId, `📲 Forward qilingan rasmlar qabul qilinmoqda. Joylanadi: <b>${qayer}</b> (oxirgi tanlovingiz; o'zgartirish: /seo)\n<b>Rasmlar tugadimi?</b>`, { inline_keyboard: [[{ text: '✅ Ha, tugadi', callback_data: 'sg:done' }, { text: "➕ Yo'q, yana bor", callback_data: 'sg:more' }]] });
+    await say(env, chatId, `📲 Rasmlar qabul qilinmoqda. Joylanadi: <b>${qayer}</b> (oxirgi tanlovingiz; o'zgartirish: /seo)\n<b>Rasmlar tugadimi?</b>`, { inline_keyboard: [[{ text: '✅ Ha, tugadi', callback_data: 'sg:done' }, { text: "➕ Yo'q, yana bor", callback_data: 'sg:more' }]] });
   }
   return true;
 }
