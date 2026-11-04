@@ -189,4 +189,4 @@ app.get('/montaj-test', (req, res) => {
 
 const port = process.env.PORT || 10000;
 app.listen(port, () => console.log(`Visart media-server ${port}-portda ishga tushdi`));
-if (process.platform === 'win32' || process.env.XOM_KUZAT) { xomKuzatuvchi(); fotoIshchi(); animatsiyaKuzatuvchi(); }
+if (process.platform === 'win32' || process.env.XOM_KUZAT) { xomKuzatuvchi(); animatsiyaKuzatuvchi(); } // fotoIshchi o'chirilgan (04.11): ishlatilmayapti
