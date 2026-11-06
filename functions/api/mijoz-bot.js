@@ -1879,8 +1879,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
       return json({ ok: false, error: 'unauthorized' }, 401);
     }
     const update = await request.json().catch(() => null);
-    if (!update) return json({ ok: true });
+    if (!update) { await xatoYoz(env, 'diag:kirish', 'update bo\'sh/JSON emas').catch(() => {}); return json({ ok: true }); }
     _upd = update;
+    if (update.message && /^\/seo/.test(update.message.text || '')) await xatoYoz(env, 'diag:kirish', `seo keldi ${update.update_id}`).catch(() => {});
     if (await takroriyUpdate(env, update.update_id)) return json({ ok: true });
     env = await adminlarBilan(env);
 
@@ -2509,7 +2510,7 @@ export async function onRequestGet({ request, env }) {
   if (new URL(request.url).searchParams.get('tekshir') !== '1') return json({ ok: true });
   const d = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getWebhookInfo`).then((r) => r.json()).catch((e) => ({ xato: String(e) }));
   const w = (d && d.result) || d || {};
-  const qisqa = { url_bor: !!w.url, host: w.url ? new URL(w.url).host + new URL(w.url).pathname : '', pending: w.pending_update_count, last_error: w.last_error_message, last_error_date: w.last_error_date, max_conn: w.max_connections, xato: w.xato || d.description };
+  const qisqa = { url_bor: !!w.url, host: w.url ? new URL(w.url).host + new URL(w.url).pathname : '', pending: w.pending_update_count, last_error: w.last_error_message, last_error_date: w.last_error_date, max_conn: w.max_connections, allowed: w.allowed_updates, ip: w.ip_address, sync_err: w.last_synchronization_error_date, xato: w.xato || d.description };
   await xatoYoz(env, 'diag:webhook', JSON.stringify(qisqa)).catch(() => {});
   return json({ ok: true });
 }
