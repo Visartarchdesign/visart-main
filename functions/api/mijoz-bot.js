@@ -2507,7 +2507,14 @@ export async function onRequestPost({ request, env, waitUntil }) {
 
 // Diagnostika: Telegram webhook holatini bot_xatolar'ga yozadi (javobda hech narsa qaytmaydi).
 export async function onRequestGet({ request, env }) {
-  if (new URL(request.url).searchParams.get('tekshir') !== '1') return json({ ok: true });
+  const tk = new URL(request.url).searchParams.get('tekshir');
+  if (tk === 'qayta') {   // webhook'ni o'sha manzil va secret bilan qayta o'rnatish (Telegram sinxron xatosidan keyin)
+    const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setWebhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://visartdesign.uz/api/mijoz-bot', secret_token: env.MIJOZ_BOT_SECRET, max_connections: 40 }) }).then((x) => x.json()).catch((e) => ({ xato: String(e) }));
+    await xatoYoz(env, 'diag:webhook-qayta', JSON.stringify(r)).catch(() => {});
+    return json({ ok: true });
+  }
+  if (tk !== '1') return json({ ok: true });
   const d = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getWebhookInfo`).then((r) => r.json()).catch((e) => ({ xato: String(e) }));
   const w = (d && d.result) || d || {};
   const qisqa = { url_bor: !!w.url, host: w.url ? new URL(w.url).host + new URL(w.url).pathname : '', pending: w.pending_update_count, last_error: w.last_error_message, last_error_date: w.last_error_date, max_conn: w.max_connections, allowed: w.allowed_updates, ip: w.ip_address, sync_err: w.last_synchronization_error_date, xato: w.xato || d.description };
