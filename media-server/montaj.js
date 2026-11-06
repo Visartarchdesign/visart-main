@@ -1293,17 +1293,19 @@ export async function igTgNashr(env, p, adminChatId) {
         const t2 = keyingiStoryVaqt((await rejaYukla(env)).story);
         const vaqtlar = [t1, t2, new Date(t2.getTime() + 11 * 3600 * 1000)];
         const nom = { teaser: 'Teaser', savol: 'Savol kartasi', maslahat: 'Maslahat/AI-rasm' };
+        let soni = 0;
         for (let i = 0; i < kartalar.length; i++) {
           const url = await supabaseRasmUpload(env, kartalar[i].buf);
           const qid = await navbatgaQoshStory(env, url, vaqtlar[i], true, { manba_video: videoUrl, sarlavha, rol: kartalar[i].rol, v: 0 });
           if (!qid) continue;
+          soni++;
           const t = new Date(vaqtlar[i].getTime() + 5 * 3600 * 1000);
           const p2 = (n) => String(n).padStart(2, '0');
           await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, kartalar[i].buf,
             `📱 Story: ${nom[kartalar[i].rol]}\nChiqish vaqti: ${p2(t.getUTCDate())}.${p2(t.getUTCMonth() + 1)} ${p2(t.getUTCHours())}:${p2(t.getUTCMinutes())}\n\nTasdiqlamaguncha Instagram'ga CHIQMAYDI.`,
             { inline_keyboard: [[{ text: '✅ Story qo\'y', callback_data: `sty:ok:${qid}` }, { text: '❌ Boshqasini yarat', callback_data: `sty:no:${qid}` }]] });
         }
-        await xabar('📸 Reels joylandi. 3 ta Story tasdiq uchun yuborildi (tasdiqlamaguncha chiqmaydi).');
+        await xabar(soni ? `📸 Reels joylandi. ${soni} ta Story tasdiq uchun yuborildi (tasdiqlamaguncha chiqmaydi).` : '⚠️ Reels joylandi, lekin Story navbatga yozilmadi (Supabase). Admin tekshirsin.');
       } catch (se) {
         await xabar(`📸 Reels joylandi. Story kartalar xato (video takrorlanmadi): ${String((se && se.message) || se)}`);
       }

@@ -43,7 +43,7 @@ async function geminiMatn(env, sarlavha, variant = 0) {
   if (!env.GEMINI_API_KEY) return null;
   const burchaklar = ['', 'xarajat va tejash burchagi', 'ko\'p uchraydigan XATO va uni oldini olish burchagi', 'oldin/keyin va natija burchagi', 'mijoz savoli va javob burchagi'];
   const prompt = `SENARIST rolida: interyer dizayn studiyasi (Toshkent) Instagram Story'lari uchun O'ZBEK tilida (lotin) qisqa matnlar yoz. Mavzu: "${sarlavha}".${variant ? ` Bu ${variant + 1}-variant: oldingi variantlar rad etildi. Mavzuga ${burchaklar[variant % burchaklar.length]} bilan yondash; oldingilardan g'oya, savol va maslahat TUBDAN FARQLI bo'lsin, takrorlama.` : ''} Faqat JSON: {"teaser":"<=7 so'z","savol":"auditoriyaga savol <=10 so'z","maslahat":"1 ta amaliy dizayn maslahati <=12 so'z","rasm_prompt":"inglizcha: premium issiq-neytral interyer fotosurati, mavzuga mos, 9:16, realistik yoritish${variant ? ', boshqacha xona va kompozitsiya' : ''}"}`;
-  for (const model of ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite']) {
+  for (const model of [env.GEMINI_TEXT_MODEL || 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.5-flash']) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -82,7 +82,7 @@ export async function storyKartalarYarat({ env, videoUrl, sarlavha }) {
     const k1 = await kadrOl(vp, 0.35, path.join(tmp, 'a.jpg'));
     const k2 = await kadrOl(vp, 0.7, path.join(tmp, 'b.jpg'));
     const m = (await geminiMatn(env, sarlavha)) || {};
-    const teaser = m.teaser || ['Yangi loyiha','Bilasizmi?','Natijani ko\'ring','Savol-javob'][v % 4] + ': ' + sarlavha;
+    const teaser = m.teaser || 'Yangi video: ' + sarlavha;   // Gemini javob bermasa ham Story chiqadi
     const savol = m.savol || "Sizga qaysi uslub yoqadi?";
     const maslahat = m.maslahat || "Yoritishni 2700–3000K ichida tanlang: xona issiq ko'rinadi.";
     const cover = (b) => sharp(b).resize(W, H, { fit: 'cover' });
