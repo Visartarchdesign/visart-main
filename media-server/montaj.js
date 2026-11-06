@@ -384,6 +384,24 @@ function keyingiYoutubeVaqt() {
   return new Date(natija.getTime() - TOSHKENT_OFFSET_MS);
 }
 
+// YouTube Shorts qopqog'i API orqali qo'yilmaydi (403): muqovani videoning birinchi
+// 0.2 soniyasiga qo'yamiz -- ilovada "Edit -> Thumbnail" da darhol tanlanadi va
+// YouTube avtomatik tanlaganda ham ko'pincha shu kadrni oladi. Xato bo'lsa asl video.
+async function muqovaBoshiga(videoPath, coverBuf) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ytq-'));
+  const jpg = path.join(dir, 'q.jpg'), out = path.join(dir, 'yt.mp4');
+  const { stdout } = await execFileAsync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,width,height,r_frame_rate', '-of', 'json', videoPath]);
+  const st = JSON.parse(stdout).streams || [];
+  const v = st.find((x) => x.codec_type === 'video'); const audio = st.some((x) => x.codec_type === 'audio');
+  if (!v) throw new Error('video oqimi yo\'q');
+  const [a, b] = String(v.r_frame_rate || '30/1').split('/').map(Number); const fps = Math.round(a / (b || 1)) || 30;
+  fs.writeFileSync(jpg, await sharp(coverBuf).resize(v.width, v.height, { fit: 'cover' }).jpeg({ quality: 92 }).toBuffer());
+  const fc = `[0:v]setsar=1,fps=${fps},format=yuv420p[c];[1:v]setsar=1,fps=${fps},format=yuv420p[v];[c][v]concat=n=2:v=1:a=0[ov]` + (audio ? ';[1:a]adelay=200:all=1[oa]' : '');
+  await execFileAsync('ffmpeg', ['-y', '-loglevel', 'error', '-loop', '1', '-t', '0.2', '-i', jpg, '-i', videoPath, '-filter_complex', fc,
+    '-map', '[ov]', ...(audio ? ['-map', '[oa]', '-c:a', 'aac', '-b:a', '192k'] : []), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '19', '-movflags', '+faststart', out], { maxBuffer: 1 << 26 });
+  return out;
+}
+
 // Tayyor videoni YouTube'ga Shorts sifatida yuklaydi (resumable upload).
 // "private" + publishAt bilan yuklanadi -- YouTube o'zi belgilangan optimal
 // vaqtda avtomatik ommaga ochadi. Sozlanmagan yoki xato bo'lsa, jim null
@@ -393,6 +411,7 @@ async function youtubeUpload(env, videoPath, title, description, coverBuf, publi
   try {
     const accessToken = await youtubeAccessToken(env);
     if (!accessToken) return null;
+    if (coverBuf) videoPath = await muqovaBoshiga(videoPath, coverBuf).catch(() => videoPath);
 
     const stat = fs.statSync(videoPath);
     const nashrVaqti = publishAt || keyingiYoutubeVaqt();
