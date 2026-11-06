@@ -60,12 +60,21 @@ async function xaritaNavbat(env, p, toifa) {
 }
 const TOIFA_UCHUN = { interior: 'interior', architecture: 'exterior', drawings: 'xizmat' };
 
+// Telegram bot 20 MB dan katta faylni yuklay olmaydi -- bunday faylni qabul qilmaymiz va sababini aytamiz.
+async function kattaFayl(env, msg) {
+  const hajm = msg.document && msg.document.file_size;
+  if (!hajm || hajm <= 20e6) return false;
+  await say(env, msg.chat.id, `⚠️ «${msg.document.file_name || 'fayl'}» — ${(hajm / 1048576).toFixed(1)} MB. Telegram bot 20 MB gacha faylni ocha oladi, bu rasm qabul qilinmadi.\nYechim: rasmni oddiy RASM sifatida yuboring (fayl emas) yoki JPG'ga saqlab hajmini 20 MB dan kichik qiling.`);
+  return true;
+}
+
 export async function seoMedia(env, msg) {
   const d = await aktiv(env, msg.chat.id); if (!d) return false;
   if (d.payload.step === 'qayerga') { d.payload.step = 'rasm'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: d.payload }) }).catch(() => {}); }
   if (d.payload.step !== 'rasm') { await say(env, msg.chat.id, `ℹ️ Ochiq SEO ish bor (bosqich: ${d.payload.step}). Uni tugating yoki /seo → yangisini boshlang; shunda rasmlar qabul qilinadi.`); return true; }
   const fid = msg.photo ? msg.photo[msg.photo.length - 1].file_id : (msg.document && /^image\//.test(msg.document.mime_type || '') ? msg.document.file_id : null);
   if (!fid) return false;
+  if (await kattaFayl(env, msg)) return true;
   // Albomdagi rasmlar bir vaqtda keladi -- poyga bo'lmasligi uchun har rasm alohida qator
   const mine = await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_rasm', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId: msg.chat.id, draft: d.id, fid, mid: msg.message_id } }]) });
   const first = await sb(env, `nashr_navbati?turi=eq.seo_rasm&holat=eq.seo_yig&payload->>draft=eq.${d.id}&order=id.asc&limit=1&select=id`).catch(() => []);
@@ -94,6 +103,7 @@ export async function seoAvto(env, msg) {
   if (await aktiv(env, chatId)) return false;
   const fid = msg.photo ? msg.photo[msg.photo.length - 1].file_id : (msg.document && /^image\//.test(msg.document.mime_type || '') ? msg.document.file_id : null);
   if (!fid) return false;
+  if (await kattaFayl(env, msg)) return true;
   const ox = await sb(env, 'nashr_navbati?turi=eq.seo_oxirgi&limit=1&select=payload').catch(() => []);
   const n = (ox && ox[0] && ox[0].payload && ox[0].payload.n) || { sayt: true };
   const r = await sb(env, 'nashr_navbati', { method: 'POST', body: JSON.stringify([{ turi: 'seo_loyiha', holat: 'seo_yig', nashr_vaqti: new Date().toISOString(), payload: { chatId, step: 'rasm', n, rasmlar: [], q: 0, j: {} } }]) });
@@ -176,7 +186,8 @@ async function yarat(env, id, p, tuzat) {
     const n = p.rasmlar.length;
     const idx = [...new Set([0, Math.floor(n / 4), Math.floor(n / 2), Math.floor((3 * n) / 4), n - 1])].filter((i) => i < n).slice(0, 5);
     const blocks = [];
-    for (const i of idx) { const u8 = await tgFayl(env, p.rasmlar[i]); const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
+    for (const i of idx) { const u8 = await tgFayl(env, p.rasmlar[i]).catch(() => null); if (!u8) continue; const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
+    if (!blocks.length) throw new Error("rasmlarni ochib bo'lmadi (20 MB dan katta yoki format JPG/PNG/WebP emas). Rasmlarni oddiy RASM sifatida qayta yuboring");
     const j = p.j;
     const malumot = `kategoriya: ${j.category}; holat: ${j.status === 'done' ? 'qurilgan/topshirilgan' : 'faqat 3D loyiha'}; joy: ${j.joy || '-'}; maydon: ${j.maydon || '-'} m2; yil: ${j.yil || '-'}; muddat: ${j.muddat || '-'}; uslub: ${j.uslub || '-'}; mijoz vazifasi/yechim: ${j.vazifa || '-'}${p.eslatma ? '; EGASI ESLATMASI (albatta hisobga ol): ' + p.eslatma : ''}`;
     const prompt = (tuzat ? `Avvalgi matn:\n${JSON.stringify(p.matn)}\n\nEgasi tuzatish so'radi: "${tuzat}". Faqat shuni hisobga olib, butun JSON'ni qaytar.\n\n` : '') + `Siz Visart Design (Toshkent) saytiga yangi loyiha uchun SEO matn yozuvchisiz. Ilova qilingan rasmlar shu loyihaniki (jami ${n} ta, ko'rsatilgani ${idx.length} ta).\nEgasi bergan ma'lumot: ${malumot}\n\n${QOIDA}\n\nFAQAT JSON: {"title_uz":"","title_ru":"","type_uz":"<2-4 so'z, masalan 'Kvartira interyeri'>","type_ru":"","desc_uz":"","desc_ru":"","task_uz":"<mijoz vazifasi 1-2 gap yoki bo'sh>","task_ru":"","style_uz":"","style_ru":"","location_uz":"","location_ru":"","duration_uz":"","duration_ru":"","alts":[{"uz":"","ru":""}]}  — alts uzunligi aniq ${n} ta bo'lsin.`;
@@ -314,7 +325,7 @@ export async function seoNashr(env) {
     const urls = p.urls || [];
     const oxir = Math.min(p.rasmlar.length, urls.length + 5);
     for (let i = urls.length; i < oxir; i++) {
-      const u8 = await tgFayl(env, p.rasmlar[i]); const t = tur(u8); if (!t) throw new Error(`${i + 1}-rasm formati qo'llanmaydi (JPG/PNG/WebP)`);
+      const u8 = await tgFayl(env, p.rasmlar[i]).catch(() => { throw new Error(`${i + 1}-rasm 20 MB dan katta yoki topilmadi — uni oddiy rasm sifatida qayta yuboring`); }); const t = tur(u8); if (!t) throw new Error(`${i + 1}-rasm formati qo'llanmaydi (JPG/PNG/WebP)`);
       const key = `uploads/${Date.now()}-${crypto.randomUUID()}.${t[0]}`;
       await env.UPLOADS.put(key, u8, { httpMetadata: { contentType: t[1] } });
       urls.push(env.R2_PUBLIC_BASE ? `${env.R2_PUBLIC_BASE.replace(/\/$/, '')}/${key}` : `/r2/${key}`);
