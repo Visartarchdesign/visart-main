@@ -64,7 +64,7 @@ const TOIFA_UCHUN = { interior: 'interior', architecture: 'exterior', drawings: 
 async function kattaFayl(env, msg) {
   const hajm = msg.document && msg.document.file_size;
   if (!hajm || hajm <= 20e6) return false;
-  await say(env, msg.chat.id, `⚠️ «${msg.document.file_name || 'fayl'}» — ${(hajm / 1048576).toFixed(1)} MB. Telegram bot 20 MB gacha faylni ocha oladi, bu rasm qabul qilinmadi.\nYechim: rasmni oddiy RASM sifatida yuboring (fayl emas) yoki JPG'ga saqlab hajmini 20 MB dan kichik qiling.`);
+  await say(env, msg.chat.id, `⚠️ «${String(msg.document.file_name || 'fayl').replace(/[<>&]/g, '')}» — ${(hajm / 1048576).toFixed(1)} MB. Telegram bot 20 MB gacha faylni ocha oladi, bu rasm qabul qilinmadi.\nYechim: rasmni oddiy RASM sifatida yuboring (fayl emas) yoki JPG'ga saqlab hajmini 20 MB dan kichik qiling.`);
   return true;
 }
 
