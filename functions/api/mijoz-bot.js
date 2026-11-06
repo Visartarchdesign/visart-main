@@ -2504,31 +2504,3 @@ export async function onRequestPost({ request, env, waitUntil }) {
   }
 }
 
-// Diagnostika: Telegram webhook holatini bot_xatolar'ga yozadi (javobda hech narsa qaytmaydi).
-export async function onRequestGet({ request, env }) {
-  const tk = new URL(request.url).searchParams.get('tekshir');
-  if (tk === 'qayta') {   // webhook'ni o'sha manzil va secret bilan qayta o'rnatish (Telegram sinxron xatosidan keyin)
-    const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/setWebhook`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'https://visartdesign.uz/api/mijoz-bot', secret_token: env.MIJOZ_BOT_SECRET, max_connections: 40 }) }).then((x) => x.json()).catch((e) => ({ xato: String(e) }));
-    await xatoYoz(env, 'diag:webhook-qayta', JSON.stringify(r)).catch(() => {});
-    return json({ ok: true });
-  }
-  if (tk === 'fayl') {   // Telegram fayl yuklash tezligi (oxirgi SEO rasmi)
-    const T = env.MIJOZ_BOT_TOKEN, o = {}, t0 = Date.now();
-    const q = await sbFetch(env, 'nashr_navbati?turi=eq.seo_rasm&order=id.desc&limit=1&select=payload').catch(() => []);
-    const fid = q && q[0] && q[0].payload.fid;
-    try {
-      const g = await fetch(`https://api.telegram.org/bot${T}/getFile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_id: fid }), signal: AbortSignal.timeout(25000) }).then((r) => r.json());
-      o.getFile = Date.now() - t0; o.ok = g.ok; o.desc = g.description; o.size = g.result && g.result.file_size;
-      if (g.ok) { const t1 = Date.now(); const f = await fetch(`https://api.telegram.org/file/bot${T}/${g.result.file_path}`, { signal: AbortSignal.timeout(25000) }); const b = await f.arrayBuffer(); o.yuklash = Date.now() - t1; o.status = f.status; o.bayt = b.byteLength; }
-    } catch (e) { o.xato = String(e); o.ms = Date.now() - t0; }
-    await xatoYoz(env, 'diag:fayl', JSON.stringify(o)).catch(() => {});
-    return json({ ok: true });
-  }
-  if (tk !== '1') return json({ ok: true });
-  const d = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getWebhookInfo`).then((r) => r.json()).catch((e) => ({ xato: String(e) }));
-  const w = (d && d.result) || d || {};
-  const qisqa = { url_bor: !!w.url, host: w.url ? new URL(w.url).host + new URL(w.url).pathname : '', pending: w.pending_update_count, last_error: w.last_error_message, last_error_date: w.last_error_date, max_conn: w.max_connections, allowed: w.allowed_updates, ip: w.ip_address, sync_err: w.last_synchronization_error_date, xato: w.xato || d.description };
-  await xatoYoz(env, 'diag:webhook', JSON.stringify(qisqa)).catch(() => {});
-  return json({ ok: true });
-}

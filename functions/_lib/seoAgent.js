@@ -154,7 +154,7 @@ async function tgFayl(env, fileId) {
   let sabab = '';
   for (let urinish = 0; urinish < 2; urinish++) {
     try {
-      const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getFile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_id: fileId }), signal: AbortSignal.timeout(20000) });
+      const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getFile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_id: fileId }), signal: AbortSignal.timeout(50000) });
       const g = await r.json().catch(() => ({}));
       if (!g.ok) { sabab = `getFile ${r.status}: ${g.description || ''}`; if (r.status === 400) break; continue; }
       const f = await fetch(`https://api.telegram.org/file/bot${env.MIJOZ_BOT_TOKEN}/${g.result.file_path}`, { signal: AbortSignal.timeout(30000) });
@@ -194,7 +194,9 @@ async function yarat(env, id, p, tuzat) {
     const idx = [...new Set([0, Math.floor(n / 4), Math.floor(n / 2), Math.floor((3 * n) / 4), n - 1])].filter((i) => i < n).slice(0, 5);
     const blocks = [];
     let oxSabab = '';
-    for (const i of idx) { const u8 = await tgFayl(env, p.rasmlar[i]).catch((e) => { oxSabab = e.message; return null; }); if (!u8) continue; const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
+    // Telegram getFile ba'zan 20+ s javob beradi -- rasmlar parallel yuklanadi
+    const fayllar = await Promise.all(idx.map((i) => tgFayl(env, p.rasmlar[i]).catch((e) => { oxSabab = e.message; return null; })));
+    for (const u8 of fayllar) { if (!u8) continue; const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
     if (!blocks.length) throw new Error(`rasmlarni ochib bo'lmadi (${oxSabab || 'format JPG/PNG/WebP emas'})`);
     const j = p.j;
     const malumot = `kategoriya: ${j.category}; holat: ${j.status === 'done' ? 'qurilgan/topshirilgan' : 'faqat 3D loyiha'}; joy: ${j.joy || '-'}; maydon: ${j.maydon || '-'} m2; yil: ${j.yil || '-'}; muddat: ${j.muddat || '-'}; uslub: ${j.uslub || '-'}; mijoz vazifasi/yechim: ${j.vazifa || '-'}${p.eslatma ? '; EGASI ESLATMASI (albatta hisobga ol): ' + p.eslatma : ''}`;
@@ -332,8 +334,10 @@ export async function seoNashr(env) {
     // Cloudflare ~50 so'rov chegarasi: rasmlar bo'laklab yuklanadi (har chaqiruvda 5 tadan), tayyor URL'lar payload'da saqlanadi.
     const urls = p.urls || [];
     const oxir = Math.min(p.rasmlar.length, urls.length + 5);
-    for (let i = urls.length; i < oxir; i++) {
-      const u8 = await tgFayl(env, p.rasmlar[i]).catch(() => { throw new Error(`${i + 1}-rasm 20 MB dan katta yoki topilmadi — uni oddiy rasm sifatida qayta yuboring`); }); const t = tur(u8); if (!t) throw new Error(`${i + 1}-rasm formati qo'llanmaydi (JPG/PNG/WebP)`);
+    const oldin = urls.length;
+    const yuk = await Promise.all(p.rasmlar.slice(oldin, oxir).map((f) => tgFayl(env, f).catch((e) => e)));
+    for (let i = oldin; i < oxir; i++) {
+      const u8 = yuk[i - oldin]; if (u8 instanceof Error) throw new Error(`${i + 1}-rasm yuklanmadi (${u8.message}) — qayta urinib ko'ring`); const t = tur(u8); if (!t) throw new Error(`${i + 1}-rasm formati qo'llanmaydi (JPG/PNG/WebP)`);
       const key = `uploads/${Date.now()}-${crypto.randomUUID()}.${t[0]}`;
       await env.UPLOADS.put(key, u8, { httpMetadata: { contentType: t[1] } });
       urls.push(env.R2_PUBLIC_BASE ? `${env.R2_PUBLIC_BASE.replace(/\/$/, '')}/${key}` : `/r2/${key}`);
