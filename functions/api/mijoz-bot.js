@@ -2503,3 +2503,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
     return json({ ok: true, error: 'server_error' });
   }
 }
+
+// Diagnostika: Telegram webhook holatini bot_xatolar'ga yozadi (javobda hech narsa qaytmaydi).
+export async function onRequestGet({ request, env }) {
+  if (new URL(request.url).searchParams.get('tekshir') !== '1') return json({ ok: true });
+  const d = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getWebhookInfo`).then((r) => r.json()).catch((e) => ({ xato: String(e) }));
+  const w = (d && d.result) || d || {};
+  const qisqa = { url_bor: !!w.url, host: w.url ? new URL(w.url).host + new URL(w.url).pathname : '', pending: w.pending_update_count, last_error: w.last_error_message, last_error_date: w.last_error_date, max_conn: w.max_connections, xato: w.xato || d.description };
+  await xatoYoz(env, 'diag:webhook', JSON.stringify(qisqa)).catch(() => {});
+  return json({ ok: true });
+}
