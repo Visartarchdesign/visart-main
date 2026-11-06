@@ -1881,7 +1881,6 @@ export async function onRequestPost({ request, env, waitUntil }) {
     const update = await request.json().catch(() => null);
     if (!update) { await xatoYoz(env, 'diag:kirish', 'update bo\'sh/JSON emas').catch(() => {}); return json({ ok: true }); }
     _upd = update;
-    if (update.message && /^\/seo/.test(update.message.text || '')) await xatoYoz(env, 'diag:kirish', `seo keldi ${update.update_id}`).catch(() => {});
     if (await takroriyUpdate(env, update.update_id)) return json({ ok: true });
     env = await adminlarBilan(env);
 
