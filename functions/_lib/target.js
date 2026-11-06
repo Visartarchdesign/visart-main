@@ -6,6 +6,7 @@
 import { bilimMatn } from './targetBilim.js';
 import { menejerIdlari } from './botAvto.js';
 import { mediaChaqir } from './media.js';
+import { aiFetch } from './aiZaxira.js';
 
 const G = 'https://graph.facebook.com/v21.0';
 const esc = (s) => String(s == null ? '' : s).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
@@ -42,7 +43,7 @@ const offset = (env, cur) => OFFSET[cur] || Number(env.META_OFFSET) || null;
 const maksKunlik = (env) => Number(env.TARGET_MAKS_KUNLIK) || 30;
 
 async function claude(env, system, user, maxTokens = 1800, prefill = '') {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: maxTokens, system, messages: [{ role: 'user', content: user }, ...(prefill ? [{ role: 'assistant', content: prefill }] : [])] }), signal: AbortSignal.timeout(50000),
   });

@@ -1,3 +1,4 @@
+import { aiFetch } from './aiZaxira.js';
 // Mijoz botining shaxsiy chat imkoniyatlari: menyu (uz/ru), narx hisoblash,
 // rasm-reference (uslub tahlili), lid baholash, obyekt holati.
 // Yordamchilar (tgSend, sbFetch, ...) mijoz-bot.js dan `h` obyekti orqali beriladi.
@@ -427,7 +428,7 @@ export async function handleMijozFoto(env, h, msg) {
   try {
     const img = await tgFaylBase64(env, fileId);
     const prompt = `Bu interyer/arxitektura rasmi. Quyidagini aniqla va FAQAT JSON qaytar: {"uslub": "<${USLUBLAR.join('|')}>", "ranglar": ["<2-4 asosiy rang, ${til === 'ru' ? 'rus' : "o'zbek"} tilida>"], "materiallar": ["<2-4 material, ${til === 'ru' ? 'rus' : "o'zbek"} tilida>"], "tavsif": "<1-2 qisqa gap, ${til === 'ru' ? 'rus' : "o'zbek"} tilida>"}. Rasmda interyer/arxitektura bo'lmasa uslub="boshqa".`;
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 500, messages: [{ role: 'user', content: [

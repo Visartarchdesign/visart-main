@@ -4,6 +4,7 @@
 import { buildValues } from './projectFields.js';
 import { mediaChaqir } from './media.js';
 import { slugifyUz, slugifyRu, ensureUniqueSlug } from './slug.js';
+import { aiFetch } from './aiZaxira.js';
 
 const SAYT = 'https://visartdesign.uz';
 const INDEXNOW_KEY = 'ae33106eb177a277e4558157b2c72776';
@@ -156,7 +157,7 @@ function tur(u8) {
 
 async function claude(env, content, maxTokens = 2500) {
   if (!env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY yoq');
-  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: maxTokens, messages: [{ role: 'user', content }] }), signal: AbortSignal.timeout(55000) });
+  const r = await aiFetch(env, 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: maxTokens, messages: [{ role: 'user', content }] }), signal: AbortSignal.timeout(55000) });
   if (!r.ok) throw new Error('Claude API ' + r.status);
   const d = await r.json();
   const t = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');

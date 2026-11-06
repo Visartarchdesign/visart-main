@@ -6,6 +6,7 @@ import { seoHolatApp } from '../_lib/seoAgent.js';
 import { kanalOchiq } from '../_lib/kanalAgent.js';
 import { navbatOl, qaytaSlotla } from '../_lib/navbat.js';
 import { direktorChat, direktorTarix, direktorYoz, vazifalarOchiq, vazifaTayyor } from '../_lib/direktor.js';
+import { aiFetch } from '../_lib/aiZaxira.js';
 
 const J = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
@@ -86,7 +87,7 @@ async function agentChat(env, agentId, text, holat) {
   const ctx = holat.agentlar.map((x) => `${x.nom}: ${x.h} — ${x.i}`).join('\n');
   const prompt = `Siz Visart Design (Toshkent, arxitektura va interyer studiyasi) agent kompaniyasining "${a.nom}" agentisiz (${a.rol}). Egasi (Doston) bilan gaplashyapsiz.\nJoriy holat:\n${ctx}\n\nQoidalar: qisqa (3-5 gap), aniq o'zbekcha javob; faqat yuqoridagi holatga tayaning, raqam o'ylab topmang; o'z vakolatingizdan tashqari savolga tegishli agentni ayting. Pul sarflash va joylashni o'zingiz bajarmaysiz — egasi tasdiqlaydi.\nEgasi bajarishni so'ragan bo'lsa "amal" maydoniga bittasini yozing: reel (yangi reel senariysi), animatsiya (yangi animatsiya), aks holda null.\nFAQAT JSON: {"javob":"...","amal":null}\n\nEgasi: ${text}`;
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(40000) });
+    const r = await aiFetch(env, 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(40000) });
     if (!r.ok) return { javob: `Claude API xatosi (${r.status}).` };
     const d = await r.json();
     const raw = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');

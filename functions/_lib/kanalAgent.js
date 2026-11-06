@@ -1,3 +1,4 @@
+import { aiFetch } from './aiZaxira.js';
 // SMM agenti (kanal nazorati): Telegram, Instagram, Facebook, YouTube profillarini tekshiradi; Telegram kanalni tekshiradi, SMM+SEO+marketing "kengashi" (Claude) maslahati bilan tavsif/pin/logo taklif qiladi,
 // egasi tasdiqlagach qo'llaydi. Saqlash: nashr_navbati turi=kanal_taklif (holat kutilmoqda|qollandi|rad).
 const q = async (env, path, init = {}) => {
@@ -73,7 +74,7 @@ Javob QISQA bo'lsin (jami ≤1800 token), yt_video faqat 3 tagacha. FAQAT JSON: 
   let raw = '', xato = '';
   for (const model of ['claude-sonnet-5', 'claude-sonnet-5-5', 'claude-opus-5-5']) {
     try {
-      const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(45000) });
+      const r = await aiFetch(env, 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(45000) });
       const d = await r.json();
       raw = ((d.content || []).find((x) => x.type === 'text') || {}).text || '';
       if (raw.includes('{')) break;

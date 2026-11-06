@@ -1,3 +1,4 @@
+import { aiFetch } from '../_lib/aiZaxira.js';
 // Cloudflare Pages Function — /api/senarist-tahlil
 // Senarist agenti: "Visart Media" guruhiga tashlangan xom video/rasmlarni
 // (mijoz-bot.js to'plagan `media_arxiv` jadvali) tahlil qiladi, ulardan
@@ -211,7 +212,7 @@ async function claudeTahlil(env, items) {
 
   let res;
   for (const model of [env.SENARIST_MODEL || MODEL, 'claude-sonnet-5-5']) {
-    res = await fetch('https://api.anthropic.com/v1/messages', {
+    res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -337,7 +338,7 @@ async function claudeMaslahatYoz(env, mavzu) {
     "- Sodda, tabiiy o'zbek tilida, formatlash belgilarisiz (**, * yo'q), 3-5 qisqa jumla + oxirida 5-7 ta hashtag (2-3 ta keng #interyer #dizayn, 2 ta tor/mavzuga mos, 1-2 ta #visartdesign/#toshkent). Yozib bo'lgach imlo xatosiz ekanligini tekshirib chiqing.\n\n" +
     'JAVOBNI FAQAT shu JSON formatda qaytaring: {"sarlavha": "<qisqa sarlavha>", "post_matni": "<to\'liq post matni>"}';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: MODEL, max_tokens: 2000, messages: [{ role: 'user', content: prompt }] }),

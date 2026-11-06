@@ -59,6 +59,7 @@ import { fotoMenu, fotoMedia, fotoCb, fotoQayta, fotoHolat } from '../_lib/fotoB
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat, ILOVA_URL } from '../_lib/mijozMenyu.js';
+import { aiFetch } from '../_lib/aiZaxira.js';
 
 const INSERT_COLUMNS = {
   ism: 'ism',
@@ -814,7 +815,7 @@ async function claudeMatnTuzatish(env, oldSarlavha, oldPostMatni, korsatma) {
     'JAVOBNI FAQAT shu JSON formatda qaytaring: {"sarlavha": "<yangi sarlavha>", "post_matni": "<yangi post matni>"}';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -860,7 +861,7 @@ async function claudeTezkorMatn(env, korsatma) {
     "- 1-qator kuchli hook, so'ng 2-3 qisqa gap, oxirida savol yoki CTA; eng oxirida 5-7 ta hashtag.\n\n" +
     'JAVOBNI FAQAT JSON: {"sarlavha": "<3-6 so\'z>", "post_matni": "<matn>"}';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
@@ -1082,7 +1083,7 @@ async function claudeSsenariyYoz(env, topshiriq) {
     '"gap_matni": "...", "ekran_matni": ["...", "..."], "muzika_kerak": true/false, "caption": "...", ' +
     '"hashtaglar": ["#...", ...], "tarmoqlar": "...", "nashr_vaqti": "..."}';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

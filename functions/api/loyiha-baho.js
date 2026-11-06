@@ -1,3 +1,4 @@
+import { aiFetch } from '../_lib/aiZaxira.js';
 // Kompyuterdan kelgan nomzod rasmlarni AI baholaydi: faqat portfolioga munosib (sifatli, tugallangan render/foto) rasmlar qoladi.
 // POST { nom, rasmlar: [{ i, b64 }] } + X-Media-Secret  ->  { ok, yaxshi: [i...], ballar: {i: ball}, xulosa }
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { 'Content-Type': 'application/json' } });
@@ -15,7 +16,7 @@ Yuqori ball (8–10): tugallangan, professional, real ko'rinadigan render yoki f
 Past ball (1–6): chizma/plan/eskiz, ekran skrinshoti, 3D dastur oynasi, tekstura/xarita, ishlanmagan (grey/clay/WIP) ko'rinish, xira yoki shovqinli, noto'g'ri yoritilgan, bo'sh/zerikarli kadr, boshqa studiya yoki mijoz ma'lumoti (logo, telefon, hujjat) ko'ringan, takroriy deyarli bir xil kadr.
 Faqat 8+ ballilarni "yaxshi" ga qo'sh, eng yaxshisi birinchi, bir-biriga o'xshash kadrlardan faqat bittasini, ko'pi bilan 10 ta. Shubha bo'lsa — qo'shma.
 Faqat JSON qaytar: {"ballar":{"<rasm raqami>":ball,...},"yaxshi":[raqamlar],"xulosa":"1 gap"}` });
-  const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1500, messages: [{ role: 'user', content }] }), signal: AbortSignal.timeout(100000) });
+  const r = await aiFetch(env, 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1500, messages: [{ role: 'user', content }] }), signal: AbortSignal.timeout(100000) });
   if (!r.ok) return json({ ok: false, error: 'Claude API ' + r.status }, 502);
   const d = await r.json();
   const t = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');

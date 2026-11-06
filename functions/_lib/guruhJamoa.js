@@ -1,6 +1,7 @@
 // Ommaviy guruhlar uchun "jim, lekin foydali" rejim: /narx /loyiha /maslahat /obuna,
 // admin tasdiqlaydigan haftalik maslahat.
 import { menejerIdlari, keyingiToshkent } from './botAvto.js';
+import { aiFetch } from './aiZaxira.js';
 
 const SAYT = 'https://visartdesign.uz';
 const BOT = 'visart_design_bot';
@@ -201,7 +202,7 @@ export async function maslahatYarat(env) {
   if (!env.ANTHROPIC_API_KEY || !env.MIJOZ_BOT_TOKEN) return;
   const g = await sb(env, 'bot_guruhlar?select=chat_id&obuna=eq.true&limit=1').catch(() => []);
   if (!g || !g.length) return;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await aiFetch(env, 'https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 400, messages: [{ role: 'user', content:

@@ -1,3 +1,4 @@
+import { aiFetch } from '../_lib/aiZaxira.js';
 // B seriya senariysi v2: BITTA mavzuni chuqur ochadi (muammo -> qoida -> xato -> yechim -> tekshiruv), har bo'lim uchun vizual rejissura (kadr),
 // so'ng alohida "rejissyor-tanqidchi" 10 ballik mezon bilan baholab qayta yozdiradi.
 // POST {faza:'yoz', faktlar, renderlar:n, tajriba:{yoqdi:[],rad:[]}, qayta?:{senariy,tanqid:{kamchiliklar}}} -> {ok, senariy, buzilish[]}
@@ -9,7 +10,7 @@ const soz = (t) => String(t || '').trim().split(/\s+/).filter(Boolean).length;
 async function claude(env, prompt, maxTokens = 3500) {
   let xato = 'model';
   for (const model of MODELLAR) {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(90000) });
+    const r = await aiFetch(env, 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(90000) });
     if (!r.ok) { xato = `${model} ${r.status}`; continue; }
     const d = await r.json(); const t = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');
     const m = t.match(/\{[\s\S]*\}/); if (!m) { xato = 'json yoq'; continue; }

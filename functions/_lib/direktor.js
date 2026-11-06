@@ -1,3 +1,4 @@
+import { aiFetch } from './aiZaxira.js';
 // Direktor agenti: egasi bilan chatda gaplashadi, vazifalarni agentlarga taqsimlaydi, muammo/natijani o'zi xabar qiladi.
 // Saqlash (nashr_navbati): direktor_xabar (chat tarixi), direktor_vazifa (holat 'ochiq'|'bajarildi'), direktor_holat (ogohlantirish dedupe).
 const q = async (env, path, init = {}) => {
@@ -47,7 +48,7 @@ FAQAT JSON: {"javob":"...","buyruqlar":[{"agent":"senarist","amal":"reel","matn"
 
 Egasi: ${text}`;
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 900, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(45000) });
+    const r = await aiFetch(env, 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 900, messages: [{ role: 'user', content: prompt }] }), signal: AbortSignal.timeout(45000) });
     if (!r.ok) return { javob: `Claude API xatosi (${r.status}).`, taklif: [], xato: true };
     const d = await r.json();
     const raw = '' + (((d.content || []).find((x) => x.type === 'text') || {}).text || '');
