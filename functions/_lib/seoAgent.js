@@ -428,5 +428,6 @@ export async function seoKunlik(env) {
   if (ochiq && ochiq.length) return;
   const son = await sb(env, `nashr_navbati?turi=eq.seo_loyiha&payload->>papka=not.is.null&created_at=gte.${encodeURIComponent(new Date(Date.now() - 24 * 3600e3).toISOString())}&select=id&limit=20`).catch(() => []);
   if (son && son.length >= KUNLIK_MAKS) return;
-  await mediaChaqir(env, '/loyiha-taklif', { adminChatId: admin }, null).catch(() => {});
+  const r = await mediaChaqir(env, '/loyiha-taklif', { adminChatId: admin }, null).catch((e) => ({ ok: false, sabab: String(e) }));
+  if (!r || !r.ok) throw new Error('kunlik taklif: media-server javob bermadi — ' + ((r && r.sabab) || ''));
 }
