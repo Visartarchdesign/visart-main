@@ -452,7 +452,7 @@ async function youtubeUpload(env, videoPath, title, description, coverBuf, publi
           body: jpg,
           signal: AbortSignal.timeout(30000),
         });
-        if (!tr.ok) thumbXato = tr.status === 403 ? "YouTube API Shorts uchun maxsus qopqoqni qabul qilmadi (kanal tasdiqlangan, kod xatosi emas). Kerak bo'lsa qopqoqni YouTube Studio/ilovadan qo'lda qo'ying" : `${tr.status} ${(await tr.text().catch(() => '')).slice(0, 150)}`;
+        if (!tr.ok) { const sabab = (await tr.text().catch(() => '')).match(/"(?:reason|message)"\s*:\s*"([^"]+)"/); thumbXato = `${tr.status}${sabab ? ' — ' + sabab[1] : ''}. YouTube Shorts qopqog'ini API orqali qabul qilmadi; YouTube ilovasida videoni ochib "Edit → Thumbnail" dan kadr tanlang`; }
       } catch (e) { thumbXato = String((e && e.message) || e); }
     }
     return data.id ? { thumbXato, url: `https://youtube.com/shorts/${data.id}`, nashrVaqti } : null;
