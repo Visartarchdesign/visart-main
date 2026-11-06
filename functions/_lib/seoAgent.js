@@ -151,11 +151,18 @@ async function javobYoz(env, d, val) {
 }
 
 async function tgFayl(env, fileId) {
-  const g = await tgApi(env, 'getFile', { file_id: fileId });
-  if (!g || !g.ok) throw new Error('getFile: fayl 20 MB dan katta yoki topilmadi');
-  const r = await fetch(`https://api.telegram.org/file/bot${env.MIJOZ_BOT_TOKEN}/${g.result.file_path}`, { signal: AbortSignal.timeout(25000) });
-  if (!r.ok) throw new Error('fayl yuklanmadi ' + r.status);
-  return new Uint8Array(await r.arrayBuffer());
+  let sabab = '';
+  for (let urinish = 0; urinish < 2; urinish++) {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${env.MIJOZ_BOT_TOKEN}/getFile`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file_id: fileId }), signal: AbortSignal.timeout(20000) });
+      const g = await r.json().catch(() => ({}));
+      if (!g.ok) { sabab = `getFile ${r.status}: ${g.description || ''}`; if (r.status === 400) break; continue; }
+      const f = await fetch(`https://api.telegram.org/file/bot${env.MIJOZ_BOT_TOKEN}/${g.result.file_path}`, { signal: AbortSignal.timeout(30000) });
+      if (!f.ok) { sabab = 'yuklash ' + f.status; continue; }
+      return new Uint8Array(await f.arrayBuffer());
+    } catch (e) { sabab = String((e && e.message) || e); }
+  }
+  throw new Error(sabab || 'getFile javob bermadi');
 }
 const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
 function tur(u8) {
@@ -186,8 +193,9 @@ async function yarat(env, id, p, tuzat) {
     const n = p.rasmlar.length;
     const idx = [...new Set([0, Math.floor(n / 4), Math.floor(n / 2), Math.floor((3 * n) / 4), n - 1])].filter((i) => i < n).slice(0, 5);
     const blocks = [];
-    for (const i of idx) { const u8 = await tgFayl(env, p.rasmlar[i]).catch(() => null); if (!u8) continue; const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
-    if (!blocks.length) throw new Error("rasmlarni ochib bo'lmadi (20 MB dan katta yoki format JPG/PNG/WebP emas). Rasmlarni oddiy RASM sifatida qayta yuboring");
+    let oxSabab = '';
+    for (const i of idx) { const u8 = await tgFayl(env, p.rasmlar[i]).catch((e) => { oxSabab = e.message; return null; }); if (!u8) continue; const t = tur(u8); if (t && u8.length < 4.5e6) blocks.push({ type: 'image', source: { type: 'base64', media_type: t[1], data: b64(u8) } }); }
+    if (!blocks.length) throw new Error(`rasmlarni ochib bo'lmadi (${oxSabab || 'format JPG/PNG/WebP emas'})`);
     const j = p.j;
     const malumot = `kategoriya: ${j.category}; holat: ${j.status === 'done' ? 'qurilgan/topshirilgan' : 'faqat 3D loyiha'}; joy: ${j.joy || '-'}; maydon: ${j.maydon || '-'} m2; yil: ${j.yil || '-'}; muddat: ${j.muddat || '-'}; uslub: ${j.uslub || '-'}; mijoz vazifasi/yechim: ${j.vazifa || '-'}${p.eslatma ? '; EGASI ESLATMASI (albatta hisobga ol): ' + p.eslatma : ''}`;
     const prompt = (tuzat ? `Avvalgi matn:\n${JSON.stringify(p.matn)}\n\nEgasi tuzatish so'radi: "${tuzat}". Faqat shuni hisobga olib, butun JSON'ni qaytar.\n\n` : '') + `Siz Visart Design (Toshkent) saytiga yangi loyiha uchun SEO matn yozuvchisiz. Ilova qilingan rasmlar shu loyihaniki (jami ${n} ta, ko'rsatilgani ${idx.length} ta).\nEgasi bergan ma'lumot: ${malumot}\n\n${QOIDA}\n\nFAQAT JSON: {"title_uz":"","title_ru":"","type_uz":"<2-4 so'z, masalan 'Kvartira interyeri'>","type_ru":"","desc_uz":"","desc_ru":"","task_uz":"<mijoz vazifasi 1-2 gap yoki bo'sh>","task_ru":"","style_uz":"","style_ru":"","location_uz":"","location_ru":"","duration_uz":"","duration_ru":"","alts":[{"uz":"","ru":""}]}  — alts uzunligi aniq ${n} ta bo'lsin.`;
