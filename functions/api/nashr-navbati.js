@@ -384,7 +384,7 @@ async function navbatIsh({ request, env, waitUntil }) {
     {
       const n = new Date();
       if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) { fondaSeo(seoAudit(env)); fondaSeo(kanalTekshir(env)); } }
-      if ([4, 8, 12].includes(n.getUTCHours()) && n.getUTCMinutes() < 15) fondaSeo(seoKunlik(env));
+      if ([4, 8, 12].includes(n.getUTCHours())) fondaSeo(seoKunlik(env));   // slot ichida bir marta (seoKunlik belgisi)
       fondaSeo(seoNashr(env));
       fondaSeo(direktorKuzat(env));
     }
