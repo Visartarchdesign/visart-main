@@ -377,6 +377,11 @@ async function navbatIsh({ request, env, waitUntil }) {
   // QISM: asosiy (standart) = faqat navbat + xabarlar (yengil, 503 bermasligi uchun). nazorat = nazorat = agentlar nazorati (alohida cron, har 15 daq).
   // eslatma = eslatmalar/xulosalar/tozalash (alohida cron, har 15-30 daq; bitta chaqiruv ~50 subrequest chegarasidan oshmasin). hammasi = eski xatti-harakat. Cloudflare Pages bitta chaqiruvga ~50 subrequest/CPU chegarasi qo'yadi -- hammasini birga yuritish 503 sababi bo'lgan.
   const qism = url.searchParams.get('qism') || 'asosiy';
+  // SEO: rejadagi nashr va kunlik taklif har cron'da (nazorat cron'i ishlamay qolsa ham to'xtamasin); seoKunlik slotda bir marta
+  if (qism !== 'eslatma') {
+    if ([4, 8, 12].includes(new Date().getUTCHours())) fondaSeo(seoKunlik(env));
+    fondaSeo(seoNashr(env));
+  }
   let kuzatuv = null, tozalashNatijasi = null;
   if (qism === 'nazorat' || qism === 'hammasi') {
     const qadam = (nom, p) => Promise.resolve(p).catch((e) => xatoYoz(env, nom, e));
@@ -384,8 +389,6 @@ async function navbatIsh({ request, env, waitUntil }) {
     {
       const n = new Date();
       if (n.getUTCHours() === 3 && n.getUTCMinutes() < 15) { fondaSeo(domenNazorat(env)); if (n.getUTCDay() === 1) { fondaSeo(seoAudit(env)); fondaSeo(kanalTekshir(env)); } }
-      if ([4, 8, 12].includes(n.getUTCHours())) fondaSeo(seoKunlik(env));   // slot ichida bir marta (seoKunlik belgisi)
-      fondaSeo(seoNashr(env));
       fondaSeo(direktorKuzat(env));
     }
     await qadam('target-nazorat', targetNazorat(env));
