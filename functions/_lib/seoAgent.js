@@ -307,7 +307,7 @@ export async function seoCb(env, cq) {
     if (p.step !== 'toifa' || !['interior', 'exterior', 'xizmat'].includes(p0[2])) return;
     const r = await xaritaNavbat(env, p, p0[2]);
     await upd(env, d.id, 'seo_tayyor', { ...p, rasmlar: p.rasmlar.length });
-    return say(env, chatId, `📥 ${r.soni} ta yuklash navbatga qo'shildi (${r.maps.map((k) => NISHON[k]).join(', ')}). Saytga <b>joylanmaydi</b>. Holat: /foto → 📊`);
+    return say(env, chatId, `📥 ${r.soni} ta rasm xarita navbatiga qo'shildi (${r.maps.map((k) => NISHON[k]).join(', ')}). Saytga <b>joylanmaydi</b>.\n⚠️ Bu hali <b>joylanmadi</b>: xaritaga yuklash tasdiqlanmaguncha ✅ deb yozilmaydi. Holat: /foto → 📊`);
   }
   if (amal === 'o') { const qi = Number(p0[2]), oi = Number(p0[3]); if (qi !== p.q || p.step !== 'savol') return; const q = QS[qi]; return javobYoz(env, d, oi < 0 ? null : q.opt[oi][1]); }
   if (amal === 'ed') { p.step = 'tuzat'; await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ payload: p }) }); return say(env, chatId, "✏️ Nimani o'zgartiray? Yozing (masalan: «sarlavhada Yunusobodni qo'sh», «tavsifni qisqartir»)."); }
@@ -316,7 +316,7 @@ export async function seoCb(env, cq) {
     const t = amal === 'now' ? new Date() : await slot(env);
     await sb(env, `nashr_navbati?id=eq.${d.id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'seo_navbat', nashr_vaqti: t.toISOString() }) });
     const xr = (p.n && (p.n.yandex || p.n.google || p.n.gis)) ? await xaritaNavbat(env, p, TOIFA_UCHUN[(p.j && p.j.category) || 'interior'] || 'interior').catch(() => null) : null;
-    if (xr && xr.soni) await say(env, chatId, `📥 Xaritalarga ham navbatga qo'shildi: ${xr.maps.map((k) => NISHON[k]).join(', ')} (${xr.soni} ta yuklash).`);
+    if (xr && xr.soni) await say(env, chatId, `📥 Xaritalar uchun navbatga qo'shildi (hali joylanmadi): ${xr.maps.map((k) => NISHON[k]).join(', ')} (${xr.soni} ta rasm). Joylangach alohida xabar keladi.`);
     if (p.papka) seoKunlik(env).catch(() => {});
     return say(env, chatId, amal === 'now' ? '⚡ Hozir joylanadi (15 daqiqagacha). Tayyor bo\'lgach havolasini yuboraman.' : `🗓 Saytga joylanadi: <b>${tosh(t)}</b> (Toshkent). Tayyor bo'lgach havolasini yuboraman.`);
   }
