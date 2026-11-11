@@ -73,7 +73,7 @@ async function kategoriyaAniqla(env, matn) {
     const prompt = `Arxitektura/interyer kompaniyasining Instagram post matni. Quyidagi kategoriyalardan BITTASINING kalitini qaytar, boshqa hech narsa yozma:\n${Object.entries(KATEGORIYA).map(([k, v]) => `${k} = ${v}`).join('\n')}\n\nMatn:\n${String(matn).slice(0, 1200)}`;
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(20000),
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0, maxOutputTokens: 20 } }),
+      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0, maxOutputTokens: 256 } }),
     });
     const d = await r.json();
     const t = String((((d.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '').trim().toLowerCase();
@@ -100,7 +100,16 @@ export async function igSinx(env, maxYangi = 6) {
     });
   }
   if (qatorlar.length) await sb(env, 'kontent_nashr?on_conflict=platforma,tashqi_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(qatorlar) });
-  return { ok: true, yangi: qatorlar.length };
+  // Avval aniqlanmagan (AI kvotasi tugagan) postlarni qayta ajratish -- har chaqiruvda ozgina
+  let qayta = 0;
+  const nomalum = await sb(env, `kontent_nashr?platforma=eq.instagram&kategoriya=eq.nomalum&select=id,tashqi_id&order=nashr_vaqti.desc&limit=3`).catch(() => []);
+  for (const r of nomalum || []) {
+    const m = media.find((x) => x.id === r.tashqi_id); if (!m) continue;
+    const k = await kategoriyaAniqla(env, m.caption);
+    if (k === 'nomalum') break; // kvota hali tiklanmagan
+    await sb(env, `kontent_nashr?id=eq.${r.id}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ kategoriya: k }) }); qayta++;
+  }
+  return { ok: true, yangi: qatorlar.length, qayta };
 }
 
 const IG_REEL = ['views', 'reach', 'saved', 'shares', 'likes', 'comments', 'total_interactions', 'ig_reels_avg_watch_time'];
