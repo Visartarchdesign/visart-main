@@ -9,6 +9,7 @@
 // yuboriladi): YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN
 // (Google Cloud OAuth, "In production" holatida olingan muddatsiz token).
 
+import { ustuvorTartib } from './navbatUstuvor.js';
 import fs from 'fs';
 import { keyingiMavzu } from './mavzuBanki.js';
 import { effektQosh } from './effektlar.js';
@@ -973,7 +974,7 @@ async function navbatgaQoshStory(env, mediaUrl, vaqt, rasm = false, ekstra = {})
 }
 
 // Tayyor video + qopqoqni adminga yuboradi va tasdiq (✅ Joylash / ❌ Bekor) so'raydi.
-export async function tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha, tavsif, hashtaglar, izoh, taklifId }) {
+export async function tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha, tavsif, hashtaglar, izoh, taklifId, manba }) {
     await tgSendVideo(env.MIJOZ_BOT_TOKEN, adminChatId,
       outputPath, `🎬 Montaj tayyor -- ${sarlavha}\n\n${izoh || ''}${taklifId ? `\n\n🆔${taklifId}` : ''}`);
     // TASDIQ: tayyor video + qopqoq Supabase'ga yuklanadi, navbat jadvaliga
@@ -1001,7 +1002,7 @@ export async function tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { s
           body: JSON.stringify({
             turi: 'video_nashr',
             holat: 'tasdiq_kutilmoqda',
-            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: tavsif || '', taklifId: taklifId || null },
+            payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif: tavsif || '', taklifId: taklifId || null, manba: manba || 'boshqa' },
             nashr_vaqti: new Date().toISOString(),
           }),
           signal: AbortSignal.timeout(10000),
@@ -1189,7 +1190,7 @@ async function bajarMontajBirUrinish({ env, aslFileId, adminChatId, title, takli
     }
 
     await bosqich('Telegramga yuklanmoqda...');
-    await tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha, tavsif: qaror.tavsif, hashtaglar: qaror.hashtaglar, izoh: qaror.izoh, taklifId });
+    await tasdiqqaYubor(env, adminChatId, outputPath, qopqoqBuf, { sarlavha, tavsif: qaror.tavsif, hashtaglar: qaror.hashtaglar, izoh: qaror.izoh, taklifId, manba: 'jonli' });
     return true;
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1274,6 +1275,29 @@ async function slotlarHisobla(env) {
   return { ig: keyingiSlot(reja.ig, oxirIg), yt: keyingiSlot(YT_REJA, oxirYt) };
 }
 
+
+// Ustuvorlik: Doston o'zi olgan jonli video -> eng yaqin (birinchi) slot; keyin tayyor ish (portfolio) tahlili; oxirida animatsion.
+// Bir xil ustuvorlik ichida mavjud tartib saqlanadi. Barcha IG slotlar ketma-ket qayta hisoblanadi (TG = +30 daq).
+export async function navbatTartibla(env, videoUrl) {
+  const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' };
+  const rows = (await (await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?turi=eq.video_ig_tg&holat=eq.kutilmoqda&select=id,nashr_vaqti,payload&order=nashr_vaqti.asc&limit=40`, { headers: H })).json()) || [];
+  const tgBy = new Map(), items0 = [];
+  for (const r of rows) { const q = r.payload || {}; if (q.qism === 'tg') tgBy.set(q.video_url, r); else items0.push({ ig: r }); }
+  for (const it of items0) it.tg = tgBy.get((it.ig.payload || {}).video_url) || null;
+  const items = ustuvorTartib(items0);
+  const patch = (id, body) => fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati?id=eq.${id}`, { method: 'PATCH', headers: H, body: JSON.stringify(body) });
+  let prev = new Date(Date.now() + 30 * 60e3), mening = null;
+  const rj = await rejaYukla(env);
+  for (const x of items) {
+    const t = keyingiSlot(rj.ig, prev); prev = t;
+    if (new Date(x.ig.nashr_vaqti).getTime() !== t.getTime()) {
+      await patch(x.ig.id, { nashr_vaqti: t.toISOString() });
+      if (x.tg) await patch(x.tg.id, { nashr_vaqti: new Date(t.getTime() + 30 * 60e3).toISOString() });
+    }
+    if ((x.ig.payload || {}).video_url === videoUrl) mening = t;
+  }
+  return mening;
+}
 
 // Navbatdagi videoni (video_url bo'yicha) orin-o'ringa ko'chiradi; barcha IG slotlar ketma-ket qayta hisoblanadi (TG = +30 daq). Yangi IG vaqtini qaytaradi.
 export async function navbatKochir(env, videoUrl, orin) {
@@ -1373,17 +1397,18 @@ export async function bajarNashr({ env, id, adminChatId, orin }) {
   const q = rows && rows[0];
   if (!q || q.turi !== 'video_nashr') return xabar('⚠️ Nashr yozuvi topilmadi');
   if (q.holat === 'bajarildi') return xabar('ℹ️ Bu video allaqachon joylangan');
-  const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif } = q.payload;
+  const { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, manba } = q.payload;
   await sb(`nashr_navbati?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ holat: 'bajarildi' }) }).catch(() => {});
 
   // Instagram Reels + Story + Telegram kanal: haftalik jadval bo'yicha (nashr_navbati 'video_ig_tg'), xato bo'lsa darhol.
   const slotlar = await slotlarHisobla(env);
   let igReja = null;
   try {
-    const r = await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: slotlar.ig.toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, qism: 'ig', yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
-    await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: new Date(slotlar.ig.getTime() + 30 * 60e3).toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, qism: 'tg', yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
+    const r = await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: slotlar.ig.toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, manba, qism: 'ig', yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
+    await sb('nashr_navbati', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ turi: 'video_ig_tg', holat: 'kutilmoqda', nashr_vaqti: new Date(slotlar.ig.getTime() + 30 * 60e3).toISOString(), payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, manba, qism: 'tg', yt_vaqt: slotlar.yt.toISOString(), adminChatId } }) });
     if (!r.ok) throw new Error(`navbat ${r.status}`);
     igReja = slotlar.ig;
+    if (!orin) { try { igReja = await navbatTartibla(env, videoUrl) || igReja; } catch (e) { await xabar(`⚠️ Ustuvorlik bo'yicha tartiblab bo'lmadi: ${String((e && e.message) || e).slice(0, 100)}`); } }
     if (orin) { try { igReja = await navbatKochir(env, videoUrl, orin) || igReja; } catch (e) { await xabar(`⚠️ O'ringa ko'chirib bo'lmadi: ${String((e && e.message) || e).slice(0, 100)}`); } }
   } catch (e) {
     await xabar(`⚠️ Jadvalga qo'yib bo'lmadi (${String((e && e.message) || e).slice(0, 120)}), Instagram va Telegram kanalga darhol joylanadi.`);
@@ -2051,7 +2076,7 @@ async function bajarAnimatsionIc({ env, adminChatId, mavzu, korsatma, ishId }) {
     if (qopqoqBuf) await tgSendPhoto(env.MIJOZ_BOT_TOKEN, adminChatId, qopqoqBuf, `🖼️ Qopqoq -- ${sarlavha}`);
     await tasdiqqaYubor(env, adminChatId, chiqish, qopqoqBuf, {
       sarlavha, tavsif: meta.tavsif, hashtaglar: meta.hashtaglar,
-      izoh: `Animatsion (${Math.round(t)} s) -- AI mavzu va ovoz. Ovozni tinglab, xato bo'lsa ❌ bosing va sababini yozing.`, taklifId: null });
+      izoh: `Animatsion (${Math.round(t)} s) -- AI mavzu va ovoz. Ovozni tinglab, xato bo'lsa ❌ bosing va sababini yozing.`, taklifId: null, manba: 'animatsion' });
     await ishYop('bajarildi');
   } catch (e) {
     await tgSendMessage(env.MIJOZ_BOT_TOKEN, adminChatId, `⚠️ Animatsion video yaratilmadi: ${String((e && e.message) || e).slice(0, 300)}`).catch(() => {});

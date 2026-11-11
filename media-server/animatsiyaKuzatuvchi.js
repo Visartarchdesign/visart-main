@@ -38,7 +38,7 @@ export function animatsiyaKuzatuvchi() {
       pj = path.join(ish, 'paket.json');
       paket.holat = 'yuborilmoqda'; fs.writeFileSync(pj, JSON.stringify(paket, null, 1));
       await tasdiqqaYubor(env, admin, video, qop && fs.existsSync(qop) ? fs.readFileSync(qop) : null,
-        { sarlavha: paket.sarlavha, tavsif: paket.tavsif, hashtaglar: paket.hashtaglar, izoh: paket.izoh || 'Animatsiya (tayyor, montajsiz).', taklifId: null });
+        { sarlavha: paket.sarlavha, tavsif: paket.tavsif, hashtaglar: paket.hashtaglar, izoh: paket.izoh || 'Animatsiya (tayyor, montajsiz).', taklifId: null, manba: paket.manba || 'animatsion' });
       paket.holat = 'tasdiqda'; paket.yuborilgan = new Date().toISOString();
       fs.writeFileSync(pj, JSON.stringify(paket, null, 1));
     } catch (e) {

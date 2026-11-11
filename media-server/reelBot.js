@@ -62,7 +62,7 @@ export async function bajarReelYarat({ env, adminChatId, loyiha, variant = 'uzun
       const coverUrl = fs.existsSync(cover) ? await supabaseRasmUpload(env, fs.readFileSync(cover)) : null;
       const caption = `${sarlavha}\n\n${tavsif}\n\nShuni ustangizga yoki arxitektoringizga yuboring 👇\n\n#VisartDesign #arxitektura #interyerdizayn #ToshkentDizayn #qurilish`;
       const sb = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' };
-      const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, { method: 'POST', headers: sb, body: JSON.stringify({ turi: 'video_nashr', holat: 'tasdiq_kutilmoqda', payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, taklifId: null }, nashr_vaqti: new Date().toISOString() }) });
+      const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/nashr_navbati`, { method: 'POST', headers: sb, body: JSON.stringify({ turi: 'video_nashr', holat: 'tasdiq_kutilmoqda', payload: { video_url: videoUrl, cover_url: coverUrl, caption, sarlavha, tavsif, taklifId: null, manba: 'portfolio' }, nashr_vaqti: new Date().toISOString() }) });
       if (!resp.ok) throw new Error(`navbat ${resp.status}`);
       const nid = (await resp.json())[0].id;
       await tg(env, 'sendMessage', { chat_id: adminChatId, text: `✅ Tayyor. Instagram, Facebook, Telegram kanal va YouTube'ga joylaymizmi?\n\n"${sarlavha}"`, reply_markup: { inline_keyboard: [[{ text: '✅ Joylash', callback_data: `vnash:${nid}:ok` }, { text: '⏫ Birinchi', callback_data: `vnash:${nid}:first` }], [{ text: '🔢 O‘rin tanlash', callback_data: `vnash:${nid}:pos` }, { text: '❌ Bekor', callback_data: `vnash:${nid}:no` }]] } });
