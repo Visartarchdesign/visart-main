@@ -7,6 +7,7 @@ import { seoNashr, domenNazorat, seoAudit, seoKunlik } from '../_lib/seoAgent.js
 import { kanalTekshir } from '../_lib/kanalAgent.js';
 import { direktorKuzat } from '../_lib/direktor.js';
 import { targetNazorat } from '../_lib/target.js';
+import { analitikaCron } from '../_lib/analitika.js';
 import { mediaUygot, mediaChaqir, animatsiyaBuyurtma, tgSend } from '../_lib/media.js';
 import { maslahatYarat, maslahatNavbatiniTekshir, keyingiHafta } from '../_lib/guruhJamoa.js';
 import { obyektKuzatuv, balansEslatma, kunlikXulosa, lidEslatma, xulosaNavbatiniTekshir, keyingiToshkent } from '../_lib/botAvto.js';
@@ -392,6 +393,7 @@ async function navbatIsh({ request, env, waitUntil }) {
       fondaSeo(direktorKuzat(env));
     }
     await qadam('target-nazorat', targetNazorat(env));
+    await qadam('analitika', analitikaCron(env, url.searchParams.get('analitika') === '1'));
     fonda(kunlikAnimatsiya(env));   // Kunlik kafolat: Toshkent 11:00 gacha bugun video taklifi/nashri yo'q bo'lsa -- animatsion video buyurtma
     kuzatuv = await obyektKuzatuv(env).catch(async (e) => { await xatoYoz(env, 'obyekt-kuzatuv', e); return { xato: String((e && e.message) || e) }; });
   }

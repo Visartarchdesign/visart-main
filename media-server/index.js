@@ -22,6 +22,7 @@ import { tgYukla } from './tgBuyuk.js';
 import { fotoIshchi } from './fotoIshchi.js';
 import { animatsiyaKuzatuvchi } from './animatsiyaKuzatuvchi.js';
 import { loyihaTaklif } from './loyihaTopuvchi.js';
+import { ytStatistika } from './ytAnalitika.js';
 function mergeEnv(req) {
   const x = (req.body && req.body._env) || {};
   const out = { ...process.env };
@@ -111,6 +112,13 @@ app.post('/tg-yukla', (req, res) => {
   if (!chatId || !messageId || !adminChatId) return res.status(400).json({ ok: false, error: 'chatId, messageId, adminChatId kerak' });
   res.json({ ok: true, holat: 'boshlandi' });
   ish('TgYukla', req, (env) => tgYukla({ env, chatId, messageId, adminChatId, korsatma }));
+});
+
+// POST /yt-statistika -- kunlik YouTube statistikasi (Cloudflare cron, analitika.js)
+app.post('/yt-statistika', (req, res) => {
+  if (!tekshirSecret(req, res)) return;
+  res.json({ ok: true, holat: 'boshlandi' });
+  ish('YT statistika', req, (env) => ytStatistika(env));
 });
 
 // POST /nashr-ig-tg -- jadval vaqti kelganda (Cloudflare cron chaqiradi)
