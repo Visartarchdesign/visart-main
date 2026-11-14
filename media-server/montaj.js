@@ -1521,12 +1521,15 @@ function elMatn(t, env) {
 }
 export async function ovozYarat(env, matnTeg, outPath, tmpDir) {
   const matn = String(matnTeg || '').replace(/\[[^\]]*\]\s*/g, '').trim(); // [teg]lar faqat ElevenLabs v3 uchun
+  // Standart uslub (Doston 15.11: "eski ovoz" — renovatsiya/isitish videolaridagi): har matn oldiga uslub tegi, tezlik 1.15
+  const USLUB = env.EL_USLUB ?? '[confident, conversational, like explaining to a friend]';
+  const elTeg = USLUB && !String(matnTeg).trimStart().startsWith(USLUB) ? `${USLUB}  ${matnTeg}` : matnTeg;
   // 0) Muallifning o'z ovozi (ElevenLabs klon) -- kalit va ovoz ID qo'yilgan bo'lsa
   if (env.ELEVENLABS_API_KEY && env.ELEVENLABS_VOICE_ID) {
     try {
       const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${env.ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`, {
         method: 'POST', headers: { 'xi-api-key': env.ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: elMatn(matnTeg, env), model_id: env.ELEVENLABS_MODEL || 'eleven_v3', voice_settings: { stability: Number(env.EL_STABILITY ?? 0.5), similarity_boost: 0.85, speed: Number(env.EL_TEZLIK || 1.1), use_speaker_boost: true } }),
+        body: JSON.stringify({ text: elMatn(elTeg, env), model_id: env.ELEVENLABS_MODEL || 'eleven_v3', voice_settings: { stability: Number(env.EL_STABILITY ?? 0.5), similarity_boost: 0.85, speed: Number(env.EL_TEZLIK || 1.15), use_speaker_boost: true } }),
         signal: AbortSignal.timeout(45000) });
       if (r.ok) { fs.writeFileSync(outPath, Buffer.from(await r.arrayBuffer())); return; }
       console.error('ElevenLabs xato:', r.status, (await r.text().catch(() => '')).slice(0, 200));
