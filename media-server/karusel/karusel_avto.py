@@ -240,7 +240,7 @@ def tanla(tasn, maks):
     ok.sort(key=lambda t: (-(t['sifat'] + (1 if t['vertikal_mos'] else 0))))
     tanlangan, soni, hashlar = [], {}, []
     for t in ok:
-        if soni.get(t['xona'], 0) >= (3 if t['xona'] == 'boshqa' else 2): continue
+        if soni.get(t['xona'], 0) >= (8 if t['xona'] in ('fasad', 'hovli', 'boshqa') else 3): continue
         try: h = dhash(t['path'])
         except Exception: continue
         if any(bin(h ^ x).count('1') < 8 for x in hashlar): continue
