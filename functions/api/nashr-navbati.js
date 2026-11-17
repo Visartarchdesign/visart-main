@@ -157,6 +157,39 @@ async function bajarInstagramStory(env, payload) {
   await igFetch(`${igId}/media_publish`, { creation_id: container.id, access_token: token });
 }
 
+// Instagram karusel (2-10/20 rasm): 1-bosqich -- har rasm uchun item + CAROUSEL konteyner (parallel),
+// konteyner id payload'ga yoziladi va 2 daqiqadan keyin 2-bosqich -- holat FINISHED bo'lsa media_publish.
+// cron-job.org 30s chegarasiga sig'ishi uchun ikki chaqiruvga bo'lingan.
+async function bajarInstagramKarusel(env, q) {
+  if (!env.INSTAGRAM_ACCESS_TOKEN || !env.INSTAGRAM_BUSINESS_ACCOUNT_ID) throw new Error('Instagram sozlanmagan');
+  const p = q.payload || {};
+  const igId = env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const token = env.INSTAGRAM_ACCESS_TOKEN;
+  const keyin = (patch) => sbFetch(env, `nashr_navbati?id=eq.${q.id}`, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 2 * 60e3).toISOString(), payload: { ...p, ...patch } }) });
+  if (!p.konteyner) {
+    const rasmlar = (p.rasmlar || []).slice(0, 20);
+    if (rasmlar.length < 2) throw new Error('karusel uchun kamida 2 rasm kerak');
+    const ids = await Promise.all(rasmlar.map((u) => igFetch(`${igId}/media`, { image_url: u, is_carousel_item: 'true', access_token: token }).then((r) => r.id)));
+    const c = await igFetch(`${igId}/media`, { media_type: 'CAROUSEL', children: ids.join(','), caption: String(p.caption || '').slice(0, 2200), access_token: token });
+    await keyin({ konteyner: c.id, tekshir: 0 });
+    return 'qayta';
+  }
+  const url = new URL(`https://graph.facebook.com/v21.0/${p.konteyner}`);
+  url.searchParams.set('fields', 'status_code');
+  url.searchParams.set('access_token', token);
+  const d = await (await fetch(url.toString(), { signal: AbortSignal.timeout(15000) })).json().catch(() => null);
+  const st = d && d.status_code;
+  if (st === 'FINISHED') {
+    const r = await igFetch(`${igId}/media_publish`, { creation_id: p.konteyner, access_token: token });
+    if (p.adminChatId && env.MIJOZ_BOT_TOKEN) await tgSend(env.MIJOZ_BOT_TOKEN, p.adminChatId, `✅ Instagram karusel joylandi: ${p.sarlavha || ''}`).catch(() => {});
+    return r.id;
+  }
+  if (st === 'ERROR' || st === 'EXPIRED') throw new Error(`karusel konteyner ${st}`);
+  if ((p.tekshir || 0) >= 10) throw new Error('karusel konteyner 20 daqiqada tayyor bo\'lmadi');
+  await keyin({ tekshir: (p.tekshir || 0) + 1 });
+  return 'qayta';
+}
+
 async function bajarLidFollowup(env, payload) {
   if (!env.MIJOZ_BOT_TOKEN) throw new Error('MIJOZ_BOT_TOKEN yoq');
   // Mijoz arizadan keyin faol bo'lgan bo'lsa (menyu/narx/yozgan) -- eslatma kerak emas.
@@ -341,6 +374,8 @@ async function navbatIsh({ request, env, waitUntil }) {
         }
       } else if (q.turi === 'instagram_story') {
         await bajarInstagramStory(env, q.payload);
+      } else if (q.turi === 'instagram_karusel') {
+        if ((await bajarInstagramKarusel(env, q)) === 'qayta') { natijalar.push({ id: q.id, holat: 'karusel-bosqich' }); continue; }
       } else {
         throw new Error(`noma'lum turi: ${q.turi}`);
       }
