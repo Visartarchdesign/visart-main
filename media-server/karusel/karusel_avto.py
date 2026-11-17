@@ -196,7 +196,7 @@ def band_vaqtlar():
 RAD = re.compile(r'(diff|bump|refl|gloss|depth|mask|textur|normal|spec|zdepth|lightmix|wire|clay|material|seamless|alpha|cshading|rawtotal|vray|corona|reja|plan|_b\.|_d\.|_r\.)', re.I)
 SINF = {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
     'i': {'type': 'INTEGER'}, 'haqiqiy': {'type': 'BOOLEAN'}, 'sifat': {'type': 'INTEGER'}, 'vertikal_mos': {'type': 'BOOLEAN'},
-    'xona': {'type': 'STRING', 'enum': XONALAR}, 'tavsif': {'type': 'STRING'}}, 'required': ['i', 'haqiqiy', 'sifat', 'vertikal_mos', 'xona', 'tavsif']}}
+    'xona': {'type': 'STRING', 'enum': XONALAR}, 'tavsif': {'type': 'STRING'}, 'ekran_logo': {'type': 'BOOLEAN'}}, 'required': ['i', 'haqiqiy', 'sifat', 'vertikal_mos', 'xona', 'tavsif', 'ekran_logo']}}
 
 # Xonadon xonalari: karusel tartibi (dahliz -> mehmonxona -> oshxona -> xo'jalik -> hammom -> yotoqxonalar) va ko'rinadigan nomi.
 LOY_TARTIB = ['dahliz', "yo'lak", 'mehmonxona', 'oshxona', 'ovqatlanish', 'xojalik xonasi', 'hammom', 'bolalar xonasi', 'yotoqxona', 'kabinet', 'garderob', 'balkon']
@@ -237,7 +237,7 @@ def tasnif(paths):
             "haqiqiy = true ONLY for a finished photorealistic render of an interior or exterior (false for texture/material swatches, floor plans, drawings, CAD/viewport/clay/wireframe screenshots, collages, UI screenshots, people photos, logos); "
             "sifat = 1-10 (sharpness, lighting, composition, cleanliness, no artifacts/noise, attractive); "
             "vertikal_mos = true if a center crop to 4:5 portrait still looks good; "
-            "xona = room/zone from the enum (kitchen with dining table -> oshxona; living room -> mehmonxona; utility/laundry/storage room -> xojalik xonasi; bathroom/WC -> hammom); tavsif = what is visible in <=12 words (Uzbek or English). Use the given index i.")}]
+            "xona = room/zone from the enum (kitchen with dining table -> oshxona; living room -> mehmonxona; utility/laundry/storage room -> xojalik xonasi; bathroom/WC -> hammom); tavsif = what is visible in <=12 words (Uzbek or English); ekran_logo = true if any TV/monitor/laptop/phone screen in the image shows a brand logo, readable text, a film/streaming poster or UI (false for a plain black/blank screen or no screen). Use the given index i.")}]
         for j, p in enumerate(grp):
             parts.append({'text': 'i=%d' % j}); parts.append(thumb_part(p, 560))
         try:
@@ -246,7 +246,7 @@ def tasnif(paths):
             log('tasnif xato: %s' % e); continue
         for r in res:
             if 0 <= r.get('i', -1) < len(grp):
-                natija.append({'path': grp[r['i']], **{k: r[k] for k in ('haqiqiy', 'sifat', 'vertikal_mos', 'xona', 'tavsif')}})
+                natija.append({'path': grp[r['i']], **{k: r[k] for k in ('haqiqiy', 'sifat', 'vertikal_mos', 'xona', 'tavsif', 'ekran_logo')}})
     return natija
 
 
@@ -280,7 +280,8 @@ def tanla(tasn):
         if any(bin(h ^ x).count('1') < 12 for x in hashlar): continue
         hashlar.append(h); uniq.append(t)
     if len(uniq) < 8: return None, {}
-    pool = [t for t in uniq if t['xona'] in ('mehmonxona', 'oshxona', 'ovqatlanish', 'dahliz')] or uniq
+    toza = [t for t in uniq if not t.get('ekran_logo')]
+    pool = [t for t in toza if t['xona'] in ('mehmonxona', 'oshxona', 'ovqatlanish', 'dahliz')] or toza or uniq
     cover = max(pool, key=lambda t: t['ball'] + (1 if t['xona'] == 'mehmonxona' else 0))
     per = {}
     for t in uniq:
@@ -346,14 +347,14 @@ def slayd_matn(xona, paths, oldingi=()):
                 "You write the text of ONE Instagram carousel slide for Visart Design (Tashkent). The attached image(s) show: %s. Look at the image(s) carefully. "
                 "Describe exactly ONE design solution that is clearly VISIBLE in the attached image(s) (a material, colour, lighting, furniture layout, storage or shape) and its practical benefit for living. "
                 "Mention ONLY objects, materials and features that you can actually see in the attached image(s); if you are not sure something is visible, leave it out. "
-                "NO general advice, NO life-hacks, NO tips, nothing that is not in the picture. Name the visible element directly (e.g. its material, colour or position) - do not refer to things outside the frame. sarlavha: at most 6 words, concrete; izoh: at most 18 words (visible solution + benefit). " % nom
+                "NO general advice, NO life-hacks, NO tips, nothing that is not in the picture. Use shape/direction words (slanted, round, arched, curved, diagonal...) ONLY if clearly visible; vertical ribbed/fluted glass is 'qovurg'ali' (not slanted). Name the visible element directly (e.g. its material, colour or position) - do not refer to things outside the frame. sarlavha: at most 6 words, concrete; izoh: at most 18 words (visible solution + benefit). " % nom
                 + UZ_QOIDA + fb)}] + imgs, SL_SCHEMA, 0.7, 'low')
             err = slayd_xato(m)
             if not err:
                 v = gemini([{'text': (
                     "You are a fact-checker for an interior design slide. The text below will be printed on a slide with the attached image(s) of: %s. "
                     "List every PHYSICAL thing the text names or claims is present: objects, furniture, materials, colours, light fixtures, finishes, shapes, layout features. For each set korinadi=true if it is clearly visible in the attached image(s), false if it is absent or you cannot see it. "
-                    "IGNORE statements of benefit, comfort or feeling (e.g. 'convenient', 'looks spacious', 'easy to clean') - do not list them. "
+                    "Also check every shape/direction/pattern word (e.g. qiya=slanted, dumaloq=round, yoysimon=arched, vertikal, gorizontal, qovurg'ali=ribbed): mark korinadi=false if the image shows a different shape or direction. IGNORE statements of benefit, comfort or feeling (e.g. 'convenient', 'looks spacious', 'easy to clean') - do not list them. "
                     "Set umumiy_maslahat=true ONLY if the text is an instruction/tip/life-hack addressed to the reader that does not describe anything in the image(s); a text that describes a visible element and its benefit is NOT general advice.\nTITLE: %s\nCAPTION: %s" % (nom, m['sarlavha'], m['izoh']))}] + imgs, TEKSH_SCHEMA, 0.1, 'low')
                 bad = [e['matn'] for e in v['elementlar'] if not e['korinadi']]
                 if v['elementlar'] and not bad and not v['umumiy_maslahat']:
@@ -364,6 +365,43 @@ def slayd_matn(xona, paths, oldingi=()):
         except Exception as e:
             log('  matn xato (%s): %s' % (nom, str(e)[:120]))
     return {'sarlavha': '%s \u2014 umumiy ko\'rinish' % nom, 'izoh': '', 'fallback': True}
+
+
+# ---------- ekrandagi logo/poster: niqoblash ----------
+EKRAN_SCHEMA = {'type': 'OBJECT', 'properties': {'ekranlar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
+    'box': {'type': 'ARRAY', 'items': {'type': 'INTEGER'}}}, 'required': ['box']}}}, 'required': ['ekranlar']}
+
+
+def ekran_niqob(path, outdir):
+    """TV/monitor ekranida logo/poster bo'lsa, ekran maydonini to'q kulrang (#111) bilan to'ldiradi. Yangi yo'l (yoki o'zgarishsiz eski)."""
+    try:
+        r = gemini([{'text': "Find every TV / monitor / laptop / phone screen in this image that shows a brand logo, readable text, a film or streaming poster, or any UI. For each return box = [ymin, xmin, ymax, xmax] normalized 0-1000 covering the WHOLE visible screen area (not the frame). Return an empty list if none."}, thumb_part(path, 1200)], EKRAN_SCHEMA, 0.1, 'minimal')
+    except Exception as e:
+        log('  ekran bbox xato: %s' % str(e)[:100]); return path
+    bx = [e['box'] for e in r['ekranlar'] if len(e['box']) == 4]
+    if not bx: return path
+    from PIL import ImageDraw
+    im = ImageOps.exif_transpose(Image.open(path)).convert('RGB'); w, h = im.size
+    dr = ImageDraw.Draw(im)
+    for y0, x0, y1, x1 in bx:
+        dr.rectangle([max(0, x0 * w / 1000 - 2), max(0, y0 * h / 1000 - 2), min(w, x1 * w / 1000 + 2), min(h, y1 * h / 1000 + 2)], fill=(17, 17, 17))
+    os.makedirs(outdir, exist_ok=True)
+    op = os.path.join(outdir, hashlib.md5(path.encode('utf-8')).hexdigest()[:10] + '.jpg')
+    im.save(op, 'JPEG', quality=93)
+    log('  ekran niqoblandi: %s (%d ta)' % (os.path.basename(path), len(bx)))
+    return op
+
+
+USLUBLAR = ['Neoklassik', 'Zamonaviy', 'Minimalist', 'Klassik', 'Skandinav', 'Loft', 'Art-deko', 'Zamonaviy klassika']
+
+
+def uslub_aniq(paths):
+    try:
+        r = gemini([{'text': "These are renders of one apartment interior. Pick the overall interior design style that best matches what is visible (moldings/wall panels/arched cabinets = Neoklassik or Klassik; clean flat surfaces = Zamonaviy or Minimalist)."}] + [thumb_part(p, 640) for p in paths[:4]],
+                   {'type': 'OBJECT', 'properties': {'uslub': {'type': 'STRING', 'enum': USLUBLAR}}, 'required': ['uslub']}, 0.1, 'minimal')
+        return r['uslub']
+    except Exception as e:
+        log('uslub xato: %s' % str(e)[:100]); return 'Zamonaviy'
 
 
 # ---------- reja (oldin/keyin) ----------
@@ -454,6 +492,8 @@ def loyiha_karusel(args, holat):
         cover, per = tanla(tasn)
         if not cover: log('  sifatli xilma-xil rasm yetarli emas'); continue
         for t in [cover] + [t for l in per.values() for t in l]: log('  %s | %s | %s | %.1f' % (os.path.basename(t['path']), t['xona'], t['tavsif'][:40], t['ball']))
+        for t in [t for l in per.values() for t in l]:
+            if t.get('ekran_logo'): t['path'] = ekran_niqob(t['path'], os.path.join(OUT, '_niqob'))
         plan = plan_topish(x, ROOTS[kal.split(':', 1)[0]])
         sx = slayd_sxema(per, 18 - (1 if plan else 0))
         if len(sx) < 6: continue
@@ -463,10 +503,11 @@ def loyiha_karusel(args, holat):
             s.update(slayd_matn(s['xona'], s['paths'], used[-8:]))
             if not s['fallback']: used.append(s['sarlavha'])
             log('  [%s] %s | %s%s' % (s['kick'], s['sarlavha'], s['izoh'], ' (neytral)' if s['fallback'] else ''))
+        uslub = uslub_aniq([cover['path']] + [s['paths'][0] for s in sx[::3]])
         nom = re.sub(r'[^a-z0-9]+', '-', re.sub(r'^D:\d+/', '', kal).lower()).strip('-')[:30]
         m = re.search(r'(\d{2,3})\s*(?:m2|m\u00b2|kv)', kal, re.I)
         return {'turi': 'loyiha', 'kalit': kal, 'nom': nom, 'cover': cover, 'slaydlar': sx, 'plan': plan,
-                'maydon': m.group(1) if m else None, 'tur': 'KVARTIRA' if re.search('KVARTIRA', kal, re.I) else 'XONADON',
+                'maydon': m.group(1) if m else None, 'uslub': uslub, 'tur': 'KVARTIRA' if re.search('KVARTIRA', kal, re.I) else 'XONADON',
                 'sarlavha': kal.split('/', 1)[1].title()}
     raise RuntimeError('yetarli sifatli renderli ishlatilmagan xonadon loyihasi topilmadi')
 
@@ -479,9 +520,8 @@ def loyiha_slaydlar(r):
     N = len(sl) + 2 + (1 if plan else 0)
     d = D.Dizayn(N)
     nrasm = 1 + sum(len(s['paths']) for s in sl)
-    if r['maydon']: l1, l2 = '%s m\u00b2 %s' % (r['maydon'], r['tur'].lower()), '\u2192 PREMIUM INTERYER'
-    else: l1, l2 = 'Navbatdagi buyurtma:', '\u2192 ' + r['tur']
-    pages = [d.cover(r['cover']['path'], 'LOYIHAMIZ \u00b7 3D', l1, l2, 'Xonama-xona \u2014 %d kadrda' % nrasm)]
+    l1, l2 = '%s %s' % (r['uslub'], r['tur'].lower()), '\u2192 XONAMA-XONA 3D'
+    pages = [d.cover(r['cover']['path'], 'LOYIHAMIZ \u00b7 3D', l1, l2, '%d kadrda to\'liq loyiha' % nrasm)]
     n = 2
     if plan: pages.append(d.plan(plan[0], plan[1], n, "Reja: oldingi holat va yangi joylashuv")); n += 1
     for s in sl:
