@@ -1,8 +1,9 @@
 # Visart: Instagram karusel avtomatik yaratuvchi (PC, Claude tokensiz).
 #   python karusel_avto.py --rejim loyiha   (dushanba: chorshanba 19:30 karuseli)
-#   python karusel_avto.py --rejim maslahat (payshanba: shanba 11:00 "Arxitektor maslahati")
-#   qo'shimcha: --quruq (yuklamaydi, navbatga yozmaydi), --mavzu <papka nomi>, --loyiha <katalog kaliti>, --majbur
-# Oqim: matn/rasm tanlash (Gemini) -> dizayn (Playwright) -> Supabase public-media/karusel/<sana_nom>/
+#   "Arxitektor maslahati" rejimi O'CHIRILGAN (Doston: karuselda faqat o'zimizning ishimiz, rasmga aloqasiz layfxak yo'q).
+#   qo'shimcha: --quruq (yuklamaydi, navbatga yozmaydi), --loyiha <katalog kaliti>, --majbur
+# Loyiha karuseli = BIR XONADONning renderlari xonama-xona (muqova, [reja], dahlizdan yotoqxonagacha, CTA); har slayd matni faqat shu rasmda ko'ringan narsa haqida.
+# Oqim: rasm tanlash + slayd matni (Gemini, tekshiruv bilan) -> dizayn (Playwright) -> Supabase public-media/karusel/<sana_nom>/
 #       -> nashr_navbati(instagram_karusel, tasdiq_kutilmoqda) -> Telegramda adminga tasdiq tugmalari (krs:<id>:ok|no).
 import argparse, base64, datetime as dt, glob, hashlib, io, json, os, re, sys, time, traceback
 
@@ -17,18 +18,14 @@ DOCS = os.environ.get('KAR_DOCS', r'C:\Users\Visart\Documents')
 STUDIO = os.path.join(DOCS, 'Visart_AI_Studio')
 MS = os.path.join(DOCS, r'visart-server-kurulum\media-server')
 KATALOG = os.path.join(STUDIO, r'portfolio\portfolio_katalog.json')
-ANIM = os.path.join(STUDIO, r'kontent\animatsiya')
-LOY = os.path.join(STUDIO, 'loyihalar')
 HOLAT = os.path.join(HERE, 'karusel_holat.json')
-POOL = os.path.join(HERE, 'karusel_pool.json')
 OUT = os.path.join(HERE, 'out')
 TZ = dt.timezone(dt.timedelta(hours=5))
 ROOTS = {'D': r'D:\1_WORK', 'E1': r'E:\1_WORK', 'ER': r'E:\RENDER'}
-SLOT = {'loyiha': (2, 19, 30), 'maslahat': (5, 11, 0)}  # (weekday: Mon=0, soat, daqiqa) Toshkent
+SLOT = {'loyiha': (2, 19, 30)}  # (weekday: Mon=0, soat, daqiqa) Toshkent
 HASHTAG = '#visartdesign #interyerdizayn #dizayn #toshkent #remont #arxitektura #interior #uzbekistan #3dvizualizatsiya #kvartira'
 KONTAKT = "\u2709\ufe0f t.me/visartadmin\n\U0001F4DE +998 97 402 15 15\n\U0001F310 visartdesign.uz"
 XONALAR = ['dahliz', "yo'lak", 'mehmonxona', 'ovqatlanish', 'oshxona', 'kabinet', 'xojalik xonasi', 'yotoqxona', 'bolalar xonasi', 'garderob', 'hammom', 'balkon', 'fasad', 'hovli', 'ofis', 'boshqa']
-XONA_TARTIB = {x: i for i, x in enumerate(XONALAR)}
 
 SECRETS = []
 
@@ -201,6 +198,34 @@ SINF = {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
     'i': {'type': 'INTEGER'}, 'haqiqiy': {'type': 'BOOLEAN'}, 'sifat': {'type': 'INTEGER'}, 'vertikal_mos': {'type': 'BOOLEAN'},
     'xona': {'type': 'STRING', 'enum': XONALAR}, 'tavsif': {'type': 'STRING'}}, 'required': ['i', 'haqiqiy', 'sifat', 'vertikal_mos', 'xona', 'tavsif']}}
 
+# Xonadon xonalari: karusel tartibi (dahliz -> mehmonxona -> oshxona -> xo'jalik -> hammom -> yotoqxonalar) va ko'rinadigan nomi.
+LOY_TARTIB = ['dahliz', "yo'lak", 'mehmonxona', 'oshxona', 'ovqatlanish', 'xojalik xonasi', 'hammom', 'bolalar xonasi', 'yotoqxona', 'kabinet', 'garderob', 'balkon']
+XONA_NOM = {'dahliz': 'Dahliz', "yo'lak": "Yo'lak", 'mehmonxona': 'Mehmonxona', 'oshxona': 'Oshxona', 'ovqatlanish': 'Ovqatlanish zonasi', 'xojalik xonasi': "Xo'jalik xonasi",
+            'hammom': 'Hammom', 'bolalar xonasi': 'Bolalar xonasi', 'yotoqxona': 'Yotoqxona', 'kabinet': 'Kabinet', 'garderob': 'Garderob', 'balkon': 'Balkon'}
+XONA_CAP = {'hammom': 4, 'yotoqxona': 5}  # boshqalar: 3 tagacha ({xona: eng ko'pi bilan rasm})
+# fayl/papka nomidan xona (aniq so'zlar; "HOLL" bahsli -- Gemini hal qiladi)
+HINT = [(r'sanuz|vanna|hammom|tualet|\bwc\b|bath', 'hammom'), (r'bolala|detsk|kids|child', 'bolalar xonasi'),
+        (r'kladov|kir ?yuv|xojalik|xo.jalik|prachech|stirk', 'xojalik xonasi'), (r'dahliz|prixoj|prihozh|kirish|entrance', 'dahliz'),
+        (r'kuxn|kuhn|oshxona|kitchen', 'oshxona'), (r'kabinet|cabinet', 'kabinet'), (r'garderob|dressing', 'garderob'),
+        (r'yotoq|spaln|spalnya|bedroom', 'yotoqxona')]
+TOLERANT = {'yotoqxona': {'yotoqxona', 'bolalar xonasi', 'garderob', 'kabinet'}, 'oshxona': {'oshxona', 'ovqatlanish'}, 'dahliz': {'dahliz', "yo'lak"}}
+REL = {}  # rasm yo'li -> katalogdagi nisbiy yo'l (xona nomi uchun)
+
+
+def xona_aniq(rel, g):
+    s = (rel or '').lower()
+    for rx, x in HINT:
+        if re.search(rx, s):
+            return g if g in TOLERANT.get(x, ()) else x
+    return g
+
+
+def otkir(path):
+    """Qirralar dispersiyasi (o'tkirlik ko'rsatkichi)."""
+    from PIL import ImageFilter, ImageStat
+    im = ImageOps.exif_transpose(Image.open(path)).convert('L'); im.thumbnail((900, 900), Image.LANCZOS)
+    return ImageStat.Stat(im.filter(ImageFilter.FIND_EDGES)).var[0]
+
 
 def tasnif(paths):
     """Rasmlarni Gemini ko'rib baholaydi: [{path, haqiqiy, sifat, xona, tavsif, vertikal_mos}]"""
@@ -210,9 +235,9 @@ def tasnif(paths):
         parts = [{'text': (
             "You review architecture/interior visualization images for an Instagram portfolio. For EACH image return: "
             "haqiqiy = true ONLY for a finished photorealistic render of an interior or exterior (false for texture/material swatches, floor plans, drawings, CAD/viewport/clay/wireframe screenshots, collages, UI screenshots, people photos, logos); "
-            "sifat = 1-10 (composition, lighting, cleanliness, no artifacts/noise, attractive); "
+            "sifat = 1-10 (sharpness, lighting, composition, cleanliness, no artifacts/noise, attractive); "
             "vertikal_mos = true if a center crop to 4:5 portrait still looks good; "
-            "xona = room/zone from the enum; tavsif = what is visible in <=12 words (Uzbek or English). Use the given index i.")}]
+            "xona = room/zone from the enum (kitchen with dining table -> oshxona; living room -> mehmonxona; utility/laundry/storage room -> xojalik xonasi; bathroom/WC -> hammom); tavsif = what is visible in <=12 words (Uzbek or English). Use the given index i.")}]
         for j, p in enumerate(grp):
             parts.append({'text': 'i=%d' % j}); parts.append(thumb_part(p, 560))
         try:
@@ -234,22 +259,141 @@ def rasm_ok(p):
         return False
 
 
-def tanla(tasn, maks):
-    """Sifatli, xilma-xil, o'xshashsiz rasmlar (sifat kamayish tartibida)."""
-    ok = [t for t in tasn if t['haqiqiy'] and t['sifat'] >= 7]
-    ok.sort(key=lambda t: (-(t['sifat'] + (1 if t['vertikal_mos'] else 0))))
-    tanlangan, soni, hashlar = [], {}, []
+def tanla(tasn):
+    """Xonadon renderlari: muqova + xona boshiga eng yaxshi 1-3 rakurs (o'xshashlari tashlanadi).
+    Qaytaradi (cover, {xona: [t, ...]}) yoki (None, {})."""
+    ok = []
+    for lim in (7, 6):
+        ok = [t for t in tasn if t['haqiqiy'] and t['sifat'] >= lim and t['xona'] in LOY_TARTIB]
+        if len(ok) >= 10: break
     for t in ok:
-        if soni.get(t['xona'], 0) >= (8 if t['xona'] in ('fasad', 'hovli', 'boshqa') else 3): continue
+        try: t['_o'] = otkir(t['path'])
+        except Exception: t['_o'] = 0
+    srt = sorted(t['_o'] for t in ok)
+    for t in ok:
+        t['ball'] = t['sifat'] + (0.5 if t['vertikal_mos'] else 0) + (srt.index(t['_o']) / max(1, len(srt) - 1) if len(srt) > 1 else 0)
+    ok.sort(key=lambda t: -t['ball'])
+    uniq, hashlar = [], []
+    for t in ok:
         try: h = dhash(t['path'])
         except Exception: continue
-        if any(bin(h ^ x).count('1') < 16 for x in hashlar): continue
-        hashlar.append(h); soni[t['xona']] = soni.get(t['xona'], 0) + 1; tanlangan.append(t)
-        if len(tanlangan) >= maks: break
-    return tanlangan
+        if any(bin(h ^ x).count('1') < 12 for x in hashlar): continue
+        hashlar.append(h); uniq.append(t)
+    if len(uniq) < 8: return None, {}
+    pool = [t for t in uniq if t['xona'] in ('mehmonxona', 'oshxona', 'ovqatlanish', 'dahliz')] or uniq
+    cover = max(pool, key=lambda t: t['ball'] + (1 if t['xona'] == 'mehmonxona' else 0))
+    per = {}
+    for t in uniq:
+        if t is cover: continue
+        if len(per.setdefault(t['xona'], [])) < XONA_CAP.get(t['xona'], 3): per[t['xona']].append(t)
+    return cover, per
+
+
+def slayd_sxema(per, maks):
+    """Xona rasmlarini slaydlarga ajratadi: full() va two() aralash; jami slayd <= maks."""
+    xl = [x for x in LOY_TARTIB if per.get(x)]
+    rejim = {x: ('p' if (i % 2 == 1 and len(per[x]) >= 2) else 'f') for i, x in enumerate(xl)}
+    def soni(x): k = len(per[x]); return k if rejim[x] == 'f' else (k + 1) // 2
+    def jami(): return sum(soni(x) for x in xl)
+    while jami() > maks:
+        c = [x for x in xl if rejim[x] == 'f' and len(per[x]) >= 2]
+        if c: rejim[max(c, key=lambda x: len(per[x]))] = 'p'; continue
+        c = [x for x in xl if len(per[x]) >= 2]
+        if not c: break
+        x = max(c, key=lambda x: len(per[x])); per[x].pop()  # eng past ball (oxirgi)
+    out = []
+    for x in xl:
+        l = per[x]
+        if rejim[x] == 'f':
+            out += [{'xona': x, 'paths': [t['path']]} for t in l]
+        else:
+            if len(l) == 3: out += [{'xona': x, 'paths': [l[0]['path']]}, {'xona': x, 'paths': [l[1]['path'], l[2]['path']]}]
+            else: out += [{'xona': x, 'paths': [t['path'] for t in l[i:i + 2]]} for i in range(0, len(l), 2)]
+    return out
+
+
+# ---------- slayd matni: faqat rasmda ko'rinadigan narsa ----------
+SL_SCHEMA = {'type': 'OBJECT', 'properties': {'sarlavha': {'type': 'STRING'}, 'izoh': {'type': 'STRING'}}, 'required': ['sarlavha', 'izoh']}
+TEKSH_SCHEMA = {'type': 'OBJECT', 'properties': {
+    'elementlar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {'matn': {'type': 'STRING'}, 'korinadi': {'type': 'BOOLEAN'}}, 'required': ['matn', 'korinadi']}},
+    'umumiy_maslahat': {'type': 'BOOLEAN'}}, 'required': ['elementlar', 'umumiy_maslahat']}
+UZ_QOIDA = ("Write in Uzbek, Latin script, plain everyday language, straight apostrophe (o', g'). NEVER use any digits (write numbers in words if really needed), "
+            "no prices, no brands, no client names, no addresses, no dimensions/areas. Be concrete, not generic marketing clich\u00e9s.")
+TAQIQ = re.compile(r'(layfxak|lifehack|life hack|maslahat|tavsiya|esda tuting|unutmang|aytaylik|odatda|ko.pincha)', re.I)
+
+
+def sozlar(s): return len(re.findall(r"\S+", s))
+
+
+def slayd_xato(m):
+    x = []
+    if sozlar(m['sarlavha']) > 6 or not m['sarlavha'].strip(): x.append('sarlavha <= 6 so\'z')
+    if sozlar(m['izoh']) > 18 or not m['izoh'].strip(): x.append('izoh <= 18 so\'z')
+    if re.search(r'\d', m['sarlavha'] + m['izoh']): x.append('raqam bor')
+    if TAQIQ.search(m['sarlavha'] + ' ' + m['izoh']): x.append('umumiy maslahat/layfxak so\'zlari bor')
+    return x
+
+
+def slayd_matn(xona, paths, oldingi=()):
+    """Aynan shu rasm(lar)ga qarab matn yozadi, ikkinchi so'rovda tekshiradi; 2 marta o'tmasa neytral matn."""
+    nom = XONA_NOM[xona]
+    imgs = [thumb_part(p, 900) for p in paths]
+    fb = (' Solutions already used on other slides - pick a DIFFERENT visible element (prefer materials, furniture, storage or layout over repeating lighting): ' + '; '.join(oldingi) + '.') if oldingi else ''
+    baza = fb
+    for urin in range(2):
+        try:
+            m = gemini([{'text': (
+                "You write the text of ONE Instagram carousel slide for Visart Design (Tashkent). The attached image(s) show: %s. Look at the image(s) carefully. "
+                "Describe exactly ONE design solution that is clearly VISIBLE in the attached image(s) (a material, colour, lighting, furniture layout, storage or shape) and its practical benefit for living. "
+                "Mention ONLY objects, materials and features that you can actually see in the attached image(s); if you are not sure something is visible, leave it out. "
+                "NO general advice, NO life-hacks, NO tips, nothing that is not in the picture. Name the visible element directly (e.g. its material, colour or position) - do not refer to things outside the frame. sarlavha: at most 6 words, concrete; izoh: at most 18 words (visible solution + benefit). " % nom
+                + UZ_QOIDA + fb)}] + imgs, SL_SCHEMA, 0.7, 'low')
+            err = slayd_xato(m)
+            if not err:
+                v = gemini([{'text': (
+                    "You are a fact-checker for an interior design slide. The text below will be printed on a slide with the attached image(s) of: %s. "
+                    "List every PHYSICAL thing the text names or claims is present: objects, furniture, materials, colours, light fixtures, finishes, shapes, layout features. For each set korinadi=true if it is clearly visible in the attached image(s), false if it is absent or you cannot see it. "
+                    "IGNORE statements of benefit, comfort or feeling (e.g. 'convenient', 'looks spacious', 'easy to clean') - do not list them. "
+                    "Set umumiy_maslahat=true ONLY if the text is an instruction/tip/life-hack addressed to the reader that does not describe anything in the image(s); a text that describes a visible element and its benefit is NOT general advice.\nTITLE: %s\nCAPTION: %s" % (nom, m['sarlavha'], m['izoh']))}] + imgs, TEKSH_SCHEMA, 0.1, 'low')
+                bad = [e['matn'] for e in v['elementlar'] if not e['korinadi']]
+                if v['elementlar'] and not bad and not v['umumiy_maslahat']:
+                    return {'sarlavha': m['sarlavha'].strip(), 'izoh': m['izoh'].strip(), 'fallback': False}
+                err = ['not visible in the image: ' + '; '.join(bad)] if bad else ['too generic / not specific to what is visible']
+            fb = baza + ' The previous attempt (title=%r caption=%r) was REJECTED: %s. Write a different text that uses only clearly visible things.' % (m['sarlavha'], m['izoh'], '; '.join(err))
+            log('  matn rad etildi (%s, urinish %d): %s <- %s | %s' % (nom, urin + 1, '; '.join(err)[:160], m['sarlavha'], m['izoh']))
+        except Exception as e:
+            log('  matn xato (%s): %s' % (nom, str(e)[:120]))
+    return {'sarlavha': '%s \u2014 umumiy ko\'rinish' % nom, 'izoh': '', 'fallback': True}
+
+
+# ---------- reja (oldin/keyin) ----------
+PLAN_RX = re.compile(r'(reja|plan|oldin|keyin|planirov|layout)', re.I)
+PLAN_SCHEMA = {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {'i': {'type': 'INTEGER'}, 'tur': {'type': 'STRING', 'enum': ['oldin', 'keyin', 'boshqa']}}, 'required': ['i', 'tur']}}
+
+
+def plan_topish(x, root):
+    """Katalogda oldin/keyin reja rasmlari bo'lsa (ikkalasi ham) (oldin, keyin) yo'llari; aks holda None."""
+    c = []
+    for rel in x['renderlar']:
+        if PLAN_RX.search(os.path.basename(rel)) and rel.lower().endswith(('.jpg', '.jpeg', '.png')):
+            p = os.path.join(root, *rel.split('/'))
+            if os.path.exists(p) and rasm_ok(p): c.append(p)
+    c = c[:8]
+    if len(c) < 2: return None
+    parts = [{'text': "Classify each image: oldin = floor plan / top view of the ORIGINAL or empty state (before design, survey, bare shell); keyin = the FINAL furnished floor plan / top view of the designed apartment; boshqa = anything else (3D room render, texture, CAD screenshot with no clear plan, logo). Use the given index i."}]
+    for j, p in enumerate(c): parts.append({'text': 'i=%d' % j}); parts.append(thumb_part(p, 700))
+    try: res = gemini(parts, PLAN_SCHEMA, 0.1, 'minimal')
+    except Exception as e: log('reja tasnif xato: %s' % e); return None
+    o = [c[r['i']] for r in res if 0 <= r['i'] < len(c) and r['tur'] == 'oldin']
+    k = [c[r['i']] for r in res if 0 <= r['i'] < len(c) and r['tur'] == 'keyin']
+    return (o[0], k[0]) if o and k else None
 
 
 # ---------- loyiha ----------
+APT_RX = re.compile(r'KVARTIRA|XONADON|APARTAM', re.I)
+EXCL_RX = re.compile(r'UCHAST|UCHASK|FASAD|OFIS|BUTIK|SHOW ?ROOM|SHTAB', re.I)
+
+
 def loyiha_nomzodlari(holat, db_kalit):
     ishl = set(holat['loyihalar']) | db_kalit
     reel = []
@@ -261,14 +405,18 @@ def loyiha_nomzodlari(holat, db_kalit):
         k = x['loyiha']
         m = re.match(r'^D:(20\d\d)/', k)
         if not m or int(m.group(1)) < 2022 or x['render_soni'] < 20 or k in ishl: continue
-        if re.search(r'UCHAST|UCHASK', k, re.I): continue
+        if EXCL_RX.search(k): continue
         reel_used = any(r in k.upper() for r in reel)
-        nom.append((reel_used, -int(m.group(1)), -x['render_soni'], k, x))
-    nom.sort(key=lambda z: z[:4])
-    return [z[3:] for z in nom]
+        nom.append((not APT_RX.search(k), reel_used, -int(m.group(1)), -x['render_soni'], k, x))  # xonadon (kvartira) loyihalari birinchi
+    nom.sort(key=lambda z: z[:5])
+    return [z[4:] for z in nom]
+
+
+XD_RX = re.compile(r'(\d+)[\s_-]*(?:qavat|kvartira|xonadon)', re.I)
 
 
 def loyiha_rasmlari(x):
+    """Bitta xonadonning renderlari (loyihada bir necha xonadon bo'lsa -- eng ko'pi)."""
     kal = x['loyiha']; tag, rest = kal.split(':', 1)
     root = ROOTS[tag]
     paths = []
@@ -276,70 +424,19 @@ def loyiha_rasmlari(x):
         base = os.path.basename(rel)
         if RAD.search(base): continue
         p = os.path.join(root, *rel.split('/'))
-        if os.path.exists(p): paths.append(p)
-    names = {os.path.basename(p).lower() for p in paths}
-    paths = [p for p in paths if not (re.search(r'( copy| копия)', os.path.basename(p), re.I) and re.sub(r'( copy| копия)', '', os.path.basename(p), flags=re.I).lower() in names)]
-    paths = [p for p in paths if rasm_ok(p)]
-    if len(paths) > 40:
-        step = len(paths) / 40.0
-        paths = [paths[int(i * step)] for i in range(40)]
-    return paths
-
-
-MATN_SCHEMA = {'type': 'OBJECT', 'properties': {
-    'muqova': {'type': 'OBJECT', 'properties': {'l1': {'type': 'STRING'}, 'l2': {'type': 'STRING'}, 'sub': {'type': 'STRING'}}, 'required': ['l1', 'l2', 'sub']},
-    'slaydlar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
-        'rasmlar': {'type': 'ARRAY', 'items': {'type': 'INTEGER'}}, 'kick': {'type': 'STRING'}, 'sarlavha': {'type': 'STRING'}, 'izoh': {'type': 'STRING'}},
-        'required': ['rasmlar', 'kick', 'sarlavha', 'izoh']}},
-    'caption': {'type': 'STRING'}}, 'required': ['muqova', 'slaydlar', 'caption']}
-
-UZ_QOIDA = ("Write in Uzbek, Latin script, plain everyday language, straight apostrophe (o', g'). NEVER use any digits (write numbers in words if really needed; the only exception: list markers like '1)' at line starts of the caption), "
-            "no prices, no brands, no client names, no addresses, no dimensions/areas, no hashtags/phone in caption. Be concrete, not generic marketing clich\u00e9s.")
-
-
-def sozlar(s): return len(re.findall(r"\S+", s))
-
-
-def matn_xato(m, loyiha=True):
-    x = []
-    mu = m['muqova']
-    if len(mu['l1']) > 20 or len(mu['l2']) > 18: x.append('muqova l1<=20 belgi, l2<=18 belgi bo\'lsin')
-    if sozlar(mu['sub']) > 9: x.append('muqova sub <= 9 so\'z')
-    for i, s in enumerate(m['slaydlar'], 1):
-        if sozlar(s['sarlavha']) > 6: x.append('slayd %d sarlavha <= 6 so\'z' % i)
-        if sozlar(s['izoh']) > 18: x.append('slayd %d izoh <= 18 so\'z' % i)
-        if len(s['kick']) > 22: x.append('slayd %d kick <= 22 belgi' % i)
-        if re.search(r'\d', s['sarlavha'] + s['izoh'] + s['kick'] if loyiha else s['sarlavha'] + s['izoh']): x.append('slayd %d da raqam bor' % i)
-    if re.search(r'\d', mu['l1'] + mu['l2'] + mu['sub'] + re.sub(r'(?m)^\s*\d+\)\s*', '', m['caption'])): x.append('muqova/caption da raqam bor (faqat ro\'yxat belgisi 1) 2) mumkin)')
-    if len(m['caption']) > 1500: x.append('caption <= 1500 belgi')
-    return x
-
-
-def loyiha_matn(tanl, cover):
-    """tanl: tanlangan rasmlar (cover'dan tashqari). Qaytaradi: matn dict."""
-    parts = [{'text': (
-        "You are the senior designer of Visart Design (Tashkent) writing an Instagram carousel about one of our interior/architecture projects. "
-        "Image 0 is the COVER image, images 1.. are for content slides. " + UZ_QOIDA + "\n"
-        "For EVERY content slide present exactly ONE design solution that is clearly VISIBLE in its image(s) (material, colour, layout, lighting, storage, shape) plus its practical benefit for living (comfort, cleaning, light, storage, privacy, space). "
-        "Never claim anything not visible. Compose 5-8 slides; each image index used at most once; put 2 images in one slide ONLY if they show the same room from different angles. "
-        "Fields: kick = room/zone name, 1-2 words, <=18 chars; sarlavha = <=6 words, a concrete catchy phrase; izoh = <=18 words (solution + benefit). "
-        "muqova: l1 = headline 2-4 words <=18 chars describing the project's character from the cover; l2 = short promise <=16 chars starting with an arrow like '\u2192 PREMIUM INTERYER' style (uppercase); sub = <=8 words like 'Har bir xonadan 1 ta yechim' style but without digits. "
-        "caption: Instagram caption: line 1 hook <=12 words; blank line; 3-5 lines starting with '\u2022' naming key solutions; blank line; one line inviting to send their plan to get a similar project. <=900 chars.")}]
-    for i, t in enumerate([cover] + tanl):
-        parts.append({'text': 'Image %d (%s):' % (i, t['xona'])}); parts.append(thumb_part(t['path'], 900))
-    fb = ''
-    for t in range(3):
-        m = gemini(parts + ([{'text': 'FIX THESE PROBLEMS from the previous attempt: ' + fb}] if fb else []), MATN_SCHEMA, 0.8, 'low')
-        for s in m['slaydlar']:
-            s['rasmlar'] = [r for r in s['rasmlar'] if 1 <= r <= len(tanl)][:2]
-        m['slaydlar'] = [s for s in m['slaydlar'] if s['rasmlar']]
-        err = matn_xato(m)
-        used = [r for s in m['slaydlar'] for r in s['rasmlar']]
-        if len(used) != len(set(used)): err.append('rasm indeksi takrorlandi')
-        if not (5 <= len(m['slaydlar']) <= 8): err.append('slaydlar soni 5-8 bo\'lsin')
-        if not err: return m
-        fb = '; '.join(err); log('matn tuzatiladi: %s' % fb)
-    raise RuntimeError('matn qoidalarga mos kelmadi: ' + fb)
+        if os.path.exists(p): paths.append((p, rel))
+    names = {os.path.basename(p).lower() for p, _ in paths}
+    paths = [(p, r) for p, r in paths if not (re.search(r'( copy| \u043a\u043e\u043f\u0438\u044f)', os.path.basename(p), re.I) and re.sub(r'( copy| \u043a\u043e\u043f\u0438\u044f)', '', os.path.basename(p), flags=re.I).lower() in names)]
+    paths = [(p, r) for p, r in paths if rasm_ok(p)]
+    grp = {}
+    for p, r in paths:
+        m = XD_RX.search(r); grp.setdefault(m.group(0).lower() if m else '', []).append((p, r))
+    if grp: paths = max(grp.values(), key=len)
+    if len(paths) > 70:
+        step = len(paths) / 70.0
+        paths = [paths[int(i * step)] for i in range(70)]
+    for p, r in paths: REL[p] = r
+    return [p for p, _ in paths]
 
 
 def loyiha_karusel(args, holat):
@@ -353,148 +450,51 @@ def loyiha_karusel(args, holat):
         log('  mos rasm: %d' % len(paths))
         if len(paths) < 8: continue
         tasn = tasnif(paths)
-        pool_qosh(tasn)
-        tanl = tanla(tasn, 10)
-        log('  sifatli tanlangan: %d' % len(tanl))
-        if len(tanl) < 7: continue
-        # muqova: eng yuqori sifat + vertikal mos, keng xona (mehmonxona/fasad/oshxona) afzal
-        cover = max(tanl, key=lambda t: t['sifat'] * 2 + (2 if t['vertikal_mos'] else 0) + (1 if t['xona'] in ('mehmonxona', 'fasad', 'oshxona') else 0))
-        rest = [t for t in tanl if t is not cover]
-        m = loyiha_matn(rest, cover)
+        for t in tasn: t['xona'] = xona_aniq(REL.get(t['path']), t['xona'])
+        cover, per = tanla(tasn)
+        if not cover: log('  sifatli xilma-xil rasm yetarli emas'); continue
+        for t in [cover] + [t for l in per.values() for t in l]: log('  %s | %s | %s | %.1f' % (os.path.basename(t['path']), t['xona'], t['tavsif'][:40], t['ball']))
+        plan = plan_topish(x, ROOTS[kal.split(':', 1)[0]])
+        sx = slayd_sxema(per, 18 - (1 if plan else 0))
+        if len(sx) < 6: continue
+        used = []
+        for s in sx:
+            s['kick'] = XONA_KICK_UP(s['xona'])
+            s.update(slayd_matn(s['xona'], s['paths'], used[-8:]))
+            if not s['fallback']: used.append(s['sarlavha'])
+            log('  [%s] %s | %s%s' % (s['kick'], s['sarlavha'], s['izoh'], ' (neytral)' if s['fallback'] else ''))
         nom = re.sub(r'[^a-z0-9]+', '-', re.sub(r'^D:\d+/', '', kal).lower()).strip('-')[:30]
-        return {'turi': 'loyiha', 'kalit': kal, 'nom': nom, 'cover': cover, 'rest': rest, 'matn': m, 'sarlavha': kal.split('/', 1)[1].title()}
-    raise RuntimeError('yetarli sifatli renderli ishlatilmagan loyiha topilmadi')
+        m = re.search(r'(\d{2,3})\s*(?:m2|m\u00b2|kv)', kal, re.I)
+        return {'turi': 'loyiha', 'kalit': kal, 'nom': nom, 'cover': cover, 'slaydlar': sx, 'plan': plan,
+                'maydon': m.group(1) if m else None, 'tur': 'KVARTIRA' if re.search('KVARTIRA', kal, re.I) else 'XONADON',
+                'sarlavha': kal.split('/', 1)[1].title()}
+    raise RuntimeError('yetarli sifatli renderli ishlatilmagan xonadon loyihasi topilmadi')
+
+
+def XONA_KICK_UP(x): return XONA_NOM[x].upper().replace(' ZONASI', '')
 
 
 def loyiha_slaydlar(r):
-    m = r['matn']
-    slaydlar = sorted(m['slaydlar'], key=lambda s: min(XONA_TARTIB.get(r['rest'][i - 1]['xona'], 99) for i in s['rasmlar']))
-    N = len(slaydlar) + 2
+    sl = r['slaydlar']; plan = r.get('plan')
+    N = len(sl) + 2 + (1 if plan else 0)
     d = D.Dizayn(N)
-    mu = m['muqova']
-    pages = [d.cover(r['cover']['path'], 'LOYIHAMIZ \u00b7 3D', mu['l1'], mu['l2'], mu['sub'])]
-    for n, s in enumerate(slaydlar, 2):
-        ps = [r['rest'][i - 1]['path'] for i in s['rasmlar']]
-        k = s['kick'].upper()
-        pages.append(d.two(ps[0], ps[1], k, s['sarlavha'], s['izoh'], n) if len(ps) == 2 else d.full(ps[0], k, s['sarlavha'], s['izoh'], n))
-    pages.append(d.cta(r['rest'][-1]['path'], N, "Saqlab qo'ying \u2014 loyihangizga ilhom bo'ladi"))
-    caption = m['caption'].strip() + '\n\n' + KONTAKT + '\n\n' + HASHTAG
-    return pages, caption, {'ishlatilgan_rasmlar': []}
-
-
-# ---------- pool (maslahat fonlari) ----------
-def pool_oqi():
-    try: return json.load(open(POOL, encoding='utf-8'))
-    except Exception: return {}
-
-
-def pool_qosh(tasn):
-    pl = pool_oqi()
-    for t in tasn:
-        if t['haqiqiy'] and t['sifat'] >= 7 and os.path.exists(t['path']):
-            pl[t['path']] = {k: t[k] for k in ('sifat', 'vertikal_mos', 'xona', 'tavsif')}
-    json.dump(pl, open(POOL, 'w', encoding='utf-8'), ensure_ascii=False, indent=0)
-
-
-def pool_toldir():
-    """Lokal tayyor renderlar (Visart_AI_Studio\\loyihalar\\*\\NN_XXX.jpg, media-server\\loyihalar\\*\\N.jpg) hovuzga tasniflanadi."""
-    pl = pool_oqi()
-    cand = glob.glob(os.path.join(LOY, '*', '[0-9][0-9]_*.jpg')) + glob.glob(os.path.join(MS, 'loyihalar', '*', '[0-9].jpg'))
-    yangi = [p for p in cand if p not in pl and rasm_ok(p)]
-    log('hovuz: %d bor, %d yangi tasniflanadi' % (len(pl), len(yangi)))
-    if yangi: pool_qosh(tasnif(yangi))
-    return {p: v for p, v in pool_oqi().items() if os.path.exists(p)}
-
-
-# ---------- maslahat ----------
-def norm(s): return re.sub(r"[^a-z0-9\u0400-\u04ff ]+", '', re.sub(r"[\u02bb\u02bc\u2019'`]", '', s.lower()))
-
-
-def shingles(s, n=5):
-    w = norm(s).split()
-    return {' '.join(w[i:i + n]) for i in range(len(w) - n + 1)}
-
-
-MASLAHAT_SCHEMA = {'type': 'OBJECT', 'properties': {
-    'muqova': MATN_SCHEMA['properties']['muqova'],
-    'maslahatlar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
-        'kick': {'type': 'STRING'}, 'sarlavha': {'type': 'STRING'}, 'izoh': {'type': 'STRING'}, 'xona': {'type': 'STRING', 'enum': XONALAR}},
-        'required': ['kick', 'sarlavha', 'izoh', 'xona']}},
-    'cta': {'type': 'STRING'}, 'caption': {'type': 'STRING'}}, 'required': ['muqova', 'maslahatlar', 'cta', 'caption']}
-
-
-def mavzu_tanla(holat, args):
-    fs = sorted(glob.glob(os.path.join(ANIM, '*', 'matn.json')))
-    if not fs: raise RuntimeError('matn.json topilmadi')
-    if args.mavzu:
-        fs = [f for f in fs if args.mavzu in f] or fs
-    db_k = db_ishlatilgan()
-    def sanoq(f):
-        kal = os.path.basename(os.path.dirname(f)); return (holat['mavzular'].get(kal, {}).get('soni', 0) + (1 if 'mavzu:' + kal in db_k else 0), kal)
-    f = min(fs, key=sanoq)
-    kal = os.path.basename(os.path.dirname(f))
-    matn = ' '.join(x[1] for x in json.load(open(f, encoding='utf-8')))
-    return kal, matn
-
-
-def maslahat_karusel(args, holat):
-    kal, skript = mavzu_tanla(holat, args)
-    oldin = holat['mavzular'].get(kal, {}).get('sarlavhalar', [])
-    log('mavzu: %s (oldin: %d marta)' % (kal, holat['mavzular'].get(kal, {}).get('soni', 0)))
-    prompt = (
-        "You are the chief architect of Visart Design (Tashkent) writing the 'Arxitektor maslahati' Instagram carousel (cover + 5 or 6 tip slides) based on the IDEAS of the source video script below. "
-        + UZ_QOIDA + " Do NOT copy sentences or phrases from the script; rephrase fully in short carousel style. Use only ideas present in the script (no new facts); drop tariffs, dates, organisations, laws, news, prices. "
-        "Each tip = one concrete action or one common mistake + why it matters (benefit). kick = 1-2 word topic label (<=18 chars, no digits; code adds the number); sarlavha <=6 words; izoh <=18 words. "
-        "xona = which room type best illustrates the tip (for a background image). muqova: l1 <=18 chars catchy headline, l2 <=16 chars '\u2192 ...' promise (uppercase, no digits), sub <=8 words. "
-        "cta = short line (<=8 words) urging to save the post. caption: hook <=12 words, blank line, numbered lines '1)' ... one per tip (short), blank line, one line CTA inviting to ask the architect; <=900 chars. "
-        + ('Titles already used before for this topic (use a DIFFERENT angle): ' + '; '.join(oldin) + '. ' if oldin else '')
-        + "\n\nSOURCE SCRIPT:\n" + skript)
-    parts = [{'text': prompt}]
-    fb = ''; sh = shingles(skript)
-    for t in range(4):
-        m = gemini(parts + ([{'text': 'FIX THESE PROBLEMS: ' + fb}] if fb else []), MASLAHAT_SCHEMA, 0.8, 'low')
-        for s in m['maslahatlar']: s['kick'] = s['kick']
-        err = matn_xato({'muqova': m['muqova'], 'slaydlar': m['maslahatlar'], 'caption': m['caption']}, loyiha=False)
-        if not (5 <= len(m['maslahatlar']) <= 6): err.append('5 yoki 6 ta maslahat bo\'lsin')
-        if re.search(r'\d', ' '.join(s['kick'] for s in m['maslahatlar'])): err.append('kick da raqam bor')
-        bor = set()
-        for s in m['maslahatlar']: bor |= shingles(s['sarlavha'] + '. ' + s['izoh'])
-        bor |= shingles(m['caption'])
-        if bor & sh: err.append("skriptdan so'zma-so'z 5 so'zli parcha takrorlandi: " + '; '.join(list(bor & sh)[:3]))
-        if not err: break
-        fb = '; '.join(err); log('maslahat matni tuzatiladi: %s' % fb)
-    else:
-        raise RuntimeError('maslahat matni qoidalarga mos kelmadi: ' + fb)
-    return {'turi': 'maslahat', 'kalit': 'mavzu:' + kal, 'mavzu': kal, 'nom': re.sub(r'[^a-z0-9]+', '-', kal.split('_', 1)[-1].lower()), 'matn': m,
-            'sarlavha': m['muqova']['l1']}
-
-
-def maslahat_slaydlar(r, holat):
-    m = r['matn']; pl = pool_toldir()
-    if len(pl) < 8: raise RuntimeError('fon rasmlar hovuzi kichik (%d)' % len(pl))
-    oxirgi = set(holat.get('rasm_oxirgi', []))
-    ishl = set()
-    def tanla_fon(xona):
-        c = [(p, v) for p, v in pl.items() if p not in ishl and p not in oxirgi]
-        if not c: c = [(p, v) for p, v in pl.items() if p not in ishl]
-        pref = [x for x in c if x[1]['xona'] == xona] or c
-        p = max(pref, key=lambda x: x[1]['sifat'] * 2 + (2 if x[1]['vertikal_mos'] else 0) + (hash(x[0]) % 7) / 7.0)[0]
-        ishl.add(p); return p
-    n_t = len(m['maslahatlar']); N = n_t + 2
-    d = D.Dizayn(N)
-    mu = m['muqova']
-    cover_bg = tanla_fon('mehmonxona')
-    pages = [d.cover(cover_bg, 'ARXITEKTOR MASLAHATI', mu['l1'], mu['l2'], mu['sub'])]
-    for i, s in enumerate(m['maslahatlar'], 1):
-        pages.append(d.full(tanla_fon(s['xona']), '%d \u00b7 %s' % (i, s['kick'].upper()), s['sarlavha'], s['izoh'], i + 1))
-    pages.append(d.cta(tanla_fon('yotoqxona'), N, m['cta'].strip() or "Saqlab qo'ying \u2014 remontda kerak bo'ladi", kick='SAQLAB QO\'YING'))
-    caption = m['caption'].strip() + '\n\n' + KONTAKT + '\n\n' + HASHTAG
-    return pages, caption, {'ishlatilgan_rasmlar': sorted(ishl)}
+    nrasm = 1 + sum(len(s['paths']) for s in sl)
+    if r['maydon']: l1, l2 = '%s m\u00b2 %s' % (r['maydon'], r['tur'].lower()), '\u2192 PREMIUM INTERYER'
+    else: l1, l2 = 'Navbatdagi buyurtma:', '\u2192 ' + r['tur']
+    pages = [d.cover(r['cover']['path'], 'LOYIHAMIZ \u00b7 3D', l1, l2, 'Xonama-xona \u2014 %d kadrda' % nrasm)]
+    n = 2
+    if plan: pages.append(d.plan(plan[0], plan[1], n, "Reja: oldingi holat va yangi joylashuv")); n += 1
+    for s in sl:
+        pages.append(d.two(s['paths'][0], s['paths'][1], s['kick'], s['sarlavha'], s['izoh'], n) if len(s['paths']) == 2 else d.full(s['paths'][0], s['kick'], s['sarlavha'], s['izoh'], n)); n += 1
+    pages.append(d.cta(sl[-1]['paths'][0], N, "Saqlab qo'ying \u2014 remontda kerak bo'ladi"))
+    bul = [s['sarlavha'] for s in sl if not s['fallback']][:5]
+    caption = '\n'.join(["Navbatdagi buyurtma \u2014 bitta xonadon, xonama-xona.", ''] + ['\u2022 %s' % b for b in bul] + ['', "Rejangizni yuboring \u2014 shunday loyiha tayyorlab beramiz."]) + '\n\n' + KONTAKT + '\n\n' + HASHTAG
+    return pages, caption, {}
 
 
 # ---------- yuborish ----------
 def tg_tasdiq(qid, r, urls_local, caption, vaqt, adm):
-    tur = 'Loyiha karuseli' if r['turi'] == 'loyiha' else 'Arxitektor maslahati'
+    tur = 'Loyiha karuseli'
     n = len(urls_local)
     if n <= 10: album = urls_local
     else:
@@ -527,8 +527,8 @@ def asosiy(args):
         except Exception as e:
             log('takror tekshiruvi: %s' % e)
     log('rejim=%s reja vaqti=%s' % (args.rejim, vaqt.strftime('%Y-%m-%d %H:%M')))
-    r = loyiha_karusel(args, holat) if args.rejim == 'loyiha' else maslahat_karusel(args, holat)
-    pages, caption, qosh = loyiha_slaydlar(r)[0:3] if args.rejim == 'loyiha' else maslahat_slaydlar(r, holat)
+    r = loyiha_karusel(args, holat)
+    pages, caption, qosh = loyiha_slaydlar(r)
     sana = vaqt.strftime('%Y-%m-%d')
     papka = '%s_%s' % (sana, r['nom'])
     od = os.path.join(OUT, papka)
@@ -547,11 +547,7 @@ def asosiy(args):
     qid = row[0]['id']
     log('navbatga yozildi: id=%s (tasdiq_kutilmoqda)' % qid)
     # holat
-    if r['turi'] == 'loyiha': holat['loyihalar'].append(r['kalit'])
-    else:
-        mv = holat['mavzular'].setdefault(r['mavzu'], {'soni': 0, 'sarlavhalar': []})
-        mv['soni'] += 1; mv['sarlavhalar'] += [s['sarlavha'] for s in r['matn']['maslahatlar']]
-        holat['rasm_oxirgi'] = qosh.get('ishlatilgan_rasmlar', [])
+    holat['loyihalar'].append(r['kalit'])
     holat['tarix'].append({'sana': sana, 'turi': r['turi'], 'kalit': r['kalit'], 'id': qid})
     holat_yoz(holat)
     tg_tasdiq(qid, r, slayd, caption, vaqt, adm)
@@ -560,9 +556,9 @@ def asosiy(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--rejim', choices=['loyiha', 'maslahat'], required=True)
+    ap.add_argument('--rejim', choices=['loyiha'], default='loyiha')
     ap.add_argument('--quruq', action='store_true'); ap.add_argument('--majbur', action='store_true')
-    ap.add_argument('--mavzu'); ap.add_argument('--loyiha')
+    ap.add_argument('--loyiha')
     args = ap.parse_args()
     lock = os.path.join(HERE, 'karusel.lock')
     if os.path.exists(lock) and time.time() - os.path.getmtime(lock) < 3 * 3600:

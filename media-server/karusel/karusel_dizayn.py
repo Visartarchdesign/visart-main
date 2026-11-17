@@ -86,15 +86,24 @@ class Dizayn:
         return self.page(inner, n, self.img(image), SHADE_COVER)
 
     def full(self, image, kick, t, s, n, pos='center'):
-        inner = '<div class=cap><div class=kick>%s</div><div class=line></div><div class=t>%s</div><div class=s>%s</div></div>' % (esc(kick), esc(t), esc(s))
+        inner = '<div class=cap><div class=kick>%s</div><div class=line></div><div class=t>%s</div>%s</div>' % (esc(kick), esc(t), ('<div class=s>%s</div>' % esc(s)) if s else '')
         return self.page(inner, n, self.img(image)).replace('background-position:center', 'background-position:%s' % pos)
 
     def two(self, a, b, kick, t, s, n):
         inner = ('<img src="%s" style="position:absolute;left:0;top:0;width:539px;height:900px;object-fit:cover">'
                  '<img src="%s" style="position:absolute;left:541px;top:0;width:539px;height:900px;object-fit:cover">'
                  '<div class=sh style="background:linear-gradient(180deg,rgba(8,9,12,.7) 0%%,rgba(8,9,12,0) 18%%,rgba(8,9,12,0) 52%%,rgba(11,12,15,1) 67%%)"></div>'
-                 '<div class=cap><div class=kick>%s</div><div class=line></div><div class=t>%s</div><div class=s>%s</div></div>'
-                 ) % (self.img(a), self.img(b), esc(kick), esc(t), esc(s))
+                 '<div class=cap><div class=kick>%s</div><div class=line></div><div class=t>%s</div>%s</div>'
+                 ) % (self.img(a), self.img(b), esc(kick), esc(t), ('<div class=s>%s</div>' % esc(s)) if s else '')
+        return self.page(inner, n)
+
+    def plan(self, oldin, keyin, n, izoh):
+        box = 'position:absolute;left:64px;top:%dpx;width:952px;height:430px;object-fit:cover;border-radius:16px'
+        tag = 'position:absolute;left:84px;top:%dpx;font-weight:800;font-size:22px;letter-spacing:3px;padding:8px 16px;border-radius:8px;%s'
+        inner = ('<div style="position:absolute;left:64px;right:64px;top:140px"><div class=kick>REJA</div><div class=h style="font-size:60px;margin-top:20px">Oldin \u2192 keyin</div></div>'
+                 '<img src="%s" style="%s"><div style="%s">OLDIN</div><img src="%s" style="%s"><div style="%s">KEYIN</div>'
+                 '<div class=cap style="bottom:60px"><div class=s style="margin:0">%s</div></div>'
+                 ) % (self.img(oldin), box % 300, tag % (316, 'background:#FF4A3D'), self.img(keyin), box % 750, tag % (766, 'background:#E8C27A;color:#111'), esc(izoh))
         return self.page(inner, n)
 
     def cta(self, image, n, note, kick='NAVBATDAGI BUYURTMA — SIZNIKI'):

@@ -14,4 +14,4 @@ function Reg($name, $rejim, $day) {
   Register-ScheduledTask -TaskName $name -Action $a -Trigger $t -Settings $s -Description "Visart Instagram karusel avtomatik ($rejim)" -Force | Out-Null
 }
 Reg "Visart_Karusel_Loyiha" "loyiha" "Monday"      # chorshanba 19:30 karuseli (2 kun oldin tayyorlanadi)
-Reg "Visart_Karusel_Maslahat" "maslahat" "Thursday" # shanba 11:00 "Arxitektor maslahati"
+# "Arxitektor maslahati" rejimi o'chirilgan (Visart_Karusel_Maslahat vazifasi ro'yxatdan o'tkazilmaydi)
