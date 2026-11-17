@@ -58,6 +58,7 @@ import { kanalTekshir, kanalQollash, kanalRad } from '../_lib/kanalAgent.js';
 import { fotoMenu, fotoMedia, fotoCb, fotoQayta, fotoHolat } from '../_lib/fotoBot.js';
 import { mediaChaqir, animatsiyaBuyurtma, mediaBaza } from '../_lib/media.js';
 import { TANISH_MIJOZ, TANISH_USTA, guruhSalom, guruhBuyruq, guruhCb, maslahatYarat, maslahatTarqat } from '../_lib/guruhJamoa.js';
+import { karuselCb } from '../_lib/karusel.js';
 import { t, menejerlar, getProfil, setProfil, menyuKorsat, handleMenu, handleNarx, narxMaydonMatn, lidSavollarBoshla, handleLq, followUpQoy, handleMijozFoto, handleKontakt, handleObTanla, obyektTelBilan, obyektKorsat, ILOVA_URL } from '../_lib/mijozMenyu.js';
 import { aiFetch } from '../_lib/aiZaxira.js';
 
@@ -1970,6 +1971,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
         return json({ ok: true });
       }
       if (data.startsWith('gk:')) { await guruhCb(env, cq, data); return json({ ok: true }); }
+      if (data.startsWith('krs:')) {
+        if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
+        await karuselCb(env, cq, data).catch((e) => xatoYoz(env, 'karusel-cb', e));
+        return json({ ok: true });
+      }
       if (data.startsWith('gm:')) {
         if (!isAdmin(env, cq.from && cq.from.id)) { await answerCq(env, cq.id, { text: "Ruxsat yo'q" }); return json({ ok: true }); }
         const [, amal, gid] = data.split(':');
