@@ -51,9 +51,14 @@ CSS = """*{box-sizing:border-box;margin:0;padding:0}html,body{width:1080px;heigh
 .line{width:72px;height:4px;background:#E8C27A;margin:22px 0}
 .swipe{position:absolute;right:64px;bottom:64px;font-size:24px;font-weight:700;letter-spacing:3px;color:#E8C27A}
 .nw{white-space:nowrap}
+.cap .b{position:relative;padding-left:36px;margin-top:14px;font-size:30px;line-height:1.32;color:rgba(255,255,255,.93)}
+.cap .b:before{content:'';position:absolute;left:0;top:.62em;width:20px;height:3px;background:#E8C27A}
+.tag{z-index:5;position:absolute;left:64px;bottom:56px;font-weight:800;font-size:20px;letter-spacing:5px;color:#E8C27A;border:2px solid rgba(232,194,122,.55);padding:7px 16px;border-radius:30px;background:rgba(8,9,12,.4)}
 """
 
 SHADE = 'linear-gradient(180deg,rgba(8,9,12,.75) 0%,rgba(8,9,12,0) 28%,rgba(8,9,12,0) 52%,rgba(8,9,12,.92) 100%)'
+SHADE_INTRO = 'linear-gradient(180deg,rgba(8,9,12,.7) 0%,rgba(8,9,12,0) 20%,rgba(8,9,12,0) 34%,rgba(8,9,12,.88) 56%,rgba(8,9,12,.97) 100%)'
+SHADE_CLEAN = 'linear-gradient(180deg,rgba(8,9,12,.6) 0%,rgba(8,9,12,0) 16%,rgba(8,9,12,0) 88%,rgba(8,9,12,.45) 100%)'
 SHADE_COVER = 'linear-gradient(180deg,rgba(8,9,12,.88) 0%,rgba(8,9,12,.5) 45%,rgba(8,9,12,.1) 70%,rgba(8,9,12,.85) 100%)'
 
 
@@ -89,6 +94,16 @@ class Dizayn:
         inner = '<div class=cap><div class=kick>%s</div><div class=line></div><div class=t>%s</div>%s</div>' % (esc(kick), esc(t), ('<div class=s>%s</div>' % esc(s)) if s else '')
         return self.page(inner, n, self.img(image)).replace('background-position:center', 'background-position:%s' % pos)
 
+    def intro(self, image, kick, bandlar, n, title=None):
+        """Xona kirish slaydi: render + xona haqida 3-5 band (title faqat bandlar yo'q bo'lsa -- neytral sarlavha)."""
+        body = ''.join('<div class=b>%s</div>' % esc(b) for b in bandlar) if bandlar else '<div class=t style="font-size:50px">%s</div>' % esc(title or '')
+        inner = '<div class="cap intro"><div class=kick>%s</div><div class=line></div>%s</div>' % (esc(kick), body)
+        return self.page(inner, n, self.img(image), SHADE_INTRO)
+
+    def clean(self, image, kick, n):
+        """Toza render: matnsiz, butun kadr; faqat logo, n/N va burchakda xona nomi."""
+        return self.page('<div class=tag>%s</div>' % esc(kick), n, self.img(image), SHADE_CLEAN)
+
     def two(self, a, b, kick, t, s, n):
         inner = ('<img src="%s" style="position:absolute;left:0;top:0;width:539px;height:900px;object-fit:cover">'
                  '<img src="%s" style="position:absolute;left:541px;top:0;width:539px;height:900px;object-fit:cover">'
@@ -97,13 +112,17 @@ class Dizayn:
                  ) % (self.img(a), self.img(b), esc(kick), esc(t), ('<div class=s>%s</div>' % esc(s)) if s else '')
         return self.page(inner, n)
 
-    def plan(self, oldin, keyin, n, izoh):
-        box = 'position:absolute;left:64px;top:%dpx;width:952px;height:430px;object-fit:cover;border-radius:16px'
-        tag = 'position:absolute;left:84px;top:%dpx;font-weight:800;font-size:22px;letter-spacing:3px;padding:8px 16px;border-radius:8px;%s'
-        inner = ('<div style="position:absolute;left:64px;right:64px;top:140px"><div class=kick>REJA</div><div class=h style="font-size:60px;margin-top:20px">Oldin \u2192 keyin</div></div>'
-                 '<img src="%s" style="%s"><div style="%s">OLDIN</div><img src="%s" style="%s"><div style="%s">KEYIN</div>'
-                 '<div class=cap style="bottom:60px"><div class=s style="margin:0">%s</div></div>'
-                 ) % (self.img(oldin), box % 300, tag % (316, 'background:#FF4A3D'), self.img(keyin), box % 750, tag % (766, 'background:#E8C27A;color:#111'), esc(izoh))
+    def plan(self, oldin, keyin, n):
+        """Reja slaydi: oldin+keyin ustma-ust (OLDIN qizil / KEYIN oltin teg) yoki bitta reja ("Reja"). Rasmlar object-fit:contain (yorliqlar kesilmasin)."""
+        def box(top, hgt): return 'position:absolute;left:64px;top:%dpx;width:952px;height:%dpx;object-fit:contain;background:#15171c;border-radius:16px' % (top, hgt)
+        def tag(top, st): return '<div style="position:absolute;left:84px;top:%dpx;font-weight:800;font-size:22px;letter-spacing:3px;padding:8px 16px;border-radius:8px;%s">%s</div>' % (top, st[0], st[1])
+        if oldin and keyin:
+            inner = ('<div style="position:absolute;left:64px;right:64px;top:140px"><div class=kick>REJA</div><div class=h style="font-size:60px;margin-top:20px">Oldin \u2192 keyin</div></div>'
+                     '<img src="%s" style="%s">%s<img src="%s" style="%s">%s<div class=cap style="bottom:60px"><div class=s style="margin:0">Reja: oldingi holat va yangi joylashuv</div></div>'
+                     ) % (self.img(oldin), box(300, 430), tag(316, ('background:#FF4A3D', 'OLDIN')), self.img(keyin), box(750, 430), tag(766, ('background:#E8C27A;color:#111', 'KEYIN')))
+        else:
+            inner = ('<div style="position:absolute;left:64px;right:64px;top:140px"><div class=kick>REJA</div><div class=h style="font-size:60px;margin-top:20px">Reja</div></div>'
+                     '<img src="%s" style="%s">') % (self.img(oldin or keyin), box(300, 900))
         return self.page(inner, n)
 
     def cta(self, image, n, note, kick='NAVBATDAGI BUYURTMA — SIZNIKI'):
@@ -116,6 +135,8 @@ class Dizayn:
 
 FIT_JS = """() => {
   document.querySelectorAll('.fit').forEach(e => { let fs = parseFloat(getComputedStyle(e).fontSize); while (e.scrollWidth > e.clientWidth + 1 && fs > 36) { fs -= 2; e.style.fontSize = fs + 'px'; } });
+  const ci = document.querySelector('.cap.intro');
+  if (ci) { let fs = 30; const bs = ci.querySelectorAll('.b'); while (ci.getBoundingClientRect().top < 470 && fs > 22) { fs -= 1; bs.forEach(b => b.style.fontSize = fs + 'px'); } const tp = Math.round(ci.getBoundingClientRect().top); return tp < 420 ? tp : 9999; }
   const c = document.querySelector('.cap');
   if (c) { const t = c.querySelector('.t'); let fs = t ? parseFloat(getComputedStyle(t).fontSize) : 0; while (t && c.getBoundingClientRect().top < 560 && fs > 36) { fs -= 2; t.style.fontSize = fs + 'px'; } }
   return c ? Math.round(c.getBoundingClientRect().top) : -1;

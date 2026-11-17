@@ -259,13 +259,13 @@ def rasm_ok(p):
         return False
 
 
-def tanla(tasn):
+def tanla(tasn, tek_xona=False):
     """Xonadon renderlari: muqova + xona boshiga eng yaxshi 1-3 rakurs (o'xshashlari tashlanadi).
     Qaytaradi (cover, {xona: [t, ...]}) yoki (None, {})."""
     ok = []
     for lim in (7, 6):
         ok = [t for t in tasn if t['haqiqiy'] and t['sifat'] >= lim and t['xona'] in LOY_TARTIB]
-        if len(ok) >= 10: break
+        if len(ok) >= (5 if tek_xona else 10): break
     for t in ok:
         try: t['_o'] = otkir(t['path'])
         except Exception: t['_o'] = 0
@@ -279,45 +279,30 @@ def tanla(tasn):
         except Exception: continue
         if any(bin(h ^ x).count('1') < 12 for x in hashlar): continue
         hashlar.append(h); uniq.append(t)
-    if len(uniq) < 8: return None, {}
+    if len(uniq) < (4 if tek_xona else 8): return None, {}
     toza = [t for t in uniq if not t.get('ekran_logo')]
     pool = [t for t in toza if t['xona'] in ('mehmonxona', 'oshxona', 'ovqatlanish', 'dahliz')] or toza or uniq
     cover = max(pool, key=lambda t: t['ball'] + (1 if t['xona'] == 'mehmonxona' else 0))
     per = {}
     for t in uniq:
         if t is cover: continue
-        if len(per.setdefault(t['xona'], [])) < XONA_CAP.get(t['xona'], 3): per[t['xona']].append(t)
+        if len(per.setdefault(t['xona'], [])) < (14 if tek_xona else XONA_CAP.get(t['xona'], 3)): per[t['xona']].append(t)
     return cover, per
 
 
-def slayd_sxema(per, maks):
-    """Xona rasmlarini slaydlarga ajratadi: full() va two() aralash; jami slayd <= maks."""
-    xl = [x for x in LOY_TARTIB if per.get(x)]
-    rejim = {x: ('p' if (i % 2 == 1 and len(per[x]) >= 2) else 'f') for i, x in enumerate(xl)}
-    def soni(x): k = len(per[x]); return k if rejim[x] == 'f' else (k + 1) // 2
-    def jami(): return sum(soni(x) for x in xl)
-    while jami() > maks:
-        c = [x for x in xl if rejim[x] == 'f' and len(per[x]) >= 2]
-        if c: rejim[max(c, key=lambda x: len(per[x]))] = 'p'; continue
-        c = [x for x in xl if len(per[x]) >= 2]
+def kesish(per, maks):
+    """Jami rasm soni <= maks: avval 3+ rasmli xonalardan eng past ballni olib tashlaydi (har xonada kamida 1 ta qoladi). Xonalar tartibini qaytaradi."""
+    while sum(len(l) for l in per.values()) > maks:
+        c = [(-(len(per[x]) >= 3), per[x][-1]['ball'], x) for x in per if len(per[x]) >= 2]
         if not c: break
-        x = max(c, key=lambda x: len(per[x])); per[x].pop()  # eng past ball (oxirgi)
-    out = []
-    for x in xl:
-        l = per[x]
-        if rejim[x] == 'f':
-            out += [{'xona': x, 'paths': [t['path']]} for t in l]
-        else:
-            if len(l) == 3: out += [{'xona': x, 'paths': [l[0]['path']]}, {'xona': x, 'paths': [l[1]['path'], l[2]['path']]}]
-            else: out += [{'xona': x, 'paths': [t['path'] for t in l[i:i + 2]]} for i in range(0, len(l), 2)]
-    return out
+        per[min(c)[2]].pop()
+    return [x for x in LOY_TARTIB if per.get(x)]
 
 
-# ---------- slayd matni: faqat rasmda ko'rinadigan narsa ----------
-SL_SCHEMA = {'type': 'OBJECT', 'properties': {'sarlavha': {'type': 'STRING'}, 'izoh': {'type': 'STRING'}}, 'required': ['sarlavha', 'izoh']}
-TEKSH_SCHEMA = {'type': 'OBJECT', 'properties': {
-    'elementlar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {'matn': {'type': 'STRING'}, 'korinadi': {'type': 'BOOLEAN'}}, 'required': ['matn', 'korinadi']}},
-    'umumiy_maslahat': {'type': 'BOOLEAN'}}, 'required': ['elementlar', 'umumiy_maslahat']}
+# ---------- xona matni (kirish slaydi): xonaning BARCHA renderlariga qarab, faqat ko'ringan narsa ----------
+BAND_SCHEMA = {'type': 'OBJECT', 'properties': {'bandlar': {'type': 'ARRAY', 'items': {'type': 'STRING'}}}, 'required': ['bandlar']}
+TEKSH2 = {'type': 'OBJECT', 'properties': {'bandlar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
+    'i': {'type': 'INTEGER'}, 'korinadi': {'type': 'BOOLEAN'}, 'umumiy': {'type': 'BOOLEAN'}}, 'required': ['i', 'korinadi', 'umumiy']}}}, 'required': ['bandlar']}
 UZ_QOIDA = ("Write in Uzbek, Latin script, plain everyday language, straight apostrophe (o', g'). NEVER use any digits (write numbers in words if really needed), "
             "no prices, no brands, no client names, no addresses, no dimensions/areas. Be concrete, not generic marketing clich\u00e9s.")
 TAQIQ = re.compile(r'(layfxak|lifehack|life hack|maslahat|tavsiya|esda tuting|unutmang|aytaylik|odatda|ko.pincha)', re.I)
@@ -326,45 +311,42 @@ TAQIQ = re.compile(r'(layfxak|lifehack|life hack|maslahat|tavsiya|esda tuting|un
 def sozlar(s): return len(re.findall(r"\S+", s))
 
 
-def slayd_xato(m):
-    x = []
-    if sozlar(m['sarlavha']) > 6 or not m['sarlavha'].strip(): x.append('sarlavha <= 6 so\'z')
-    if sozlar(m['izoh']) > 18 or not m['izoh'].strip(): x.append('izoh <= 18 so\'z')
-    if re.search(r'\d', m['sarlavha'] + m['izoh']): x.append('raqam bor')
-    if TAQIQ.search(m['sarlavha'] + ' ' + m['izoh']): x.append('umumiy maslahat/layfxak so\'zlari bor')
-    return x
+def band_xato(b):
+    return sozlar(b) > 12 or bool(re.search(r'\d', b)) or bool(TAQIQ.search(b))
 
 
-def slayd_matn(xona, paths, oldingi=()):
-    """Aynan shu rasm(lar)ga qarab matn yozadi, ikkinchi so'rovda tekshiradi; 2 marta o'tmasa neytral matn."""
+def xona_matn(xona, paths):
+    """Xonaning barcha renderlarini birga ko'rib 3-5 ta band yozadi; har bandni alohida tekshiradi (rasmda ko'rinmagani tashlanadi).
+    Qaytaradi: tasdiqlangan bandlar ro'yxati (2 tadan kam bo'lsa -- bo'sh: neytral sarlavha)."""
     nom = XONA_NOM[xona]
-    imgs = [thumb_part(p, 900) for p in paths]
-    fb = (' Solutions already used on other slides - pick a DIFFERENT visible element (prefer materials, furniture, storage or layout over repeating lighting): ' + '; '.join(oldingi) + '.') if oldingi else ''
-    baza = fb
+    imgs = [thumb_part(p, 900 if len(paths) <= 4 else 640) for p in paths]
+    eng, baza, fb = [], '', ''
     for urin in range(2):
         try:
             m = gemini([{'text': (
-                "You write the text of ONE Instagram carousel slide for Visart Design (Tashkent). The attached image(s) show: %s. Look at the image(s) carefully. "
-                "Describe exactly ONE design solution that is clearly VISIBLE in the attached image(s) (a material, colour, lighting, furniture layout, storage or shape) and its practical benefit for living. "
-                "Mention ONLY objects, materials and features that you can actually see in the attached image(s); if you are not sure something is visible, leave it out. "
-                "NO general advice, NO life-hacks, NO tips, nothing that is not in the picture. Use shape/direction words (slanted, round, arched, curved, diagonal...) ONLY if clearly visible; vertical ribbed/fluted glass is 'qovurg'ali' (not slanted). Name the visible element directly (e.g. its material, colour or position) - do not refer to things outside the frame. sarlavha: at most 6 words, concrete; izoh: at most 18 words (visible solution + benefit). " % nom
-                + UZ_QOIDA + fb)}] + imgs, SL_SCHEMA, 0.7, 'low')
-            err = slayd_xato(m)
-            if not err:
-                v = gemini([{'text': (
-                    "You are a fact-checker for an interior design slide. The text below will be printed on a slide with the attached image(s) of: %s. "
-                    "List every PHYSICAL thing the text names or claims is present: objects, furniture, materials, colours, light fixtures, finishes, shapes, layout features. For each set korinadi=true if it is clearly visible in the attached image(s), false if it is absent or you cannot see it. "
-                    "Also check every shape/direction/pattern word (e.g. qiya=slanted, dumaloq=round, yoysimon=arched, vertikal, gorizontal, qovurg'ali=ribbed): mark korinadi=false if the image shows a different shape or direction. IGNORE statements of benefit, comfort or feeling (e.g. 'convenient', 'looks spacious', 'easy to clean') - do not list them. "
-                    "Set umumiy_maslahat=true ONLY if the text is an instruction/tip/life-hack addressed to the reader that does not describe anything in the image(s); a text that describes a visible element and its benefit is NOT general advice.\nTITLE: %s\nCAPTION: %s" % (nom, m['sarlavha'], m['izoh']))}] + imgs, TEKSH_SCHEMA, 0.1, 'low')
-                bad = [e['matn'] for e in v['elementlar'] if not e['korinadi']]
-                if v['elementlar'] and not bad and not v['umumiy_maslahat']:
-                    return {'sarlavha': m['sarlavha'].strip(), 'izoh': m['izoh'].strip(), 'fallback': False}
-                err = ['not visible in the image: ' + '; '.join(bad)] if bad else ['too generic / not specific to what is visible']
-            fb = baza + ' The previous attempt (title=%r caption=%r) was REJECTED: %s. Write a different text that uses only clearly visible things.' % (m['sarlavha'], m['izoh'], '; '.join(err))
-            log('  matn rad etildi (%s, urinish %d): %s <- %s | %s' % (nom, urin + 1, '; '.join(err)[:160], m['sarlavha'], m['izoh']))
+                "You write the info block of the room-entry slide of an Instagram carousel for Visart Design (Tashkent). The attached images are ALL the renders of one room: %s. Look at all of them carefully. "
+                "Write 3 to 5 short bullets about what was done in this room: materials, finishes, design solutions, lighting, furniture layout, storage, notable works. "
+                "Each bullet: ONE concrete thing, at most 12 words, may include its practical benefit. Mention ONLY things that are clearly visible in at least one attached image; if unsure, leave it out. "
+                "Use shape/direction words (slanted, round, arched, curved, diagonal...) ONLY if clearly visible; vertical ribbed/fluted glass is 'qovurg'ali'. Use correct Uzbek terms: shift = ceiling, devor = wall, pol = floor, eshik = door, ko'zgu/oyna = mirror/window, shkaf = cabinet. No general advice, no life-hacks, nothing outside the pictures. " % nom
+                + UZ_QOIDA + fb)}] + imgs, BAND_SCHEMA, 0.7, 'low')
+            bl = [b.strip().rstrip('.') for b in m['bandlar'] if b and b.strip()]
+            bl = [b for b in bl if not band_xato(b)][:6]
+            if len(bl) < 2: fb = ' The previous attempt had too few valid bullets (each <=12 words, no digits). Write 4-5 bullets.'; continue
+            nm = '\n'.join('%d) %s' % (i, b) for i, b in enumerate(bl))
+            v = gemini([{'text': (
+                "You are a fact-checker for an interior design slide about the room: %s. The attached images are all renders of this room. For EACH numbered bullet decide: korinadi=true ONLY if every physical thing (object, furniture, material, colour, finish, light fixture) AND every shape/direction/pattern word in it "
+                "(e.g. qiya=slanted, dumaloq=round, yoysimon=arched, vertikal, gorizontal, qovurg'ali=ribbed) is clearly visible in at least one image; otherwise false. Ignore statements of benefit/comfort. "
+                "umumiy=true if the bullet is general advice or a tip not describing something visible.\n%s" % (nom, nm))}] + imgs, TEKSH2, 0.1, 'low')
+            ok = {r['i'] for r in v['bandlar'] if r['korinadi'] and not r['umumiy']}
+            good = [b for i, b in enumerate(bl) if i in ok]
+            bad = [b for i, b in enumerate(bl) if i not in ok]
+            if len(good) > len(eng): eng = good
+            if len(good) >= 3: return good[:5]
+            log('  xona matni (%s, urinish %d): %d tasdiqlandi; rad: %s' % (nom, urin + 1, len(good), ' | '.join(bad)[:200]))
+            fb = ' These bullets were REJECTED (not visible / wrong shape word): %s. Write 4-5 NEW bullets that are clearly visible.' % ' | '.join(bad)
         except Exception as e:
-            log('  matn xato (%s): %s' % (nom, str(e)[:120]))
-    return {'sarlavha': '%s \u2014 umumiy ko\'rinish' % nom, 'izoh': '', 'fallback': True}
+            log('  xona matni xato (%s): %s' % (nom, str(e)[:120]))
+    return eng if len(eng) >= 2 else []
 
 
 # ---------- ekrandagi logo/poster: niqoblash ----------
@@ -404,27 +386,103 @@ def uslub_aniq(paths):
         log('uslub xato: %s' % str(e)[:100]); return 'Zamonaviy'
 
 
-# ---------- reja (oldin/keyin) ----------
-PLAN_RX = re.compile(r'(reja|plan|oldin|keyin|planirov|layout)', re.I)
+# ---------- reja (oldin/keyin) + xona yorliqlari ----------
+PLAN_RX = re.compile(r'(reja|plan|oldin|keyin|planirov|layout|\u043f\u043b\u0430\u043d|(^|[ _\-.])top([ _\-.\d]|$))', re.I)
+PLAN_SKIP = re.compile(r'(^|[\\/])(model|textures?|maps?|libs?|proxy|backup|\.git)([\\/]|$)', re.I)
 PLAN_SCHEMA = {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {'i': {'type': 'INTEGER'}, 'tur': {'type': 'STRING', 'enum': ['oldin', 'keyin', 'boshqa']}}, 'required': ['i', 'tur']}}
+YORLIQ_SCHEMA = {'type': 'OBJECT', 'properties': {'xonalar': {'type': 'ARRAY', 'items': {'type': 'OBJECT', 'properties': {
+    'xona': {'type': 'STRING', 'enum': LOY_TARTIB}, 'x': {'type': 'INTEGER'}, 'y': {'type': 'INTEGER'}, 'aniq': {'type': 'BOOLEAN'}}, 'required': ['xona', 'x', 'y', 'aniq']}}}, 'required': ['xonalar']}
 
 
-def plan_topish(x, root):
-    """Katalogda oldin/keyin reja rasmlari bo'lsa (ikkalasi ham) (oldin, keyin) yo'llari; aks holda None."""
+def plan_fayllar(x, root, outdir):
+    """Loyiha katalogi + katalogdagi renderlar ichidan reja nomzodlari (jpg/png, PDF -- agar PyMuPDF bo'lsa 1-bet)."""
+    pd = os.path.join(root, *x['loyiha'].split(':', 1)[1].split('/'))
     c = []
     for rel in x['renderlar']:
-        if PLAN_RX.search(os.path.basename(rel)) and rel.lower().endswith(('.jpg', '.jpeg', '.png')):
-            p = os.path.join(root, *rel.split('/'))
-            if os.path.exists(p) and rasm_ok(p): c.append(p)
-    c = c[:8]
-    if len(c) < 2: return None
+        if PLAN_RX.search(os.path.basename(rel)): c.append(os.path.join(root, *rel.split('/')))
+    if os.path.isdir(pd):
+        base = pd.rstrip('\\/').count(os.sep)
+        for dp, dn, fn in os.walk(pd):
+            dn[:] = [d for d in dn if not PLAN_SKIP.search(d)]
+            if dp.count(os.sep) - base >= 4: dn[:] = []
+            for f in fn:
+                if PLAN_RX.search(f) and f.lower().endswith(('.jpg', '.jpeg', '.png', '.pdf')): c.append(os.path.join(dp, f))
+    out, seen = [], set()
+    for p in c:
+        if p in seen or not os.path.exists(p): continue
+        seen.add(p)
+        if p.lower().endswith('.pdf'):
+            try:
+                import fitz  # PyMuPDF (bo'lsa)
+                os.makedirs(outdir, exist_ok=True)
+                q = os.path.join(outdir, hashlib.md5(p.encode('utf-8')).hexdigest()[:10] + '.png')
+                fitz.open(p)[0].get_pixmap(dpi=110).save(q); p = q
+            except Exception: continue
+        try:
+            sz = os.path.getsize(p)
+            if 20e3 < sz < 60e6 and Image.open(p).size[0] >= 600: out.append(p)
+        except Exception: pass
+    return out[:10]
+
+
+def plan_topish(x, root, outdir):
+    """Katalog/papkadan oldin va keyin reja rasmlarini topadi. Qaytaradi {'oldin': yo'l|None, 'keyin': yo'l|None} yoki None (reja yo'q)."""
+    c = plan_fayllar(x, root, outdir)
+    if not c: return None
     parts = [{'text': "Classify each image: oldin = floor plan / top view of the ORIGINAL or empty state (before design, survey, bare shell); keyin = the FINAL furnished floor plan / top view of the designed apartment; boshqa = anything else (3D room render, texture, CAD screenshot with no clear plan, logo). Use the given index i."}]
     for j, p in enumerate(c): parts.append({'text': 'i=%d' % j}); parts.append(thumb_part(p, 700))
     try: res = gemini(parts, PLAN_SCHEMA, 0.1, 'minimal')
     except Exception as e: log('reja tasnif xato: %s' % e); return None
-    o = [c[r['i']] for r in res if 0 <= r['i'] < len(c) and r['tur'] == 'oldin']
-    k = [c[r['i']] for r in res if 0 <= r['i'] < len(c) and r['tur'] == 'keyin']
-    return (o[0], k[0]) if o and k else None
+    def eng(tur):
+        l = [c[r['i']] for r in res if 0 <= r['i'] < len(c) and r['tur'] == tur]
+        return max(l, key=lambda p: Image.open(p).size[0] * Image.open(p).size[1]) if l else None
+    o, k = eng('oldin'), eng('keyin')
+    return {'oldin': o, 'keyin': k} if (o or k) else None
+
+
+def reja_yorliq(path, outdir):
+    """Reja ustiga xona nomlarini (yarim shaffof qora pill + oq matn) chizadi; ustma-ust tushmaydi, noaniq xona yozilmaydi. Yangi rasm yo'li."""
+    from PIL import ImageDraw, ImageFont
+    try:
+        r = gemini([{'text': ("This is a floor plan / top view of an apartment. List every room that you can identify CLEARLY (living room -> mehmonxona, kitchen -> oshxona, dining area -> ovqatlanish, "
+                              "entry/hall -> dahliz, corridor -> yo'lak, bathroom/WC -> hammom, laundry/utility/storage -> xojalik xonasi, bedroom -> yotoqxona, children's room -> bolalar xonasi only if clearly a kids room, study -> kabinet, "
+                              "walk-in wardrobe -> garderob, balcony -> balkon). For each give x,y = the CENTER of that room's floor area, normalized 0-1000 (x from the left edge, y from the top edge), and aniq=true only if you are sure of the room type and its position. "
+                              "One entry per room, do not list the same room twice.")}, thumb_part(path, 1400)], YORLIQ_SCHEMA, 0.1, 'low')
+    except Exception as e:
+        log('reja yorliq xato: %s' % str(e)[:100]); return path
+    im = ImageOps.exif_transpose(Image.open(path)).convert('RGBA'); w, h = im.size
+    fs = max(16, int(max(w, h) * 0.024))
+    try:
+        ft = ImageFont.truetype(os.path.join(D.ASSETS, 'fonts', 'Inter.ttf'), fs)
+        try: ft.set_variation_by_axes([700])
+        except Exception: pass
+    except Exception:
+        ft = ImageFont.load_default()
+    ov = Image.new('RGBA', im.size, (0, 0, 0, 0)); dr = ImageDraw.Draw(ov)
+    placed = []
+
+    def kesish_(a, b): return not (a[2] + 6 < b[0] or b[2] + 6 < a[0] or a[3] + 6 < b[1] or b[3] + 6 < a[1])
+    for rm in sorted([q for q in r['xonalar'] if q['aniq']], key=lambda q: (q['y'], q['x'])):
+        t = XONA_NOM.get(rm['xona'])
+        if not t: continue
+        tb = dr.textbbox((0, 0), t, font=ft); tw, th = tb[2] - tb[0], tb[3] - tb[1]
+        pw, ph = tw + int(fs * 1.1), th + int(fs * 0.9)
+        cx, cy = rm['x'] * w / 1000.0, rm['y'] * h / 1000.0
+        for dx, dy in [(0, 0), (0, ph + 8), (0, -(ph + 8)), (pw // 2 + 8, 0), (-(pw // 2 + 8), 0), (0, 2 * (ph + 8)), (0, -2 * (ph + 8))]:
+            x0 = min(max(4, cx + dx - pw / 2), w - pw - 4); y0 = min(max(4, cy + dy - ph / 2), h - ph - 4)
+            bx = (x0, y0, x0 + pw, y0 + ph)
+            if not any(kesish_(bx, o) for o in placed):
+                placed.append(bx)
+                dr.rounded_rectangle(bx, radius=ph // 2, fill=(0, 0, 0, 165))
+                dr.text((x0 + pw / 2 - tb[0] - tw / 2, y0 + ph / 2 - tb[1] - th / 2), t, font=ft, fill=(255, 255, 255, 255))
+                break
+    if not placed: return path
+    out = Image.alpha_composite(im, ov).convert('RGB')
+    os.makedirs(outdir, exist_ok=True)
+    op = os.path.join(outdir, 'yorliq_' + hashlib.md5(path.encode('utf-8')).hexdigest()[:10] + '.jpg')
+    out.save(op, 'JPEG', quality=93)
+    log('  reja yorliqlandi: %s (%d ta xona)' % (os.path.basename(path), len(placed)))
+    return op
 
 
 # ---------- loyiha ----------
@@ -477,6 +535,9 @@ def loyiha_rasmlari(x):
     return [p for p, _ in paths]
 
 
+def XONA_KICK_UP(x): return XONA_NOM[x].upper().replace(' ZONASI', '')
+
+
 def loyiha_karusel(args, holat):
     db_k = db_ishlatilgan()
     nomz = loyiha_nomzodlari(holat, db_k)
@@ -486,49 +547,65 @@ def loyiha_karusel(args, holat):
         log('loyiha: %s (%d render)' % (kal, x['render_soni']))
         paths = loyiha_rasmlari(x)
         log('  mos rasm: %d' % len(paths))
-        if len(paths) < 8: continue
+        if len(paths) < 4: continue
         tasn = tasnif(paths)
         for t in tasn: t['xona'] = xona_aniq(REL.get(t['path']), t['xona'])
-        cover, per = tanla(tasn)
+        good = [t for t in tasn if t['haqiqiy'] and t['sifat'] >= 6 and t['xona'] in LOY_TARTIB]
+        sana = {}
+        for t in good: sana[t['xona']] = sana.get(t['xona'], 0) + 1
+        xona1 = args.xona
+        if not xona1 and good:  # papkada deyarli faqat bitta xona bo'lsa -- BITTA XONA rejimi
+            top = max(sana, key=sana.get)
+            if sana[top] >= 0.8 * len(good): xona1 = top
+        if xona1:
+            tasn = [t for t in tasn if t['xona'] == xona1]
+            log('  BITTA XONA rejimi: %s (%d rasm)' % (xona1, len(tasn)))
+        cover, per = tanla(tasn, bool(xona1))
         if not cover: log('  sifatli xilma-xil rasm yetarli emas'); continue
         for t in [cover] + [t for l in per.values() for t in l]: log('  %s | %s | %s | %.1f' % (os.path.basename(t['path']), t['xona'], t['tavsif'][:40], t['ball']))
-        for t in [t for l in per.values() for t in l]:
+        for t in [cover] + [t for l in per.values() for t in l]:
             if t.get('ekran_logo'): t['path'] = ekran_niqob(t['path'], os.path.join(OUT, '_niqob'))
-        plan = plan_topish(x, ROOTS[kal.split(':', 1)[0]])
-        sx = slayd_sxema(per, 18 - (1 if plan else 0))
-        if len(sx) < 6: continue
-        used = []
-        for s in sx:
-            s['kick'] = XONA_KICK_UP(s['xona'])
-            s.update(slayd_matn(s['xona'], s['paths'], used[-8:]))
-            if not s['fallback']: used.append(s['sarlavha'])
-            log('  [%s] %s | %s%s' % (s['kick'], s['sarlavha'], s['izoh'], ' (neytral)' if s['fallback'] else ''))
-        uslub = uslub_aniq([cover['path']] + [s['paths'][0] for s in sx[::3]])
+        plan = None if xona1 else plan_topish(x, ROOTS[kal.split(':', 1)[0]], os.path.join(OUT, '_reja'))
+        if plan:
+            log('  reja: %s' % {k: os.path.basename(v) if v else None for k, v in plan.items()})
+            for k in ('keyin',) if plan.get('keyin') else ('oldin',):
+                plan[k] = reja_yorliq(plan[k], os.path.join(OUT, '_reja'))
+        order = kesish(per, 18 - (1 if plan else 0))
+        if not order: continue
+        xonalar = []
+        for xn in order:
+            ps = [t['path'] for t in per[xn]]
+            allp = ps + ([cover['path']] if xona1 else [])  # bitta xona rejimida muqova ham shu xona renderi: matnga qo'shiladi
+            bl = xona_matn(xn, allp)
+            log('  [%s] %s' % (XONA_KICK_UP(xn), ' | '.join(bl) if bl else '(neytral)'))
+            xonalar.append({'xona': xn, 'kick': XONA_KICK_UP(xn), 'paths': ps, 'bandlar': bl})
+        uslub = uslub_aniq([cover['path']] + [xr['paths'][0] for xr in xonalar[::2]])
         nom = re.sub(r'[^a-z0-9]+', '-', re.sub(r'^D:\d+/', '', kal).lower()).strip('-')[:30]
-        m = re.search(r'(\d{2,3})\s*(?:m2|m\u00b2|kv)', kal, re.I)
-        return {'turi': 'loyiha', 'kalit': kal, 'nom': nom, 'cover': cover, 'slaydlar': sx, 'plan': plan,
-                'maydon': m.group(1) if m else None, 'uslub': uslub, 'tur': 'KVARTIRA' if re.search('KVARTIRA', kal, re.I) else 'XONADON',
-                'sarlavha': kal.split('/', 1)[1].title()}
+        return {'turi': 'loyiha', 'kalit': kal, 'nom': nom, 'cover': cover, 'xonalar': xonalar, 'plan': plan, 'bitta': xona1, 'uslub': uslub,
+                'tur': 'KVARTIRA' if re.search('KVARTIRA', kal, re.I) else 'XONADON', 'sarlavha': kal.split('/', 1)[1].title()}
     raise RuntimeError('yetarli sifatli renderli ishlatilmagan xonadon loyihasi topilmadi')
 
 
-def XONA_KICK_UP(x): return XONA_NOM[x].upper().replace(' ZONASI', '')
-
-
 def loyiha_slaydlar(r):
-    sl = r['slaydlar']; plan = r.get('plan')
-    N = len(sl) + 2 + (1 if plan else 0)
+    xl = r['xonalar']; plan = r.get('plan')
+    nr = sum(len(x['paths']) for x in xl)
+    N = nr + 2 + (1 if plan else 0)
     d = D.Dizayn(N)
-    nrasm = 1 + sum(len(s['paths']) for s in sl)
-    l1, l2 = '%s %s' % (r['uslub'], r['tur'].lower()), '\u2192 XONAMA-XONA 3D'
-    pages = [d.cover(r['cover']['path'], 'LOYIHAMIZ \u00b7 3D', l1, l2, '%d kadrda to\'liq loyiha' % nrasm)]
+    if r['bitta']: l1, l2 = '%s %s' % (r['uslub'], XONA_NOM[r['bitta']].lower().replace(' zonasi', '')), '\u2192 %s 3D' % XONA_KICK_UP(r['bitta'])
+    else: l1, l2 = '%s %s' % (r['uslub'], r['tur'].lower()), '\u2192 XONAMA-XONA 3D'
+    pages = [d.cover(r['cover']['path'], 'LOYIHAMIZ \u00b7 3D', l1, l2, "%d kadrda to'liq loyiha" % (nr + 1))]
     n = 2
-    if plan: pages.append(d.plan(plan[0], plan[1], n, "Reja: oldingi holat va yangi joylashuv")); n += 1
-    for s in sl:
-        pages.append(d.two(s['paths'][0], s['paths'][1], s['kick'], s['sarlavha'], s['izoh'], n) if len(s['paths']) == 2 else d.full(s['paths'][0], s['kick'], s['sarlavha'], s['izoh'], n)); n += 1
-    pages.append(d.cta(sl[-1]['paths'][0], N, "Saqlab qo'ying \u2014 remontda kerak bo'ladi"))
-    bul = [s['sarlavha'] for s in sl if not s['fallback']][:5]
-    caption = '\n'.join(["Navbatdagi buyurtma \u2014 bitta xonadon, xonama-xona.", ''] + ['\u2022 %s' % b for b in bul] + ['', "Rejangizni yuboring \u2014 shunday loyiha tayyorlab beramiz."]) + '\n\n' + KONTAKT + '\n\n' + HASHTAG
+    if plan: pages.append(d.plan(plan.get('oldin'), plan.get('keyin'), n)); n += 1
+    for x in xl:
+        for j, p in enumerate(x['paths']):
+            if j == 0: pages.append(d.intro(p, x['kick'], x['bandlar'], n, None if x['bandlar'] else "%s \u2014 umumiy ko'rinish" % XONA_NOM[x['xona']]))
+            else: pages.append(d.clean(p, x['kick'], n))
+            n += 1
+    pages.append(d.cta(xl[-1]['paths'][-1], N, "Saqlab qo'ying \u2014 remontda kerak bo'ladi"))
+    uy = not r['bitta']
+    sat = ["Navbatdagi buyurtma \u2014 " + ("bitta xonadon, xonama-xona." if uy else "%s loyihasi." % XONA_NOM[r['bitta']].lower()), '']
+    sat += ['\u2022 %s: %s' % (XONA_NOM[x['xona']], x['bandlar'][0]) for x in xl if x['bandlar']]
+    caption = '\n'.join(sat + ['', "Rejangizni yuboring \u2014 shunday loyiha tayyorlab beramiz."]) + '\n\n' + KONTAKT + '\n\n' + HASHTAG
     return pages, caption, {}
 
 
@@ -598,7 +675,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--rejim', choices=['loyiha'], default='loyiha')
     ap.add_argument('--quruq', action='store_true'); ap.add_argument('--majbur', action='store_true')
-    ap.add_argument('--loyiha')
+    ap.add_argument('--loyiha'); ap.add_argument('--xona', choices=sorted(LOY_TARTIB))
     args = ap.parse_args()
     lock = os.path.join(HERE, 'karusel.lock')
     if os.path.exists(lock) and time.time() - os.path.getmtime(lock) < 3 * 3600:
