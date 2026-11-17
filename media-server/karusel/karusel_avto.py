@@ -243,7 +243,7 @@ def tanla(tasn, maks):
         if soni.get(t['xona'], 0) >= (8 if t['xona'] in ('fasad', 'hovli', 'boshqa') else 3): continue
         try: h = dhash(t['path'])
         except Exception: continue
-        if any(bin(h ^ x).count('1') < 8 for x in hashlar): continue
+        if any(bin(h ^ x).count('1') < 16 for x in hashlar): continue
         hashlar.append(h); soni[t['xona']] = soni.get(t['xona'], 0) + 1; tanlangan.append(t)
         if len(tanlangan) >= maks: break
     return tanlangan
@@ -377,7 +377,7 @@ def loyiha_slaydlar(r):
         ps = [r['rest'][i - 1]['path'] for i in s['rasmlar']]
         k = s['kick'].upper()
         pages.append(d.two(ps[0], ps[1], k, s['sarlavha'], s['izoh'], n) if len(ps) == 2 else d.full(ps[0], k, s['sarlavha'], s['izoh'], n))
-    pages.append(d.cta(r['rest'][-1]['path'], N, "Saqlab qo'ying \u2014 remontda kerak bo'ladi"))
+    pages.append(d.cta(r['rest'][-1]['path'], N, "Saqlab qo'ying \u2014 loyihangizga ilhom bo'ladi"))
     caption = m['caption'].strip() + '\n\n' + KONTAKT + '\n\n' + HASHTAG
     return pages, caption, {'ishlatilgan_rasmlar': []}
 
