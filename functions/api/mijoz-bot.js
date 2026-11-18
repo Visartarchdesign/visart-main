@@ -2297,7 +2297,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
         return json({ ok: true });
       }
       if (vf && Number(vf.file_size) > 19 * 1048576 && adminShaxsiy) {
-        const adminChat = chatId;
+        const adminChat = msg.chat.id;
         await mediaChaqir(env, '/tg-yukla', { chatId: msg.chat.id, messageId: msg.message_id, adminChatId: adminChat, korsatma: (msg.caption || '').trim() || undefined }, adminChat).catch(() => {});
         return json({ ok: true });
       }
