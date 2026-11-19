@@ -323,10 +323,8 @@ async function navbatIsh({ request, env, waitUntil }) {
   // kunlik hisobot 20:00 (UTC 15:00) da ishlaydi; 21:00 dan keyin ham kecha ishlagan bo'lsa -- bugun ishlamagan
   if (new Date().getUTCHours() >= 16) await yurakTekshir(env, 'kunlik', 23);
   const hozir = new Date().toISOString();
-  const qatorlar = await sbFetch(
-    env,
-    `nashr_navbati?holat=eq.kutilmoqda&nashr_vaqti=lte.${encodeURIComponent(hozir)}&order=nashr_vaqti.asc&limit=10&select=*`
-  );
+  const navbatYol = `nashr_navbati?holat=eq.kutilmoqda&nashr_vaqti=lte.${encodeURIComponent(hozir)}&order=nashr_vaqti.asc&limit=10&select=*`;
+  const qatorlar = await sbFetch(env, navbatYol).catch(() => sbFetch(env, navbatYol));   // Supabase 10s timeout: bir marta qayta
 
   const natijalar = [];
   const boshlandi = Date.now();
@@ -387,6 +385,17 @@ async function navbatIsh({ request, env, waitUntil }) {
     } catch (e) {
       // media-server vaqtincha o'chiq bo'lsa (502/timeout) video nashri yo'qolmasin: 10 daqiqadan keyin qayta, 6 martagacha
       const urinish = Number((q.payload && q.payload.urinish) || 0);
+      // Instagram karusel: vaqtinchalik xato (timeout/5xx/tarmoq) bo'lsa 5 daqiqadan keyin qayta, 3 martagacha (konteyner bosqichi saqlanadi)
+      const vaqtincha = /timeout|aborted|fetch failed|\b5\d\d\b|rate|temporar/i.test(String((e && e.message) || e));
+      if (q.turi === 'instagram_karusel' && vaqtincha && urinish < 3) {
+        await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
+          method: 'PATCH',
+          prefer: 'return=minimal',
+          body: JSON.stringify({ holat: 'kutilmoqda', nashr_vaqti: new Date(Date.now() + 5 * 60e3).toISOString(), payload: { ...q.payload, urinish: urinish + 1 }, xato_matni: String((e && e.message) || e).slice(0, 300) }),
+        }).catch(() => {});
+        natijalar.push({ id: q.id, holat: 'qayta', urinish: urinish + 1 });
+        continue;
+      }
       if (q.turi === 'video_ig_tg' && urinish < 6) {
         await sbFetch(env, `nashr_navbati?id=eq.${q.id}`, {
           method: 'PATCH',

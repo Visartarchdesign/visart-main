@@ -24,7 +24,7 @@ async function geminiJavob(env, body, signal) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL(env)}:generateContent?key=${env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(req), signal,
   });
-  if (!r.ok) return null;
+  if (!r.ok) { console.log('aiFetch: Gemini', r.status); return null; }
   const d = await r.json();
   let text = (((d.candidates || [])[0] || {}).content || {}).parts?.filter((p) => p.text && !p.thought).map((p) => p.text).join('') || '';
   if (!text) return null;
